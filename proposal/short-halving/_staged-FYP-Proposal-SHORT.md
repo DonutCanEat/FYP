@@ -102,7 +102,7 @@ All twelve are evidenced from an artefact: 1 at G0; 3, 4 and 5 at G2; 7 at G1; 8
 
 Complete when the following are true and reproducible from a clean start; the reductions below are written against them.
 
-**C1.** Three device families run: Windows Server guests, Linux guests, and Cisco devices exposing SSH and SNMPv3 unconditionally, plus RESTCONF only where the image supports it.
+**C1.** Three device families run: Windows Server guests, Linux guests, and Cisco devices exposing SSH and SNMPv3 unconditionally, plus RESTCONF only where the image supports it. RESTCONF is conditional by design and is **not** required to pass C1; the image decides it.
 
 **C2.** Routing works with at least two interior protocols and one exterior protocol, and a link-failure convergence is captured.
 
@@ -116,7 +116,7 @@ Complete when the following are true and reproducible from a clean start; the re
 
 **C7.** The evaluation set of section 7.6 is executed: scripted scenarios, injected faults with known ground truth, and a hallucination check.
 
-**C8.** The documentation set of section 12 exists.
+**C8.** The documentation set of section 12 exists, in English with the Chinese companion summary.
 
 ## 4. Scope
 
@@ -347,7 +347,7 @@ This server makes the agent honest: it is the machine-readable form of the desig
 
 #### 7.3.6 How credentials stay out of the model's context
 
-Six rules, all demonstrable. The model never receives a credential, only tool descriptions and results, and authentication happens inside the server process under the server's own identity. Tool schemas hold no secrets, only enumerations, integers, timestamps and strings. Credentials live in root-owned files with owner-only permissions, read at start-up, never in the repository or a prompt. Redaction is applied at the server boundary before a result is returned, so a secret cannot reach the transcript even accidentally. Results are truncated and bounded, with line and byte caps on every tool, so a configuration dump cannot flood the context and displace the guardrail instructions.
+Six rules, all demonstrable. The model never receives a credential, only tool descriptions and results, and authentication happens inside the server process under the server's own identity. Tool schemas hold no secrets, only enumerations, integers, timestamps and strings. Credentials live in root-owned files with owner-only permissions, read at start-up, never in the repository or a prompt. Redaction is applied at the server boundary before a result is returned, so a secret cannot reach the transcript even accidentally. Results are truncated and bounded, with line and byte caps on every tool: at most 500 lines or 32,768 bytes, 500 events, 200 rows and 20 object identifiers, so a configuration dump cannot flood the context and displace the guardrail instructions.
 
 Across the five servers there are **thirty-six tools in total, and exactly two are mutating**: `linux_restart_service` and `win_disable_ad_user`, both UC-4 only and both gated on the measured tier.
 
@@ -520,7 +520,7 @@ The decisions below are keyed **D-01 to D-16**, exactly as in the outline decisi
 | **D-06** | The demonstrable AI use cases | Any subset of the six candidates | **Commit to UC-1, UC-3, UC-4 and UC-6**; add UC-2 and UC-5 if week 10 allows. UC-6 is required to exit Stage A | End of week 2, **confirmed at G3 (week 8)**; completion condition C6 carries both reductions | Every use case becomes shallow, and six partial results to explain |
 | **D-07** | May the AI layer ever change anything? | Read-only only; read-only by default with approved changes | **Closed: read-only by default; changes only with human approval**, per the governance policy of section 7.4 | **Closed as governing policy** | The project's own verification results would be irreproducible |
 | **D-08** | Deliverable language split | English only; English plus a Chinese companion | **(b) English deliverable with the Chinese companion summary**, as already established | End of week 1 | It contradicts the earlier decision and costs the companion summary |
-| **D-09** | Screenshot and evidence standard | Free-form; or the fixed caption and filename template | **(b) the fixed template** of section 8, captions `Figure {n}: {what} - {host} - {command or action} - {date}` | End of week 2, and frozen in week 1 while there are zero captures to recaption | Free-form evidence is the commonest single cause of lost marks |
+| **D-09** | Screenshot and evidence standard | Free-form; or the fixed caption and filename template | **(b) the fixed template** of section 12.3, captions `Figure {n}: {what} - {host} - {command or action} - {date}` | End of week 2, and frozen in week 1 while there are zero captures to recaption | Free-form evidence is the commonest single cause of lost marks |
 | **D-10** | Which local model family - this is **B3** | The five candidate families of the outline's model-family table, unnamed here as versions | **[TO CONFIRM] after the hardware record and the probe-set measurement.** Do not choose on reputation | **G2-H, end of week 6**; the week 5-6 spike's malformed-call rate names the model, **confirmed at G3 (week 8)** | Choosing before measuring guarantees a late reselection |
 | **D-11** | Is Packet Tracer kept at all? | Drop it; or keep it for design and topology only | **(b) Closed: keep it, strictly as a design-time tool, labelled as such in every figure.** Nothing automates it | **Closed** | Losing the design-time band of the architecture figure, and an undescribable D-01 hybrid fallback |
 | **D-12** | Cisco platform licence and image entitlement | A personal tier; an education tier; an evaluation entitlement; none available | **[TO CONFIRM] in week 1**, at the vendor's own product and documentation pages, never from memory, a forum post or a mirror | **End of week 1** | **D-01** falls through to the hybrid and the AI-managed Cisco estate shrinks |

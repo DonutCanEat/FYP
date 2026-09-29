@@ -2,7 +2,7 @@
 
 **What this file records.** One piece of work: shortening the project's **immediate submission**, `FYP-Proposal-SHORT.md`, on the owner's instruction, and expressing its tables as prose wherever prose could carry the content.
 
-**Headline.** The proposal went from **20,598 words to 16,640** by this file's counting method (a 19.2% reduction), and from **131,405 bytes to 109,055**; its render went from **65,799 bytes to 53,659**. Its table mass fell from **288 rows to 88**. **The owner asked for roughly half, and the honest floor was not reached** — the residual, its cause and the exact cost of closing it are in §6, and the trade-off is the owner's to take.
+**Headline.** The proposal went from **20,598 words to 16,678** by this file's counting method (a 19.0% reduction), and from **131,405 bytes to 109,280**; its render went from **65,799 bytes to 53,753**. Its table mass fell from **288 rows to 88**. **The owner asked for roughly half, and the honest floor was not reached** — the residual, its cause and the exact cost of closing it are in §6, and the trade-off is the owner's to take.
 
 ---
 
@@ -10,10 +10,10 @@
 
 | Artefact | Before | After | Change |
 |---|---|---|---|
-| `FYP-Proposal-SHORT.md` | 131,405 B / `B3A933B27E5F58C7E8104831558933BD89F289FCE9C6B44A543BE93468775BD3` | **109,055 B / `290548EDD2264B3401D4F25FB25A35F519DB0E1FD2CCE1636BB8315D23E14A7C`** | −17.0% bytes |
-| `FYP-Proposal-SHORT.docx` | 65,799 B / `869882D5140F67081D2AC0B3682F9DCF505127EA351C4C29E9B8282BA1493EA3` | **53,659 B / `46AF15E88E9563DEAD91A0740A8C603F3D80A6CCEC33111126E14C478AA70346`** | −18.4% bytes |
-| Words, whole document (prose + table cells) | 20,598 | **16,640** | **−19.2%** |
-| Prose words, excluding tables and headings | 10,251 | 13,378 | **+30.5%** |
+| `FYP-Proposal-SHORT.md` | 131,405 B / `B3A933B27E5F58C7E8104831558933BD89F289FCE9C6B44A543BE93468775BD3` | **109,280 B / `2DF3AB4497415CC1BC9887595E7ABEFA8E10268C23D29DD1ECD52D8C19544DE0`** | −16.8% bytes |
+| `FYP-Proposal-SHORT.docx` | 65,799 B / `869882D5140F67081D2AC0B3682F9DCF505127EA351C4C29E9B8282BA1493EA3` | **53,753 B / `4FCF5E0C5D2518F79A9319D6ADBB6B4CFEAF81054F44FDE86582A530EFA609C6`** | −18.3% bytes |
+| Words, whole document (prose + table cells) | 20,598 | **16,678** | **−19.0%** |
+| Prose words, excluding tables and headings | 10,251 | 13,416 | **+30.9%** |
 | Words inside table rows | 10,347 | 3,262 | −68.5% |
 | Table rows | 288 | **88** | −69.4% |
 | Render: paragraphs / H2 / tables / list items / figures | — | 310 / 15 / 7 / 71 / 1 | — |
@@ -119,7 +119,27 @@ That is before counting section 6's service plan, section 9's standards argument
 
 ## 7. Independent verification
 
-**Commissioned at the owner's instruction and reported in this section when it returns.** The verifier is read-only, was given the pre-shortening backup as its reference, and was asked above all to test the failure this task actually produced — **whether each fact an author "deferred to section N" is really present in section N** — and then to diff the identifier and figure inventory between the backup and the shortened document, to hunt for a Packet Tracer sentence that lost its qualifier, to account for every `[TO CONFIRM]` marker, to compare the section structure of both versions, and to confirm the render is current rather than stale.
+**Commissioned, and its verdict is that the shortening preserved the substance — with three defects, all now repaired (§9).** The verifier was read-only, was given the pre-shortening backup as its reference, and was asked above all to test the failure this task actually produced — whether each fact an author "deferred to section N" is really present in section N.
+
+| Check | Verdict | The measurement that decided it |
+|---|---|---|
+| **Deferred facts really land (12 checked)** | **11 PASS, 1 FAIL** | Each claimed home was opened. Section 5 does carry the estate counts, the per-family interfaces and the ports; 5.1 carries the packet-capture interface; 8.2 and 6.7 carry the build order; 7.4 carries the permission model with all six proposal fields; 3.3 carries both reductions; 9 carries the standards position; 12.1–12.2 carry the deliverables with all twelve identifiers; 11 carries the complete `R1`–`R22` register; 10 carries the complete `D-01`–`D-16` register; 4.5 carries the scope boundary. **The failure was a pointer, not a fact**: the `D-09` row cited "the fixed template **of section 8**", and section 8 is the implementation plan with subsections 8.1–8.3 and no template anywhere — while the template itself does survive at 12.3 |
+| **Identifier and figure survival** | **PASS — zero losses** | an exhaustive word-boundary token diff of both files found **no backup-only token** across `D-01`…`D-16`, `D1`…`D12`, `B1`–`B3`, `G0`–`G6`, `G2-H`, `UC-1`…`UC-6`, `PB-1`…`PB-9`, `C1`–`C8`, `R1`–`R22`, `Stage A`–`D`, `T0`–`T3`, all twelve hostnames, all thirty-six tool names, the ports, the prefixes and every page and word band. `SQ-1`…`SQ-5`, `E1`–`E9` and `TB-01`…`TB-16` are **absent from the backup itself**, so they are not losses; and `RW-01`…`NR-03` appear **only** in the shortened document as new row labels, traceable to the outline, which uses them |
+| **The qualifier-loss test — the one asked for** | **PASS** | all sixteen Packet Tracer sentences are denials, and the executive summary's safety clause kept **both** its negation and its "so nothing can manage them" consequence; the per-protocol enumeration also survives at 4.5 and 5.4. **No sentence became a reachability claim by losing its qualifier** |
+| **No invented content** | **PASS** | twelve load-bearing claims traced to the backup, the outline or the manual; the only new wordings are "seven gates" (arithmetically `G0`–`G6`) and the reworded evidence rule from the outline's §H.2 E1 |
+| **Forbidden claims** | **PASS — none** | no Packet Tracer reachability claim; "autonomous" appears twice, both times as a denial; zero reliance on `legacy\`; all three withdrawn framings appear only as withdrawn |
+| **`[TO CONFIRM]` markers** | **PASS, and my premise was wrong** | the verifier measured **17 in both** files, line-for-line identical, not the 17-against-14 I had assumed — so nothing was added and nothing dropped. Every one is genuinely unresolved by the corpus |
+| **Structural integrity** | **PASS** | fifteen H2s in both files, identical set, order and numbering; no section renamed, merged, dropped or added; `[TOC]` once in both; no H1 in either |
+| **Render is current (V5)** | **PASS** | three post-shortening features found by extracting `word/document.xml` from a memory-stream copy; both files' hashes identical before and after the read |
+
+**What the shortening did not preserve**, stated narrowly, because the verdict should not be read as "nothing was lost":
+
+1. **The false `D-09` pointer** (§9 item 1) — repaired.
+2. **Two caveats dropped from completion conditions C1 and C8** (§9 items 2 and 3). Both facts survive elsewhere, but §3.3 is the one place where the single-home rule was applied to a condition that needs to be self-contained: without C1's exemption a **correct** classic-IOS deployment could be marked as failing C1.
+3. **The `95 per cent` assessment-alignment figure** — gone, and it exists in the backup only. The verifier's own reading is that its deletion removed an *understatement* rather than a truth: section 9.1 states coverage of all six domains, 5+5+25+25+15+25 = 100. **Left deleted**, and disclosed here.
+4. **The tool-signature numeric bounds** — repaired (§9 item 4).
+5. **The host organisation's site and staffing premises** (110/28/12/4, the four site names) — left deleted by decision, disclosed in §2.
+6. **Figure 1's in-figure port and host evidence**, and **7.2's requirement that the optional peer node join the reachability table as a reachable row** — the figure is no longer readable standalone, the requirement is no longer stated. **Left as compression choices**, with the facts locatable in 5.1 and 5.4 respectively.
 
 **Why the verification is not optional here.** The project's hardest lesson is that a worker's own "all green" report is not evidence — a note once certified "20 bar rows, 0 alignment failures" while **11 of 20 were measurably wrong**. This very task has already produced two defects that no author's self-report caught: eleven lost identifiers, found only by the assembler's mechanical diff, and a pointer to a section that does not exist, found only by the integration editor reading the whole document.
 
@@ -132,4 +152,23 @@ That is before counting section 6's service plan, section 9's standards argument
 
 ---
 
-*Written 2026-09-29 by the incoming agent from measurements taken in this session. Every size and hash was read with `Get-FileHash`/`Get-Item`; the `.docx` files were hashed and rendered but never opened by path; no existing file was modified except the two fragment files named in §4 and the manual row named in §8.1.*
+*Written 2026-09-29 by the incoming agent from measurements taken in this session, and amended once after independent verification (§9). Every size and hash was read with `Get-FileHash`/`Get-Item`; the `.docx` files were hashed and rendered but never opened by path; no existing file was modified except the fragment files named in §4 and §9 and the manual rows named in §8.1.*
+
+---
+
+## 9. Post-verification repairs — four, each verified against the backup before publication
+
+The independent verification found one false cross-reference and two dropped caveats, and the qualifier test it ran also confirmed a fourth loss the authors had reported. All four were repaired in the fragment files, and **every repaired sentence was checked against the pre-shortening backup myself before it was written**, rather than trusting the verifier's summary of it — the project's rule is that an agent's report is not evidence.
+
+| # | Repair | Where | The backup line that authorises it |
+|---|---|---|---|
+| 1 | The `D-09` row's pointer **"the fixed template of section 8"** now reads **"of section 12.3"** | `08-standards-decisions.md`, decision register | the backup's `D-09` row carries **no section pointer at all**, and the template it describes lives in the backup's §12.3 paragraph. Section 8 is the implementation plan and contains no template. The verifier proved the pointer was **newly introduced** by the shortening, not inherited |
+| 2 | **C1 regained its exemption**: "RESTCONF is conditional by design and is **not** required to pass C1; the image decides it." | `03-aims-scope.md`, §3.3 | backup line 114: *"The third interface is conditional by design and is not required to pass C1; the platform's own image decides it."* **This mattered substantively:** without it, a correct classic-IOS deployment — the platform's primary case — could be marked as failing a completion condition |
+| 3 | **C8 regained its acceptance criterion**: the documentation set exists "**in English with the Chinese companion summary**" | `03-aims-scope.md`, §3.3 | backup line 121: *"The documentation set of section 12 exists in English, with the Chinese companion summary"*, and the language split is separately fixed by `D-08` |
+| 4 | **The tool-signature bounds were restored**: "at most 500 lines or 32,768 bytes, 500 events, 200 rows and 20 object identifiers" | `06-layer2.md`, §7.4's credential and output rules | backup lines 340, 344, 357, 376, 377 and 379 — `max_lines: int<=500`, `max_bytes: int<=32768`, `max_events: int<=500`, `oids: [str]<=20`, `max_rows: int<=200`. These were the only concrete evidence behind the claim that **tool output is bounded**, a stated security property; the general claim survived the shortening while its numbers did not |
+
+**After the repairs the document was re-assembled, re-published, re-rendered and re-gated:** SDK **0 errors**, package **9/9 PASS**, coverage **PASS**. The four repaired sentences were then confirmed present in the new render by extracting `word/document.xml` text from the raw ZIP — the pointer, the C1 exemption, the C8 language clause and the byte bound were each found. The final artefacts are **109,280 bytes / `2DF3AB4497415CC1BC9887595E7ABEFA8E10268C23D29DD1ECD52D8C19544DE0`** and the render **53,753 bytes / `4FCF5E0C5D2518F79A9319D6ADBB6B4CFEAF81054F44FDE86582A530EFA609C6`**.
+
+**The repairs cost 38 words** (16,640 → 16,678). That is the honest price of making a completion condition self-contained and a cross-reference true, and it is charged against a target that was already missed — not hidden by trimming something else to compensate.
+
+**Two further corrections the verification forced on this log**, both of them my errors rather than the document's: the `[TO CONFIRM]` count is **17 in both** versions, not "17 against 14" as I had recorded from an author's report; and `SQ-1`…`SQ-5`, `E1`–`E9` and `TB-01`…`TB-16` were **never in this deliverable**, so their absence is not a shortening loss.

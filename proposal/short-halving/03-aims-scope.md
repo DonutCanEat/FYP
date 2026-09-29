@@ -25,7 +25,7 @@ All twelve are evidenced from an artefact: 1 at G0; 3, 4 and 5 at G2; 7 at G1; 8
 
 Complete when the following are true and reproducible from a clean start; the reductions below are written against them.
 
-**C1.** Three device families run: Windows Server guests, Linux guests, and Cisco devices exposing SSH and SNMPv3 unconditionally, plus RESTCONF only where the image supports it.
+**C1.** Three device families run: Windows Server guests, Linux guests, and Cisco devices exposing SSH and SNMPv3 unconditionally, plus RESTCONF only where the image supports it. RESTCONF is conditional by design and is **not** required to pass C1; the image decides it.
 
 **C2.** Routing works with at least two interior protocols and one exterior protocol, and a link-failure convergence is captured.
 
@@ -39,7 +39,7 @@ Complete when the following are true and reproducible from a clean start; the re
 
 **C7.** The evaluation set of section 7.6 is executed: scripted scenarios, injected faults with known ground truth, and a hallucination check.
 
-**C8.** The documentation set of section 12 exists.
+**C8.** The documentation set of section 12 exists, in English with the Chinese companion summary.
 
 ## 4. Scope
 
