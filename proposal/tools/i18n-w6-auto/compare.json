@@ -1,0 +1,296 @@
+{
+ "report": [
+  {
+   "check": "h2 count",
+   "equal": true
+  },
+  {
+   "check": "h3 count",
+   "equal": true
+  },
+  {
+   "check": "h4 count",
+   "equal": true
+  },
+  {
+   "check": "h5 count",
+   "equal": true
+  },
+  {
+   "check": "heading total",
+   "equal": true
+  },
+  {
+   "check": "heading numbering sequence",
+   "equal": true
+  },
+  {
+   "check": "heading level sequence",
+   "equal": true
+  },
+  {
+   "check": "table count",
+   "equal": true
+  },
+  {
+   "check": "table data rows",
+   "equal": true
+  },
+  {
+   "check": "rows with differing cell count",
+   "equal": true
+  },
+  {
+   "check": "per-table row cell counts",
+   "equal": true
+  },
+  {
+   "check": "fenced code blocks",
+   "equal": true
+  },
+  {
+   "check": "code fence language tags",
+   "equal": true
+  },
+  {
+   "check": "concatenated code block chars",
+   "equal": true
+  },
+  {
+   "check": "concatenated code blocks byte-identical",
+   "equal": true
+  },
+  {
+   "check": "inline code spans",
+   "equal": true
+  },
+  {
+   "check": "escaped pipes \\| outside code",
+   "equal": true
+  },
+  {
+   "check": "line count",
+   "equal": true
+  },
+  {
+   "check": "BOM",
+   "equal": true
+  },
+  {
+   "check": "identifier spot-check mismatches",
+   "equal": true
+  }
+ ],
+ "spot": [
+  {
+   "id": "vpnz-mon01",
+   "source": 55,
+   "translation": 55
+  },
+  {
+   "id": "vpnz-jump01",
+   "source": 10,
+   "translation": 10
+  },
+  {
+   "id": "vpnz-nft01",
+   "source": 24,
+   "translation": 24
+  },
+  {
+   "id": "vpnz-dmzrev01",
+   "source": 14,
+   "translation": 14
+  },
+  {
+   "id": "vpnz-dc01",
+   "source": 20,
+   "translation": 20
+  },
+  {
+   "id": "vpnz-fs01",
+   "source": 19,
+   "translation": 19
+  },
+  {
+   "id": "vpnz-dmzjump01",
+   "source": 8,
+   "translation": 8
+  },
+  {
+   "id": "vpnz-wcwg01",
+   "source": 2,
+   "translation": 2
+  },
+  {
+   "id": "10.10.30.31",
+   "source": 20,
+   "translation": 20
+  },
+  {
+   "id": "10.10.50.11",
+   "source": 5,
+   "translation": 5
+  },
+  {
+   "id": "10.90.90.10",
+   "source": 0,
+   "translation": 0
+  },
+  {
+   "id": "10.10.90.10",
+   "source": 3,
+   "translation": 3
+  },
+  {
+   "id": "vertexpeak.fyp.lab",
+   "source": 14,
+   "translation": 14
+  },
+  {
+   "id": "5986",
+   "source": 19,
+   "translation": 19
+  },
+  {
+   "id": "5985",
+   "source": 5,
+   "translation": 5
+  },
+  {
+   "id": "9100",
+   "source": 3,
+   "translation": 3
+  },
+  {
+   "id": "9182",
+   "source": 9,
+   "translation": 9
+  },
+  {
+   "id": "ansible-core",
+   "source": 6,
+   "translation": 6
+  },
+  {
+   "id": "pywinrm",
+   "source": 7,
+   "translation": 7
+  },
+  {
+   "id": "2.18.x",
+   "source": 4,
+   "translation": 4
+  },
+  {
+   "id": "0.5.0",
+   "source": 4,
+   "translation": 4
+  },
+  {
+   "id": "win_shell",
+   "source": 24,
+   "translation": 24
+  },
+  {
+   "id": "win_ping",
+   "source": 9,
+   "translation": 9
+  },
+  {
+   "id": "ansible.builtin.template",
+   "source": 8,
+   "translation": 8
+  },
+  {
+   "id": "ansible.windows.win_ping",
+   "source": 6,
+   "translation": 6
+  },
+  {
+   "id": "Invoke-NewStarterOnboarding.ps1",
+   "source": 14,
+   "translation": 14
+  },
+  {
+   "id": "Get-ServiceAndFirewallAudit.ps1",
+   "source": 6,
+   "translation": 6
+  },
+  {
+   "id": "Invoke-ScheduledBackupVerify.ps1",
+   "source": 7,
+   "translation": 7
+  },
+  {
+   "id": "06-server-health-report.sh",
+   "source": 11,
+   "translation": 11
+  },
+  {
+   "id": "07-nftables-log-summary.sh",
+   "source": 9,
+   "translation": 9
+  },
+  {
+   "id": "08-cert-expiry-check.sh",
+   "source": 8,
+   "translation": 8
+  },
+  {
+   "id": "/opt/ansible-venv/venv/bin/ansible-playbook",
+   "source": 1,
+   "translation": 1
+  },
+  {
+   "id": "inventory/group_vars/all/vault.yml",
+   "source": 11,
+   "translation": 11
+  },
+  {
+   "id": "C:\\FYP\\04-automation\\",
+   "source": 11,
+   "translation": 11
+  },
+  {
+   "id": "ansible-vault",
+   "source": 12,
+   "translation": 12
+  },
+  {
+   "id": "ShellCheck",
+   "source": 9,
+   "translation": 9
+  },
+  {
+   "id": "PSScriptAnalyzer",
+   "source": 9,
+   "translation": 9
+  },
+  {
+   "id": "GG-WINRM-Admins",
+   "source": 4,
+   "translation": 4
+  },
+  {
+   "id": "svc_aiagent",
+   "source": 7,
+   "translation": 7
+  },
+  {
+   "id": "changed=0",
+   "source": 24,
+   "translation": 24
+  },
+  {
+   "id": "nft list ruleset",
+   "source": 9,
+   "translation": 9
+  },
+  {
+   "id": "--check --diff",
+   "source": 9,
+   "translation": 9
+  }
+ ]
+}

@@ -1,0 +1,13 @@
+```bash
+# Case A - ShellCheck is available:
+sudo apt-get install -y shellcheck
+shellcheck --version
+shellcheck -x -S warning 04-automation/bash/*.sh 04-automation/bash/lib/common.sh \
+  | tee 06-verification/shellcheck-$(date +%F).txt
+# -x  : follow the `source` of lib/common.sh so that the library's definitions are known
+# -S  : treat warnings and above as the reporting floor; informational notes are noise
+
+# Case B - ShellCheck is not available:
+#   State plainly in the report that ShellCheck was not available in the lab and that
+#   the scripts were reviewed manually. Do NOT cite ShellCheck output that does not exist.
+```

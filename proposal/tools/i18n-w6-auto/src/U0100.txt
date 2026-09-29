@@ -1,0 +1,1 @@
+Rollback is tested, not assumed. At least one deliberate rollback is executed and captured as evidence, because an untested rollback path is an unverified claim.

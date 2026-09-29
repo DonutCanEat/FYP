@@ -1,0 +1,1 @@
+`roles/<role>/vars/main.yml` is used only for values that are *genuinely not tunable* — the internal constants of a role. Putting a variable there makes it effectively unchangeable, and that is occasionally the correct decision; it must never be used to "win" a precedence argument.

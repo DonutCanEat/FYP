@@ -1,0 +1,5 @@
+| Playbook | Hosts | Purpose | Note |
+|---|---|---|---|
+| `04-keepalived.yml` | `web`, `edge` | Converge only the VRRP configuration and run the failover proof | Separated from the service playbooks so that a VRRP-only change never forces an nginx or nftables reload; tagged `keepalived` |
+| `06-wireguard.yml` | `edge` (and `vpnz-wcwg01` if O-04 resolves that way) | Converge `/etc/wireguard/wg0.conf` from the templated configuration and verify the handshake | Uses `wg show` output as the verification, `changed_when: false` |
+| `07-ad-users.yml` | `vpnz-dc01` | Invoke `Invoke-NewStarterOnboarding.ps1` with `-WhatIf` first, then for real, and collect the CSV report | Tier-0 tagged; requires an `adm-{initials}` credential, not `svc_ansible`, by design |

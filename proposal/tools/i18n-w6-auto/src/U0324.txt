@@ -1,0 +1,1 @@
+**Templates:** `keepalived.conf.j2` (one template, parameterised by the host variables), `check_nginx.sh.j2`, `check_nftables.sh.j2`.

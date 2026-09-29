@@ -1,0 +1,1 @@
+Six playbooks are given in full below. Each is runnable exactly as written from `C:\FYP\04-automation\ansible\` on `vpnz-mon01`, against the inventory of 10.4.2. The remaining three baseline playbooks (`06-wireguard.yml`, `07-ad-users.yml` and `08-collect-network-configs.yml`) are specified in outline in 10.4.6.7 because their content is covered in detail elsewhere.

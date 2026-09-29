@@ -1,0 +1,278 @@
+```powershell
+<#
+.SYNOPSIS
+    Runs a scheduled Windows Server Backup job and verifies the resulting backup.
+
+.DESCRIPTION
+    Implements the FYP backup deliverable for a Windows member server in five phases:
+      Phase 1  Pre-flight : target volume exists, free space above threshold, no backup
+                            already running, Windows Server Backup feature installed.
+      Phase 2  Backup     : run wbadmin with an explicit target and description.
+      Phase 3  Verify     : read the backup set back and assert version, age and that the
+                            component list can be enumerated. This is the phase that
+                            converts "a backup ran" into "a backup exists that can be read".
+      Phase 4  Off-host   : assert that the restic repository on vpnz-dmzjump01 was written
+                            inside the expected window (configuration and evidence copy).
+      Phase 5  Report     : one object per phase, exported to CSV, and a non-zero exit code
+                            when any phase failed.
+
+    Designed to run as a scheduled task using the design's BKP-{TARGET}-{FREQ} naming.
+
+    Verified on: Windows PowerShell 5.1 (Windows Server 2025, build 10.0.26100)
+    Requires  : Windows Server Backup feature; wbadmin; restic on the off-host repository
+                (optional - its absence is reported, not treated as a failure)
+    Test IDs  : TC-L4-01, TC-L1-06
+
+.PARAMETER TargetVolume
+    Backup destination drive letter. Default D:, the iSCSI LUN02 volume presented by
+    vpnz-san01.
+
+.PARAMETER JobName
+    Job label used in the log, the backup description and the BKP naming convention.
+    Default BKP-FS01-DAILY.
+
+.PARAMETER MinFreeSpaceGB
+    Minimum free space on the target before a backup is attempted. Default 5.
+
+.PARAMETER ResticHost
+    Host holding the off-host restic repository. Default vpnz-dmzjump01.
+
+.PARAMETER ResticMaxAgeHours
+    Maximum acceptable age of the newest off-host snapshot. Default 26.
+
+.PARAMETER LogPath
+    Directory for the run log. Default C:\FYP\logs.
+
+.EXAMPLE
+    .\Invoke-ScheduledBackupVerify.ps1 -Verbose
+
+    Runs the daily backup, verifies it, cross-checks the off-host repository and returns
+    the phase result objects.
+
+.EXAMPLE
+    $r = .\Invoke-ScheduledBackupVerify.ps1 -MinFreeSpaceGB 10 -ResticMaxAgeHours 48
+    $r | Export-Csv C:\FYP\config\BackupVerify-$(Get-Date -f yyyyMMdd).csv -NoTypeInformation
+    if ($r.Result -contains 'FAIL') { exit 3 }
+
+.OUTPUTS
+    PSCustomObject per phase: Phase, JobName, Host, Started, Completed, DurationSeconds,
+    Target, Result, Detail
+
+.NOTES
+    Author : Vertex Peak FYP workstream W2 with W4
+    Reviewer: W1
+    Warning: This script is NOT naturally idempotent - running it twice makes two backups.
+             The design handles that with a once-per-20-hours guard and a lock file rather
+             than by pretending the operation is safe to repeat. A backup script that claims
+             idempotence is a script that has not been thought about.
+#>
+[CmdletBinding(SupportsShouldProcess = $true)]
+param(
+    [ValidatePattern('^[A-Za-z]:$')]
+    [string]$TargetVolume = 'D:',
+
+    [ValidateNotNullOrEmpty()]
+    [string]$JobName = 'BKP-FS01-DAILY',
+
+    [ValidateRange(1,500)]
+    [int]$MinFreeSpaceGB = 5,
+
+    [ValidateNotNullOrEmpty()]
+    [string]$ResticHost = 'vpnz-dmzjump01',
+
+    [ValidateRange(1,720)]
+    [int]$ResticMaxAgeHours = 26,
+
+    [ValidateNotNullOrEmpty()]
+    [string]$LogPath = 'C:\FYP\logs'
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+$LockFile = Join-Path $env:TEMP "fyp-backup-$JobName.lock"
+if (-not (Test-Path -LiteralPath $LogPath)) {
+    New-Item -ItemType Directory -Path $LogPath -Force | Out-Null
+}
+$LogFile = Join-Path $LogPath ("{0}_{1}.log" -f (Get-Date -Format 'yyyy-MM-dd'), $JobName)
+$results = New-Object System.Collections.Generic.List[object]
+
+function Write-RunLog {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Message,
+          [ValidateSet('INFO','WARN','ERROR')][string]$Level = 'INFO')
+    Add-Content -LiteralPath $LogFile -Value ("{0} [{1}] {2}" -f (Get-Date -f 'yyyy-MM-dd HH:mm:ss'), $Level, $Message)
+    switch ($Level) {
+        'ERROR' { Write-Error $Message -ErrorAction Continue }
+        'WARN'  { Write-Warning $Message }
+        default { Write-Verbose $Message }
+    }
+}
+
+function Add-PhaseResult {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Phase,
+        [Parameter(Mandatory)][datetime]$Started,
+        [string]$Target = '',
+        [Parameter(Mandatory)][ValidateSet('PASS','FAIL','SKIP')][string]$Result,
+        [string]$Detail = ''
+    )
+    $results.Add([PSCustomObject]@{
+        Phase           = $Phase
+        JobName         = $JobName
+        Host            = $env:COMPUTERNAME
+        Started         = $Started.ToString('s')
+        Completed       = (Get-Date).ToString('s')
+        DurationSeconds = [math]::Round(((Get-Date) - $Started).TotalSeconds, 1)
+        Target          = $Target
+        Result          = $Result
+        Detail          = $Detail
+    })
+}
+
+# --- Guard: one run at a time, and not twice in the same shift ---------------
+if (Test-Path -LiteralPath $LockFile) {
+    $lockAge = (Get-Date) - (Get-Item -LiteralPath $LockFile).LastWriteTime
+    if ($lockAge.TotalHours -lt 20) {
+        Write-RunLog "Skipping: a run completed $([math]::Round($lockAge.TotalHours,1)) h ago (lock $LockFile)" 'WARN'
+        Add-PhaseResult -Phase 'Guard' -Started (Get-Date) -Result 'SKIP' `
+                        -Detail "Already ran within 20 h. Lock: $LockFile"
+        $results
+        return
+    }
+    Write-RunLog "Removing a stale lock from $([math]::Round($lockAge.TotalHours,1)) h ago" 'WARN'
+    Remove-Item -LiteralPath $LockFile -Force
+}
+
+try {
+    # ---------------- Phase 1: pre-flight ----------------
+    $t0 = Get-Date
+    try {
+        $vol     = Get-Volume -DriveLetter $TargetVolume[0] -ErrorAction Stop
+        $freeGB  = [math]::Round($vol.SizeRemaining / 1GB, 1)
+        if ($freeGB -lt $MinFreeSpaceGB) {
+            throw "Only $freeGB GB free on $TargetVolume; the minimum is $MinFreeSpaceGB GB."
+        }
+        $running = Get-WbJob -ErrorAction SilentlyContinue
+        if ($running -and $running.CurrentOperation -ne 'None') {
+            throw "A Windows Server Backup job is already running ($($running.CurrentOperation))."
+        }
+        if (-not (Get-WindowsFeature -Name Windows-Server-Backup).Installed) {
+            throw 'The Windows-Server-Backup feature is not installed.'
+        }
+        Write-RunLog "Pre-flight OK: $freeGB GB free on $TargetVolume"
+        Add-PhaseResult -Phase 'Preflight' -Started $t0 -Target $TargetVolume -Result 'PASS' `
+                        -Detail "$freeGB GB free; no conflicting job; feature installed"
+    }
+    catch {
+        Write-RunLog "Pre-flight FAILED: $($_.Exception.Message)" 'ERROR'
+        Add-PhaseResult -Phase 'Preflight' -Started $t0 -Target $TargetVolume -Result 'FAIL' `
+                        -Detail $_.Exception.Message
+        throw
+    }
+
+    # ---------------- Phase 2: backup ----------------
+    $t1 = Get-Date
+    try {
+        if (-not $PSCmdlet.ShouldProcess($TargetVolume, "Run $JobName backup")) {
+            Add-PhaseResult -Phase 'Backup' -Started $t1 -Target $TargetVolume -Result 'SKIP' -Detail 'WhatIf requested'
+            throw 'WhatIf requested'
+        }
+
+        $wbArgs = @('start','backup',"-backupTarget:$TargetVolume",'-allCritical','-quiet',"-setDescription:$JobName")
+        Write-RunLog "Starting: wbadmin $($wbArgs -join ' ')"
+        $out = & wbadmin @wbArgs 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            throw "wbadmin exit code $LASTEXITCODE. Output: $($out -join ' | ')"
+        }
+        Write-RunLog 'Backup command completed with exit code 0'
+        Add-PhaseResult -Phase 'Backup' -Started $t1 -Target $TargetVolume -Result 'PASS' `
+                        -Detail "wbadmin completed in $([math]::Round(((Get-Date)-$t1).TotalSeconds,1)) s"
+    }
+    catch {
+        if ($_.Exception.Message -eq 'WhatIf requested') { throw }
+        Write-RunLog "Backup FAILED: $($_.Exception.Message)" 'ERROR'
+        Add-PhaseResult -Phase 'Backup' -Started $t1 -Target $TargetVolume -Result 'FAIL' -Detail $_.Exception.Message
+        throw
+    }
+
+    # ---------------- Phase 3: verification (the half that matters) ----------------
+    $t2 = Get-Date
+    try {
+        $versions = @(Get-WBBackupSet -BackupTarget $TargetVolume -ErrorAction Stop)
+        if ($versions.Count -eq 0) { throw "No backup set found on $TargetVolume after a completed run." }
+
+        $latest   = $versions | Sort-Object -Property Version -Descending | Select-Object -First 1
+        $ageHours = [math]::Round(((Get-Date) - $latest.CreationTime).TotalHours, 2)
+        if ($ageHours -gt 24) { throw "The newest backup set is $ageHours h old; expected under 24 h." }
+
+        $detail         = @(Get-WBBackupSet -BackupTarget $TargetVolume -BackupSet $latest)
+        $componentCount = $detail.Count
+        if ($componentCount -lt 1) { throw "The newest backup set enumerates $componentCount components." }
+
+        Write-RunLog "Verification OK: version $($latest.Version), age $ageHours h, $componentCount component(s)"
+        Add-PhaseResult -Phase 'Verify' -Started $t2 -Target $TargetVolume -Result 'PASS' `
+                        -Detail "version=$($latest.Version); ageHours=$ageHours; components=$componentCount"
+    }
+    catch {
+        Write-RunLog "Verification FAILED: $($_.Exception.Message)" 'ERROR'
+        Add-PhaseResult -Phase 'Verify' -Started $t2 -Target $TargetVolume -Result 'FAIL' -Detail $_.Exception.Message
+    }
+
+    # ---------------- Phase 4: off-host restic cross-check ----------------
+    $t3 = Get-Date
+    try {
+        $snap = Invoke-Command -ComputerName $ResticHost -ErrorAction Stop -ScriptBlock {
+            if (-not (Get-Command restic -ErrorAction SilentlyContinue)) {
+                return [PSCustomObject]@{ Available = $false; Newest = $null }
+            }
+            $json = restic -r /srv/backup/restic snapshots --json 2>$null | ConvertFrom-Json
+            [PSCustomObject]@{
+                Available = $true
+                Newest    = ($json | Sort-Object time -Descending | Select-Object -First 1).time
+            }
+        }
+        if (-not $snap.Available) {
+            Add-PhaseResult -Phase 'OffHostCheck' -Started $t3 -Target $ResticHost -Result 'SKIP' `
+                            -Detail 'restic is not installed on the off-host repository; cross-check not performed'
+        }
+        else {
+            $age = [math]::Round(((Get-Date).ToUniversalTime() - ([datetime]$snap.Newest).ToUniversalTime()).TotalHours, 2)
+            $ok  = $age -le $ResticMaxAgeHours
+            Add-PhaseResult -Phase 'OffHostCheck' -Started $t3 -Target $ResticHost `
+                            -Result $(if ($ok) { 'PASS' } else { 'FAIL' }) `
+                            -Detail "newest off-host snapshot age ${age} h (limit $ResticMaxAgeHours h)"
+            if (-not $ok) { Write-RunLog "Off-host copy is stale: $age h" 'WARN' }
+        }
+    }
+    catch {
+        Write-RunLog "Off-host check could not run: $($_.Exception.Message)" 'WARN'
+        Add-PhaseResult -Phase 'OffHostCheck' -Started $t3 -Target $ResticHost -Result 'SKIP' `
+                        -Detail "Could not query $ResticHost : $($_.Exception.Message)"
+    }
+}
+catch {
+    Write-RunLog "Run aborted: $($_.Exception.Message)" 'ERROR'
+}
+finally {
+    Set-Content -LiteralPath $LockFile -Value (Get-Date -Format 's') -Force
+    $csvDir = 'C:\FYP\config'
+    if (-not (Test-Path -LiteralPath $csvDir)) { New-Item -ItemType Directory -Path $csvDir -Force | Out-Null }
+    $csv = Join-Path $csvDir ("BackupVerify-$JobName-{0}.csv" -f (Get-Date -Format 'yyyyMMdd'))
+    try {
+        $results | Export-Csv -LiteralPath $csv -NoTypeInformation -Encoding UTF8
+        Write-RunLog "CSV written to $csv"
+    }
+    catch {
+        Write-RunLog "Could not write CSV $csv : $($_.Exception.Message)" 'WARN'
+    }
+}
+
+$failures = @($results | Where-Object Result -eq 'FAIL')
+if ($failures.Count -gt 0) {
+    Write-Warning "$($failures.Count) backup phase(s) FAILED - see $LogFile"
+    $global:LASTEXITCODE = 3
+}
+$results
+```

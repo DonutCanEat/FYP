@@ -1,0 +1,1 @@
+The WSOS Domain 5 requirement is `Identify and implement infrastructure as code` (nested: `Ansible.`). The mapping from principle to requirement is direct and is stated here because it is the chapter's justification:

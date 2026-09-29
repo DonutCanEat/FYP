@@ -1,0 +1,1 @@
+**Exact commands to create, edit and use an encrypted variable file.**

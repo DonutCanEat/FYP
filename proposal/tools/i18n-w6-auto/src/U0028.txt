@@ -1,0 +1,2 @@
+> `Use modern automation tools for systems deployment and configuration management`
+> — nested technology example: `Git`

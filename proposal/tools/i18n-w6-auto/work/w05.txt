@@ -1,0 +1,62 @@
+%%U0306%%
+**Handlers:** `Reload nginx` (`systemd_service` with `state: reloaded`) — a reload, not a restart, because two nodes behind a VIP must not both stop serving simultaneously. `Restart nginx` exists but is used only by the first-install path (`when: nginx_first_install | bool`).
+%%U0308%%
+**Templates:** `nginx-upstreams.conf.j2`, `portal.conf.j2`, `blog.conf.j2`, `healthz.conf.j2`, `stub-status.conf.j2`.
+%%U0310%%
+**Default variables:** `nginx_worker_processes: auto`, `nginx_worker_connections: 2048`, `nginx_tls_min: TLSv1.2`, `nginx_tls_preferred: TLSv1.3`, `nginx_hsts_max_age: 31536000`, `nginx_health_path: /healthz`, `nginx_client_max_body_size: 16m`, `nginx_upstream_max_fails: 3`, `nginx_upstream_fail_timeout: 10s`.
+%%U0312%%
+**Idempotence note.** Template rendering is idempotent by construction *provided the template contains no non-deterministic content* — no timestamps, no hostname of the control node, no random ordering of a dictionary. The proxy is required to be byte-identical across the pair, so the templates iterate over sorted lists and never over an unsorted dict, and the `00-upstreams.conf` template sorts by address. Task 11 (`nginx -t`) and task 14 (the `uri` check) both use `changed_when: false` so that verification never appears as a change. Task 14's `validate_certs: false` is required by the internal-CA-plus-public-name design and is documented as such; it is not a general pattern and appears nowhere else.
+%%U0314%%
+##### 10.4.5.3 `keepalived` — VRRP pair role
+%%U0316%%
+**Purpose.** Provide first-hop redundancy for the two Linux service pairs, using two distinct virtual router IDs: **VRID 51** for the nftables pair on 10.10.50.0/28 with VIP **10.10.50.10** (nodes 10.10.50.11 and 10.10.50.12), and **VRID 61** for the nginx pair on 10.10.90.0/24 with VIP **10.10.90.10** (nodes 10.10.90.28 and 10.10.90.29, so the VIP is owned by no node). The role must never reuse one VRID across two subnets that could ever be bridged, and it must track the *service*, not the interface.
+%%U0318%%
+**Tasks:**
+%%U0320%%
+| # | Task | Module | Notes |
+|---|---|---|---|
+| 1 | Install `keepalived` (2.2.8) | `ansible.builtin.apt` | |
+| 2 | Confirm the VRID/VIP pair matches the design | `ansible.builtin.assert` | Asserts `keepalived_vrid` is 51 or 61 and that it matches the host's group. This catches the highest-consequence copy-paste error in the whole project |
+| 3 | Allow VRRP protocol 112 in the host firewall | `ansible.posix.firewalld`/`ansible.builtin.command` for nftables, or an `nft` rule include | VRRP advertisements must traverse between pair members; the management-plane firewall must not silently break the pair |
+| 4 | Deploy the tree-check scripts | `ansible.builtin.copy` + `mode: '0750'` | `check_nginx.sh` / `check_nftables.sh`; each returns 0/1 and both are the same scripts used by `03-keepalived-check.sh` for manual verification, so the automated and manual views cannot disagree |
+| 5 | Deploy the configuration | `template` → `/etc/keepalived/keepalived.conf` with `ansible.builtin.validate` | `vrrp_instance FYP_<PAIR>` with `state`, `priority`, `virtual_router_id`, `virtual_ipaddress`, `track_script` |
+| 6 | Enable and start the service | `ansible.builtin.systemd_service` | |
+| 7 | Verify the VIP is present on the expected node | `ansible.builtin.command: ip -br addr show` + `assert` | The MASTER must own the VIP after convergence; this is the check that distinguishes "keepalived is running" from "keepalived is working" |
+| 8 | Record the VRRP state for evidence | `ansible.builtin.shell: journalctl -u keepalived --since "-5 min" -o cat` with `changed_when: false` | The transcript is committed to `runs/` as failover evidence |
+%%U0322%%
+**Handlers:** `Reload keepalived` (`systemd_service: state=reloaded`) and `Restart keepalived`. The reload path is preferred because a restart on the MASTER would momentarily remove the VIP; the role uses reload for configuration changes and reserves restart for the first install.
+%%U0324%%
+**Templates:** `keepalived.conf.j2` (one template, parameterised by the host variables), `check_nginx.sh.j2`, `check_nftables.sh.j2`.
+%%U0326%%
+**Default variables:** `keepalived_enabled: true`, `keepalived_state: BACKUP`, `keepalived_priority: 100`, `keepalived_vrid: 61`, `keepalived_vip: 10.10.90.10`, `keepalived_auth_type: PASS`, `keepalived_preempt: true`, `keepalived_advert_int: 1`, `keepalived_track_interval: 5`, `keepalived_track_fall: 2`, `keepalived_track_rise: 2`.
+%%U0328%%
+The `keepalived_auth_type: PASS` default carries a mandatory annotation: **`PASS` authentication with a shared string is acceptable within a host-only lab segment and this is stated as a lab simplification, not as best practice.** The report must say so in the same paragraph that describes the setting.
+%%U0330%%
+**Idempotence note.** `state` and `priority` come from `host_vars`, so the two members receive different files and each node's file is stable. The single risk is the `track_script` interval: if the script is a `shell` task rather than a file deployed by task 4, Ansible would report a change on every run. The design therefore deploys the check script **as a file** and never generates it inline. Task 8 uses `changed_when: false`, and tasks 3 and 7 are written to be safe on re-run (the VRRP firewall rule is expressed as an idempotent set membership, and the VIP assertion is read-only).
+%%U0332%%
+##### 10.4.5.4 `nftables` — egress filter role
+%%U0334%%
+**Purpose.** Configure the inline egress filter pair `vpnz-nft01` / `vpnz-nft02` — the only path from the server and user zones to the Internet — as a single stateful ruleset in one `inet` table, `inet fyp_filter`, with drop policy on input and forward, explicit established/related acceptance, named sets for trusted peers, masquerade on the WAN-facing interface, and a log prefix before every drop. The role is the technical implementation of TB-02, TB-03, TB-06 and TB-08, and it is the highest-risk role in the repository because a mistake can remove the group's own management path to a remote VM.
+%%U0336%%
+**Tasks:**
+%%U0338%%
+| # | Task | Module | Notes |
+|---|---|---|---|
+| 1 | Install `nftables` (1.0.9) | `ansible.builtin.apt` | |
+| 2 | Resolve and record the interface names | `ansible.builtin.set_fact` from `ansible_facts` + `assert` | The baseline forbids hard-coding `ens192`; the role asserts that two interfaces exist and records their names in the run log |
+| 3 | Deploy the ruleset fragments | `template` → `/etc/nftables.d/10-sets.nft`, `20-filter-input.nft`, `30-filter-forward.nft`, `40-nat.nft`, `90-logging.nft` | The fragments are `include`d by the main file and are **never loaded independently** — nftables is one ruleset |
+| 4 | Deploy the main ruleset | `template` → `/etc/nftables.conf` | `flush ruleset`, `table inet fyp_filter`, includes |
+| 5 | **Validate the candidate ruleset before applying it** | `command: nft -c -f /etc/nftables.conf` with `changed_when: false` | Syntax-only check (`-c`), no apply. A syntax failure aborts the role while the old ruleset is still active |
+| 6 | **Arm the rollback timer** | `command: /usr/local/sbin/fyp-nft-rollback-arm.sh {{ nftables_rollback_seconds }}` | Writes a systemd timer that will restore the previously validated ruleset if the playbook does not explicitly disarm it. Default `600` seconds |
+| 7 | Apply the ruleset | `ansible.builtin.systemd_service` restart of `nftables.service`, then `command: nft list ruleset` to load the running ruleset into a fact | |
+| 8 | **Verify from the far side** | `ansible.builtin.wait_for` / `uri` against a known-reachable target through the pair | The verification that matters is *from the outside in*, because that is the path the new ruleset could have broken |
+| 9 | **Disarm the rollback timer** | `command: /usr/local/sbin/fyp-nft-rollback-disarm.sh` `when: nftables_verify_ok \| bool` | Only disarms if task 8 succeeded |
+| 10 | Persist the ruleset across reboot | `ansible.builtin.systemd_service: enabled=true` | A firewall that disappears on reboot is worse than no firewall |
+| 11 | Publish the active ruleset as evidence | `command: nft list ruleset` with `changed_when: false`, `register`, `copy` with `content:` into `runs/` | The ruleset text is evidence for TC-L2-03 |
+| 12 | Hand the ruleset to Git | `ansible.builtin.copy` of the running `nft list ruleset` output into `docs/current-ruleset-{{ inventory_hostname }}.txt` **with a diff task that fails the run if it differs from the template output** | This is the drift detector of section 10.8. If the running ruleset differs from the template, someone has changed a live firewall by hand and the role says so |
+%%U0340%%
+**Handlers:** `Reload nftables` (systemd reload), `Restart nftables`, `Reload rsyslog` (the logging fragment changes the syslog destination in some configurations).
+%%U0342%%
+**Templates:** `nftables.conf.j2`, `nftables-10-sets.nft.j2`, `nftables-20-filter-input.nft.j2`, `nftables-30-filter-forward.nft.j2`, `nftables-40-nat.nft.j2`, `nftables-90-logging.nft.j2`.
+%%U0344%%
+**Default variables:** `nftables_table: inet fyp_filter`, `nftables_log_prefix: "NFT-DROP: "`, `nftables_internal_networks: [10.10.0.0/16, 10.20.0.0/16, 10.70.0.0/16]`, `nftables_trusted_mgmt: [10.20.20.0/24, 10.10.30.31]`, `nftables_allow_egress_tcp: [80, 443]`, `nftables_allow_egress_udp: [53, 123]`, `nftables_masquerade_interface: "{{ ansible_facts['default_ipv4']['interface'] }}"`, `nftables_rollback_seconds: 600`, `nftables_connlimit_ssh: 8`.

@@ -1,0 +1,10 @@
+| Principle | How it satisfies `Identify and implement infrastructure as code` |
+|---|---|
+| Declarative model | Infrastructure as code is only meaningful when the code describes *state*; the declarative choice is what makes the repository the description of the estate |
+| Idempotence | A repository that is not idempotent cannot be the source of truth, because applying it changes the estate in unstated ways; `changed=0` is the proof that the code and the estate agree |
+| Source of truth | "As code" means the file is authoritative and the running system is the derivative — the single-home rule is the operational form of the requirement |
+| Peer review | Code is reviewable; a CLI session is not. Review is what makes the artefact "code" rather than "a log of what someone typed" |
+| Staging before production | The `Capabilities of various automation tools` and `Behaviour of infrastructure automation tools.` know/understand lines require the team to know how the tool behaves before it acts; the dry-run gate is that knowledge in practice |
+| Blast-radius control | `The importance of methodical working practices` (Domain 1) applied to change management |
+| Rollback | `Importance of code version control` (Domain 5) — version control exists precisely so that a previous state can be recovered |
+| Secrets management | A repository that cannot be shared is not a source of truth; vaulting is what allows the code to be complete *and* committable |

@@ -1,0 +1,3381 @@
+#!/usr/bin/env node
+/*
+ * md2docx / convert.js
+ * Dependency-free, scale-oriented Markdown -> OOXML (.docx) writer for the DSH
+ * offline Windows box.
+ *
+ * WHY NODE
+ *   pandoc is not installed, LibreOffice/soffice is not installed, 7z is not
+ *   installed and the Python on PATH is a Windows Store stub that exits 9009.
+ *   Node 24 is present and works. Node also handles UTF-8 natively, which avoids
+ *   the ANSI/big5 code-page trap that affects PowerShell's Get-Content -Raw.
+ *
+ * ASSEMBLY STRATEGY (important for 200k+ word inputs)
+ *   The body of word/document.xml is never held as one monolithic string.
+ *   Paragraph XML fragments are produced block by block into a bounded chunk
+ *   array, and each batch is:
+ *     1. handed to the <w:t>/<w:p> scanner that measures the visible text
+ *        (that measured text is what the completeness digest covers), and
+ *     2. streamed into the ZIP local entry for word/document.xml through a raw
+ *        deflate stream (zlib.createDeflateRaw) written to the output file
+ *        descriptor, with the CRC-32 / size fields patched afterwards by
+ *        seeking back into the local header.
+ *   So peak memory is O(batch size + deflate window), not O(document size).
+ *
+ * USAGE
+ *   node convert.js <input.md> [more.md ...] <output.docx> [--title "T"]
+ *   node convert.js --config plan.json
+ *   node convert.js --input a.md,b.md,c.md --output out.docx --title "T"
+ *
+ * CONFIG FILE (multi-file + multi-volume)
+ *   {
+ *     "title": "FYP Proposal",
+ *     "inputs": ["01.md", "02.md", "03.md"],       // concatenated with page breaks
+ *     "outputs": [
+ *       { "path": "proposal.docx", "title": "FYP Proposal" },
+ *       { "path": "vol1.docx", "title": "Volume 1",
+ *         "rules": { "include": ["1-6", "12-20"], "exclude": ["7","8"] } },
+ *       { "path": "vol2.docx", "title": "Volume 2",
+ *         "rules": { "include": ["7-11", "A"] } }
+ *     ]
+ *   }
+ *   Rules select top-level heading sections by their leading number:
+ *   "include": ["1-6","12-20"] means sections 1..6 and 12..20 (by first heading
+ *   number). "exclude" is applied after "include". "frontMatter": true keeps
+ *   everything before the first numbered section (title page, TOC, unnumbered
+ *   headings); it defaults to true for the volume that contains section 1 and
+ *   false otherwise. "match" is an optional regex tested against heading text.
+ *   "titlePage": true (config-wide or per output) synthesises a real title page
+ *   and a TOC field for a corpus that carries no "# " H1 to promote, which is the
+ *   case for a corpus whose top-level sections are written as "## 7. Title".
+ *   The section boundary is the document's SHALLOWEST heading level, so such a
+ *   corpus is split correctly without any change to the rule data.
+ */
+
+'use strict';
+
+const fs = require('fs');
+const path = require('path');
+const zlib = require('zlib');
+const crypto = require('crypto');
+
+/* ================================================================== *
+ * CRC32 + streaming ZIP writer
+ * ================================================================== */
+const CRC_TABLE = (() => {
+  const t = new Int32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c;
+  }
+  return t;
+})();
+
+function crc32Update(crc, buf) {
+  let c = crc === null ? -1 : crc;
+  for (let i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
+  return c === null ? null : c;
+}
+const crc32Finish = (c) => (c ^ -1) >>> 0;
+
+const ZIP_LIMIT = 0xffffff00; // non-zip64 ceiling
+
+class ZipWriter {
+  constructor(filePath) {
+    this.fd = fs.openSync(filePath, 'w'); // Node >= 18 rejects the legacy 'wb'
+    this.entries = [];
+    this.offset = 0;
+  }
+
+  _u32(n) {
+    const b = Buffer.alloc(4);
+    b.writeUInt32LE(n >>> 0, 0);
+    return b;
+  }
+  _u16(n) {
+    const b = Buffer.alloc(2);
+    b.writeUInt16LE(n & 0xffff, 0);
+    return b;
+  }
+  _write(buf) {
+    if (buf && buf.length) {
+      fs.writeSync(this.fd, buf);
+      this.offset += buf.length;
+    }
+  }
+  _check(size) {
+    if (this.offset > ZIP_LIMIT || size > ZIP_LIMIT) {
+      throw new Error(
+        'md2docx: output exceeds the plain-ZIP (non-zip64) 4 GiB limit; split the document into volumes'
+      );
+    }
+  }
+
+  /** Buffer-based entry (used for the small fixed parts). */
+  add(name, data) {
+    const nameBuf = Buffer.from(name, 'utf8');
+    const raw = Buffer.isBuffer(data) ? data : Buffer.from(data, 'utf8');
+    this._check(raw.length);
+    const crc = crc32Finish(crc32Update(null, raw));
+    let comp = zlib.deflateRawSync(raw, { level: 6 });
+    let method = 8;
+    if (comp.length >= raw.length) {
+      comp = raw;
+      method = 0;
+    }
+    const local = Buffer.concat([
+      this._u32(0x04034b50),
+      this._u16(20),
+      this._u16(0x0800),
+      this._u16(method),
+      this._u16(0),
+      this._u16(0x21),
+      this._u32(crc),
+      this._u32(comp.length),
+      this._u32(raw.length),
+      this._u16(nameBuf.length),
+      this._u16(0),
+      nameBuf,
+    ]);
+    const headerOffset = this.offset;
+    this._write(local);
+    this._write(comp);
+    this.entries.push({
+      name: nameBuf,
+      method,
+      crc,
+      compSize: comp.length,
+      uSize: raw.length,
+      offset: headerOffset,
+    });
+  }
+
+  /**
+   * Streaming entry: returns a sink for a caller that produces the content in
+   * many pieces. The local header is written with zeroed CRC/size fields and
+   * patched when finish() is called, so nothing has to be buffered in memory.
+   */
+  beginStream(name) {
+    const nameBuf = Buffer.from(name, 'utf8');
+    const headerOffset = this.offset;
+    const local = Buffer.concat([
+      this._u32(0x04034b50),
+      this._u16(20),
+      this._u16(0x0800),
+      this._u16(8), // deflate
+      this._u16(0),
+      this._u16(0x21),
+      this._u32(0), // crc   - patched in finish()
+      this._u32(0), // csize - patched in finish()
+      this._u32(0), // usize - patched in finish()
+      this._u16(nameBuf.length),
+      this._u16(0),
+      nameBuf,
+    ]);
+    this._write(local);
+    const deflate = zlib.createDeflateRaw({ level: 6 });
+    let crc = null;
+    let uSize = 0;
+    let compSize = 0;
+    let finished = false;
+    const outChunks = [];
+    const self = this;
+
+    deflate.on('data', (chunk) => {
+      outChunks.push(chunk);
+      compSize += chunk.length;
+    });
+
+    return {
+      write(text) {
+        if (!text) return;
+        const buf = Buffer.isBuffer(text) ? text : Buffer.from(text, 'utf8');
+        crc = crc32Update(crc, buf);
+        uSize += buf.length;
+        deflate.write(buf);
+      },
+      /**
+       * Flush the deflate stream, then write its output and patch the local
+       * header.
+       *
+       * Two non-obvious details, both found the hard way during development:
+       *  1. The compressed output is collected first and written in one ordered
+       *     pass. Node may emit queued 'data' events after end()'s callback, so
+       *     writing straight from the handler can race with ZipWriter.close()
+       *     and truncate the part.
+       *  2. The signal that zlib has finished flushing is 'close', NOT the
+       *     end() callback: in Node 24 end(cb) can fire while the deflate output
+       *     is still empty, which produced a zero-byte word/document.xml.
+       * Collecting costs only the deflated size (~1/10 of the XML); the
+       * uncompressed XML is never held in memory.
+       */
+      finish() {
+        if (finished) return Promise.resolve({ bytes: uSize, compressed: compSize });
+        finished = true;
+        return new Promise((resolve, reject) => {
+          deflate.once('error', reject);
+          deflate.once('close', () => {
+            try {
+              const crcVal = crc32Finish(crc);
+              self._check(uSize);
+              if (outChunks.length) self._write(Buffer.concat(outChunks));
+              outChunks.length = 0;
+              const patch = Buffer.alloc(12);
+              patch.writeUInt32LE(crcVal, 0);
+              patch.writeUInt32LE(compSize, 4);
+              patch.writeUInt32LE(uSize, 8);
+              fs.writeSync(self.fd, patch, 0, 12, headerOffset + 14);
+              self.entries.push({
+                name: nameBuf,
+                method: 8,
+                crc: crcVal,
+                compSize,
+                uSize,
+                offset: headerOffset,
+              });
+              resolve({ bytes: uSize, compressed: compSize });
+            } catch (err) {
+              reject(err);
+            }
+          });
+          deflate.end();
+        });
+      },
+    };
+  }
+
+  close() {
+    const centralOffset = this.offset;
+    let centralSize = 0;
+    for (const e of this.entries) {
+      const rec = Buffer.concat([
+        this._u32(0x02014b50),
+        this._u16(20),
+        this._u16(20),
+        this._u16(0x0800),
+        this._u16(e.method),
+        this._u16(0),
+        this._u16(0x21),
+        this._u32(e.crc),
+        this._u32(e.compSize),
+        this._u32(e.uSize),
+        this._u16(e.name.length),
+        this._u16(0),
+        this._u16(0),
+        this._u16(0),
+        this._u16(0),
+        this._u32(0),
+        this._u32(e.offset),
+        e.name,
+      ]);
+      this._write(rec);
+      centralSize += rec.length;
+    }
+    this._write(
+      Buffer.concat([
+        this._u32(0x06054b50),
+        this._u16(0),
+        this._u16(0),
+        this._u16(this.entries.length),
+        this._u16(this.entries.length),
+        this._u32(centralSize),
+        this._u32(centralOffset),
+        this._u16(0),
+      ])
+    );
+    fs.closeSync(this.fd);
+    this.fd = null;
+    return this.entries.length;
+  }
+}
+
+/* ================================================================== *
+ * Text hygiene
+ * ================================================================== */
+/* ================================================================== *
+ * Package integrity: relationship ids and content-type declarations
+ *
+ * WHY THIS EXISTS
+ *   An OPC package must not declare the same relationship Id twice in one
+ *   .rels part, and must not declare the same <Override PartName> twice in
+ *   [Content_Types].xml. Both are FATAL rather than cosmetic: Microsoft's
+ *   own parser refuses the package outright with
+ *       XmlException: '<id>' ID conflicts with the ID of an existing
+ *       relationship for the specified source.
+ *   The generator used to derive hyperlink ids as `rels.length + 10` while
+ *   header/footer ids were computed independently as `11 + rels.length`, so a
+ *   document with 2 distinct hyperlinks emitted rId11/rId12 twice. Exactly two
+ *   URLs were needed to collide; the shipping deliverables happened to contain
+ *   zero hyperlinks, which is luck, not correctness.
+ *
+ * Both problems are now impossible by construction:
+ *   - EVERY relationship id comes from allocRelId() (one monotonic counter);
+ *   - assertRelsUnique()/assertContentTypesUnique() refuse to write a package
+ *     that somehow still contains a duplicate (e.g. after a future edit), so
+ *     the failure is loud instead of producing an unopenable .docx.
+ * ================================================================== */
+
+/**
+ * One monotonic id source; every relationship id in the package comes from it.
+ *
+ * `reservedCount` exists because word/_rels/document.xml.rels also carries five
+ * INTENTIONALLY fixed part relationships (rId1 styles, rId2 numbering, rId3
+ * settings, rId4 fontTable, rId5 theme). Reserving those numbers here means the
+ * allocator's structural guarantee - "it never returns an id twice" - extends to
+ * the fixed ids as well, instead of relying on a later clash check.
+ */
+function createRelIdAllocator(prefix, reservedCount) {
+  let n = reservedCount && reservedCount > 0 ? reservedCount : 0;
+  const allocated = new Map();
+  const allocator = (key) => {
+    if (key !== undefined && key !== null) {
+      if (allocated.has(key)) return allocated.get(key);
+    }
+    n += 1;
+    const id = `${prefix || 'rId'}${n}`;
+    if (key !== undefined && key !== null) allocated.set(key, id);
+    return id;
+  };
+  allocator.peek = () => n;
+  allocator.width = 11; // legacy hint used by inlineToXml; ids are strings now
+  return allocator;
+}
+
+const REL_HEAD_RE = /<Relationship\b[^>]*?\bId="([^"]*)"/g;
+const OVERRIDE_HEAD_RE = /<Override\b[^>]*?\bPartName="([^"]*)"/g;
+const DEFAULT_HEAD_RE = /<Default\b[^>]*?\bExtension="([^"]*)"/g;
+
+function duplicateValues(xml, re) {
+  const seen = new Map();
+  let m;
+  re.lastIndex = 0;
+  while ((m = re.exec(xml)) !== null) {
+    const key = m[1];
+    seen.set(key, (seen.get(key) || 0) + 1);
+  }
+  return [...seen.entries()].filter(([, count]) => count > 1);
+}
+
+/** Throw if one .rels part declares the same Id more than once. */
+function assertRelsUnique(partName, xml) {
+  const dups = duplicateValues(xml, REL_HEAD_RE);
+  if (dups.length) {
+    throw new Error(
+      `md2docx: refusing to write ${partName}: duplicate relationship Id(s) ` +
+        dups.map(([id, n]) => `'${id}' x${n}`).join(', ') +
+        ". Microsoft's Open XML SDK cannot open such a package " +
+        "(XmlException: \"'<id>' ID conflicts with the ID of an existing relationship\")."
+    );
+  }
+}
+
+/** Throw if [Content_Types].xml declares the same PartName/Extension twice. */
+function assertContentTypesUnique(xml) {
+  const dupParts = duplicateValues(xml, OVERRIDE_HEAD_RE);
+  const dupExts = duplicateValues(xml, DEFAULT_HEAD_RE);
+  if (dupParts.length || dupExts.length) {
+    throw new Error(
+      'md2docx: refusing to write [Content_Types].xml: duplicate ' +
+        [
+          ...dupParts.map(([p, n]) => `<Override PartName="${p}"> x${n}`),
+          ...dupExts.map(([e, n]) => `<Default Extension="${e}"> x${n}`),
+        ].join(', ')
+    );
+  }
+}
+
+/** Every .rels part in the package must be duplicate-free. */
+function assertPackageRelsUnique(parts) {
+  const problems = [];
+  for (const [partName, xml] of parts) {
+    const dups = duplicateValues(xml, REL_HEAD_RE);
+    if (dups.length) problems.push(`${partName}: ${dups.map(([id, n]) => `'${id}' x${n}`).join(', ')}`);
+  }
+  if (problems.length) {
+    throw new Error(
+      'md2docx: refusing to close the package: duplicate relationship Id(s) in ' + problems.join('; ')
+    );
+  }
+}
+
+function stripIllegalXmlChars(s) {
+  let out = '';
+  let last = 0;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    let bad = false;
+    if (c === 0x9 || c === 0xa) {
+      /* keep */
+    } else if (c === 0xd || c < 0x20) {
+      bad = true;
+    } else if (c === 0xfffe || c === 0xffff) {
+      bad = true;
+    } else if (c >= 0xd800 && c <= 0xdfff) {
+      const n = s.charCodeAt(i + 1);
+      if (c <= 0xdbff && n >= 0xdc00 && n <= 0xdfff) {
+        i++;
+        continue;
+      }
+      bad = true;
+    }
+    if (bad) {
+      if (i > last) out += s.slice(last, i);
+      last = i + 1;
+    }
+  }
+  if (last === 0) return s;
+  out += s.slice(last);
+  return out;
+}
+
+function esc(s) {
+  let out = '';
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (ch === '&') out += '&amp;';
+    else if (ch === '<') out += '&lt;';
+    else if (ch === '>') out += '&gt;';
+    else if (ch === '"') out += '&quot;';
+    else out += ch;
+  }
+  return out;
+}
+
+function unesc(s) {
+  return String(s)
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, '&');
+}
+
+function t(text) {
+  if (text === undefined || text === null || text === '') return '';
+  return /^\s|\s$/.test(text)
+    ? `<w:t xml:space="preserve">${esc(text)}</w:t>`
+    : `<w:t>${esc(text)}</w:t>`;
+}
+
+function normaliseNewlines(s) {
+  return s.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+}
+
+/* ================================================================== *
+ * Canonical visible text (the completeness proof)
+ * ================================================================== */
+const CANON_RULE = '\u2015';
+const CANON_FIGURE_PREFIX = '[FIGURE] ';
+const CANON_TOC_PLACEHOLDER =
+  'Right-click here and choose "Update Field" (or press F9) to build the table of contents.';
+
+/*
+ * The .docx holds the *rendered* text of inline runs ("**bold**" -> "bold"), so
+ * the digest comparison normalises both sides with this stripper: here on the
+ * markdown lines / measured <w:t> text, and in validate.ps1 with an equivalent
+ * PowerShell implementation (Remove-RenderedInlineSyntax).
+ *
+ * IMPORTANT - this normalisation is lossy and cannot be inverted: the literal
+ * asterisks that survive inside a code span are indistinguishable from emphasis
+ * markers once the backticks are gone. For that reason the digest built from this
+ * function is a self-consistency / truncation check only, NOT a completeness
+ * proof. Completeness is proved by the validator's per-line coverage check, which
+ * compares raw (un-normalised) source lines against the document text.
+ */
+function stripInlineSyntax(s) {
+  const codeSpans = [];
+  let out = String(s === undefined || s === null ? '' : s)
+    .replace(/`([^`]+)`/g, (m, inner) => {
+      codeSpans.push(inner);
+      return '\u0000C' + (codeSpans.length - 1) + '\u0000';
+    });
+  out = out
+    .replace(/!\[([^\]]*)\]\(([^)]*)\)/g, '$1')
+    .replace(/\[((?:[^\[\]\\]|\\.)*)\]\(([^)]*)\)/g, '$1')
+    .replace(/<((?:https?|mailto):[^<>\s]+)>/g, '$1')
+    .replace(/\*\*\*([^*]+)\*\*\*/g, '$1')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    // An emphasis marker must not be adjacent to another '*', so literal
+    // asterisks that survive inside a code span ("code_span_with_*stars*") are
+    // left alone. The writer emits that content verbatim, and the docx-side
+    // stripper in validate.ps1 uses the same anchored rule.
+    .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '$1')
+    // '_' emphasis is restricted to word boundaries: a global rule would eat the
+    // underscores inside an identifier such as code_span_with_stars.
+    .replace(/(^|[\s(])_([^_\s](?:[^_]*[^_\s])?)_(?=[\s.,;:)!?]|$)/g, '$1$2')
+    .replace(/~~([^~]+)~~/g, '$1')
+    .replace(/\\([\\`*_{}\[\]()#+\-.!>|~])/g, '$1');
+  // restore code spans (a mask that was never created cannot appear)
+  out = out.replace(/\u0000C(\d+)\u0000/g, (m, i) => codeSpans[Number(i)]);
+  return out;
+}
+
+/** One canonical line per visible text run: strip markers, then join. */
+function canonLinesOf(s) {
+  return stripInlineSyntax(s);
+}
+
+function canon(parts) {
+  // Join with a space, then collapse every whitespace run to a single space.
+  // Collapsing is what makes this idempotent and therefore comparable: a part
+  // that already ends in a space and a part that does not both normalise to the
+  // same single separator, so the markdown side (per-line parts) and the docx
+  // side (per-<w:t> parts) agree exactly.
+  const text = parts
+    .map((s) => (s === undefined || s === null ? '' : String(s).trim()))
+    .filter((s) => s !== '')
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return {
+    text,
+    hash: crypto.createHash('sha256').update(text, 'utf8').digest('hex'),
+    chars: text.length,
+    charsNoSpaces: text.replace(/\s/g, '').length,
+    words: text === '' ? 0 : text.split(' ').length,
+  };
+}
+
+/** Canonical visible text of a Markdown document, mirroring the writer exactly. */
+function markdownToCanonicalParts(md) {
+  return partsOfBlocks(parseMarkdown(md));
+}
+
+/**
+ * Raw visible paragraphs of an assembled document.xml.
+ *
+ * This is the same extraction the validator performs (only <w:t> content counts;
+ * <w:instrText> and <w:delText> are excluded; runs are concatenated, then each
+ * paragraph is trimmed and whitespace-collapsed). Comparing the digest of these
+ * paragraphs against the Markdown paragraphs is what turns the writer's
+ * self-check into a truncation check: if a paragraph were dropped or cut short,
+ * the digests would diverge.
+ */
+function extractDocumentParagraphs(documentXml) {
+  const out = [];
+  const paraRe = /<w:p(?:\s[^>]*)?>([\s\S]*?)<\/w:p>/g;
+  let pm;
+  while ((pm = paraRe.exec(documentXml)) !== null) {
+    const inner = pm[1];
+    let text = '';
+    const skip = /<w:instrText(?:\s[^>]*)?>[\s\S]*?<\/w:instrText>|<w:delText(?:\s[^>]*)?>[\s\S]*?<\/w:delText>/g;
+    const kept = inner.replace(skip, '');
+    const tRe = /<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g;
+    let tm;
+    while ((tm = tRe.exec(kept)) !== null) text += unesc(tm[1]);
+    const v = text.trim();
+    if (v) out.push(v);
+  }
+  return out;
+}
+
+/**
+ * Canonical text parts of already-parsed blocks.
+ *
+ * These are RAW visible parts: no inline-syntax stripping is applied, because the
+ * document side of the comparison is the raw concatenated <w:t> text. Both sides
+ * are therefore produced by the same rule (paragraph text, trimmed, whitespace
+ * collapsed), which makes the digest a meaningful self-consistency check: if the
+ * writer ever drops, truncates or mangles a paragraph, the two digests diverge.
+ *
+ * It is deliberately NOT a completeness proof against the Markdown: normalising
+ * markdown emphasis is lossy in a way that cannot be inverted (see the note above
+ * stripInlineSyntax). Completeness is proved by validate.ps1's coverage check.
+ */
+function partsOfBlocks(blocks) {
+  const out = [];
+  const push = (s) => {
+    const v = String(s === undefined || s === null ? '' : s).trim();
+    if (!v) return;
+    // Normalise the same way the writer renders: the document contains the
+    // rendered text, so markdown inline markers are removed from this side to
+    // make the two digests comparable.
+    const n = stripInlineSyntax(v).replace(/[`*~]/g, '').replace(/\s+/g, ' ').trim();
+    out.push(n);
+  };
+  for (const b of blocks) {
+    switch (b.type) {
+      case 'heading':
+        push(b.text);
+        break;
+      case 'para':
+        for (const l of b.lines) push(l);
+        break;
+      case 'list':
+        for (const it of b.items) {
+          const text = it.parts.join(' ').trim();
+          const task = /^\[( |x|X)\]\s+(.*)$/.exec(text);
+          if (task) {
+            const box = task[1].toLowerCase() === 'x' ? '\u2611' : '\u2610';
+            out.push(box + ' ' + stripInlineSyntax(task[2]).replace(/[`*~]/g, '').replace(/\s+/g, ' ').trim());
+          } else {
+            push(text);
+          }
+        }
+        break;
+      case 'table':
+        push(b.header.join(' '));
+        for (const r of b.rows) push(r.join(' '));
+        break;
+      case 'code':
+        if (b.lang) push(b.lang);
+        for (const l of b.lines) push(l.replace(/\t/g, '    '));
+        break;
+      case 'quote':
+        for (const l of b.text.split('\n')) push(l);
+        break;
+      case 'hr':
+        push(CANON_RULE);
+        break;
+      case 'figure':
+        push(CANON_FIGURE_PREFIX + b.text);
+        break;
+      case 'toc':
+        push('Table of Contents');
+        push(CANON_TOC_PLACEHOLDER);
+        break;
+      case 'subtitle':
+        // Synthetic title-page subtitle (corpus with no H1); the H1 path in
+        // buildDocument already unshifts opt.subtitle for the normal case.
+        push(stripInlineSyntax(b.text).trim());
+        break;
+      case 'pagebreak':
+        break;
+      default:
+        break;
+    }
+  }
+  return out;
+}
+
+/* ================================================================== *
+ * Ordered serialiser for WordprocessingML property elements
+ *
+ * WHY THIS EXISTS
+ *   WordprocessingML enforces a strict child-element ORDER for every
+ *   complex type: a child emitted out of order is a schema violation, and
+ *   Microsoft's Open XML SDK reports it as
+ *   "The element has unexpected child element 'w:...'".
+ *   Before this serialiser existed the emitter wrote some fragments ad hoc
+ *   (e.g. `<w:noProof/><w:rFonts .../>`), which produced ~10,000 violations
+ *   per document - roughly one per code-block line.
+ *
+ * The orders below are NOT recalled from documentation: each was read out of
+ * Microsoft's own Open XML SDK 2.9.1 assembly (the *Properties / *Default
+ * properties are declared in schema order) and then confirmed empirically by
+ * validating a generated package with
+ * `DocumentFormat.OpenXml.Validation.OpenXmlValidator`. `--selftest` asserts
+ * that these tables are exactly the SDK's sequences.
+ *
+ * Use normalizeElement() so ordering is structural: a future edit cannot
+ * reintroduce the bug by emitting a child in the wrong place, because the
+ * children are re-ordered just before the fragment is written.
+ * ================================================================== */
+
+/** `<w:tag .../>` or `<w:tag ...>`; index 1 is the element name. */
+const ELEMENT_HEAD_RE = /^<(?:[A-Za-z_][\w.-]*:)?([A-Za-z_][\w.-]*)(?=[\s/>])/;
+
+/** Canonical child order for each element the generator emits. */
+const WP_ORDER = {
+  // --- run properties (w:rPr) -------------------------------------------
+  rPr: [
+    'rStyle', 'rFonts', 'b', 'bCs', 'i', 'iCs', 'caps', 'smallCaps', 'strike', 'dstrike',
+    'outline', 'shadow', 'emboss', 'imprint', 'noProof', 'snapToGrid', 'vanish', 'webHidden',
+    'color', 'spacing', 'w', 'kern', 'position', 'sz', 'szCs', 'highlight', 'u', 'effect',
+    'bdr', 'shd', 'fitText', 'vertAlign', 'rtl', 'cs', 'em', 'lang', 'eastAsianLayout',
+    'specVanish', 'oMath',
+  ],
+  // --- paragraph properties (w:pPr) -------------------------------------
+  pPr: [
+    'pStyle', 'keepNext', 'keepLines', 'pageBreakBefore', 'framePr', 'widowControl', 'numPr',
+    'suppressLineNumbers', 'pBdr', 'shd', 'tabs', 'suppressAutoHyphens', 'kinsoku', 'wordWrap',
+    'overflowPunct', 'topLinePunct', 'autoSpaceDE', 'autoSpaceDN', 'bidi', 'adjustRightInd',
+    'snapToGrid', 'spacing', 'ind', 'contextualSpacing', 'mirrorIndents', 'suppressOverlap',
+    'jc', 'textDirection', 'textAlignment', 'textboxTightWrap', 'outlineLvl', 'divId', 'cnfStyle',
+    'rPr', 'sectPr', 'pPrChange',
+  ],
+  // --- table properties (w:tblPr) ---------------------------------------
+  tblPr: [
+    'tblStyle', 'tblpPr', 'tblOverlap', 'bidiVisual', 'tblStyleRowBandSize',
+    'tblStyleColBandSize', 'tblW', 'jc', 'tblCellSpacing', 'tblInd', 'tblBorders', 'shd',
+    'tblLayout', 'tblCellMar', 'tblLook', 'tblCaption', 'tblDescription', 'tblPrChange',
+  ],
+  // --- table cell properties (w:tcPr) -----------------------------------
+  // NOTE: tblLayout goes AFTER tblBorders in tblPr; shd goes before vAlign in tcPr.
+  tcPr: [
+    'cnfStyle', 'tcW', 'gridSpan', 'hMerge', 'vMerge', 'tcBorders', 'shd', 'noWrap',
+    'tcMar', 'textDirection', 'tcFitText', 'vAlign', 'hideMark', 'headers', 'tcPrChange',
+  ],
+  // --- section properties (w:sectPr) -----------------------------------
+  // headerReference must precede pgSz (verified: the generator's existing
+  // order already validates, and reordering it would be a REGRESSION).
+  sectPr: [
+    'headerReference', 'footerReference', 'footnotePr', 'endnotePr', 'type', 'pgSz', 'pgMar',
+    'paperSrc', 'pgBorders', 'lnNumType', 'pgNumType', 'cols', 'formProt', 'vAlign', 'noEndnote',
+    'titlePg', 'textDirection', 'bidi', 'rtlGutter', 'docGrid', 'printerSettings', 'sectPrChange',
+  ],
+  // --- w:settings children the generator emits --------------------------
+  settings: [
+    'writeProtection', 'view', 'zoom', 'removePersonalInformation', 'removeDateAndTime',
+    'doNotDisplayPageBoundaries', 'displayBackgroundShape', 'printPostScriptOverText',
+    'printFractionalCharacterWidth', 'printFormsData', 'embedTrueTypeFonts', 'embedSystemFonts',
+    'saveSubsetFonts', 'saveFormsData', 'mirrorMargins', 'alignBordersAndEdges',
+    'bordersDoNotSurroundHeader', 'bordersDoNotSurroundFooter', 'gutterAtTop',
+    'hideSpellingErrors', 'hideGrammaticalErrors', 'activeWritingStyle', 'proofState',
+    'formsDesign', 'attachedTemplate', 'linkStyles', 'stylePaneFormatFilter',
+    'stylePaneSortMethod', 'documentType', 'mailMerge', 'revisionView', 'trackChanges',
+    'doNotTrackMoves', 'doNotTrackFormatting', 'documentProtection', 'autoFormatOverride',
+    'styleLockTheme', 'styleLockQFSet', 'defaultTabStop', 'autoHyphenation',
+    'consecutiveHyphenLimit', 'hyphenationZone', 'doNotHyphenateCaps', 'showEnvelope',
+    'summaryLength', 'clickAndTypeStyle', 'defaultTableStyle', 'evenAndOddHeaders',
+    'bookFoldRevPrinting', 'bookFoldPrinting', 'bookFoldPrintingSheets',
+    'drawingGridHorizontalSpacing', 'drawingGridVerticalSpacing',
+    'displayHorizontalDrawingGridEvery', 'displayVerticalDrawingGridEvery',
+    'doNotUseMarginsForDrawingGridOrigin', 'drawingGridHorizontalOrigin',
+    'drawingGridVerticalOrigin', 'doNotShadeFormData', 'noPunctuationKerning',
+    'characterSpacingControl', 'printTwoOnOne', 'strictFirstAndLastChars', 'noLineBreaksAfter',
+    'noLineBreaksBefore', 'savePreviewPicture', 'doNotValidateAgainstSchema',
+    'saveInvalidXml', 'ignoreMixedContent', 'alwaysShowPlaceholderText',
+    'doNotDemarcateInvalidXml', 'saveXmlDataOnly', 'useXSLTWhenSaving', 'saveThroughXslt',
+    'showXMLTags', 'alwaysMergeEmptyNamespace', 'updateFields', 'hdrShapeDefaults',
+    'footnotePr', 'endnotePr', 'compat', 'docVars', 'rsids', 'mathPr', 'uiCompat97To2003',
+    'attachedSchema', 'themeFontLang', 'clrSchemeMapping', 'doNotIncludeSubdocsInStats',
+    'doNotAutoCompressPictures', 'forceUpgrade', 'captions', 'readModeInkLockDown',
+    'smartTagType', 'schemaLibrary', 'shapeDefaults', 'doNotEmbedSmartTags',
+    'decimalSymbol', 'listSeparator',
+  ],
+};
+
+/** Tag name of a fragment, or null when it is not a single element. */
+function elementNameOf(fragment) {
+  const m = ELEMENT_HEAD_RE.exec(fragment);
+  return m ? m[1] : null;
+}
+
+/**
+ * Split one element's inner XML into child fragments and bucket them by name.
+ * Depth-tracked so that a child's own nested elements are never split apart.
+ * BOTH void children (`<w:jc/>`) and container children
+ * (`<w:tblBorders>…</w:tblBorders>`) are bucketed: tblPr's canonical order puts
+ * tblLayout after the tblBorders *container*, so containers must be
+ * re-orderable units too.
+ */
+function splitChildElements(inner) {
+  const children = [];
+  const buckets = new Map();
+  const total = inner.length;
+  let i = 0;
+  while (i < total) {
+    if (inner[i] !== '<') {
+      i++;
+      continue;
+    }
+    const start = i;
+    let depth = 0;
+    let closed = false;
+    while (i < total) {
+      if (inner[i] === '<') {
+        if (inner.startsWith('<!--', i)) {
+          const end = inner.indexOf('-->', i);
+          i = end === -1 ? total : end + 3;
+          continue;
+        }
+        const tagEnd = inner.indexOf('>', i);
+        if (tagEnd === -1) { i = total; break; }
+        // A tag is self-closing iff the character before '>' is '/'. Lookahead
+        // by a fixed window is wrong here: "<w:sz w:val=.." has no '/' in the
+        // first few characters and would be misread as a container.
+        const selfClosing = inner[tagEnd - 1] === '/';
+        const isClose = inner[i + 1] === '/';
+        i = tagEnd + 1;
+        if (selfClosing) {
+          if (depth === 0) { closed = true; break; }
+          continue;
+        }
+        if (isClose) {
+          depth--;
+          if (depth === 0) { closed = true; break; }
+          continue;
+        }
+        depth++;
+        continue;
+      }
+      i++;
+    }
+    if (!closed) i = total;
+    const fragment = inner.slice(start, i);
+    const name = elementNameOf(fragment);
+    children.push(fragment);
+    if (name) {
+      if (!buckets.has(name)) buckets.set(name, []);
+      buckets.get(name).push(fragment);
+    }
+  }
+  return { children, buckets };
+}
+
+/**
+ * Re-order the children of one element fragment into `order`.
+ *
+ * Children named in `order` are emitted in that canonical sequence; anything
+ * not named (or named but not present in `order`) keeps its original relative
+ * position at the end. Returns the fragment unchanged when it is not an
+ * element or when nothing had to move, so untouched output is byte-identical.
+ */
+function normalizeElement(name, fragment, order) {
+  if (!fragment || !order) return fragment;
+  const trimmed = fragment.trim();
+  if (!trimmed || trimmed[0] !== '<' || trimmed[1] === '/') return fragment;
+  if (elementNameOf(trimmed) !== name) return fragment;
+
+  const openEnd = trimmed.indexOf('>');
+  if (openEnd === -1) return fragment;
+  const openTag = trimmed.slice(0, openEnd + 1);
+  if (/\/>$/.test(openTag)) return fragment; // void element: no children
+  const closeTag = `</${openTag.slice(1, -1).split(/[\s>]/)[0]}>`;
+  if (!trimmed.endsWith(closeTag)) return fragment; // unexpected shape: leave alone
+  const inner = trimmed.slice(openEnd + 1, trimmed.length - closeTag.length);
+
+  const { children, buckets } = splitChildElements(inner);
+  const placed = new Set();
+  const out = [];
+  for (const key of order) {
+    if (!buckets.has(key)) continue;
+    placed.add(key);
+    out.push(key);
+  }
+  const buckets2 = new Map();
+  for (const [key, list] of buckets) if (placed.has(key)) buckets2.set(key, list);
+
+  let result = '';
+  let wroteOrdered = false;
+  const emitRemaining = () => {
+    for (const child of children) {
+      const nm = elementNameOf(child);
+      if (nm && buckets2.has(nm)) continue; // emitted in canonical position
+      result += child;
+    }
+  };
+  for (const key of out) {
+    // Any unplaced child that came *before* this key in the original order is
+    // emitted first, so unknown content keeps its relative position.
+    if (!wroteOrdered) {
+      const firstIdx = children.findIndex((c) => elementNameOf(c) === key);
+      for (let k = 0; k < firstIdx; k++) {
+        const nm = elementNameOf(children[k]);
+        if (nm && buckets2.has(nm)) continue;
+        result += children[k];
+      }
+      wroteOrdered = true;
+    }
+    result += buckets2.get(key).join('');
+  }
+  emitRemaining();
+  const rebuilt = openTag + result + closeTag;
+  return rebuilt === trimmed ? fragment : rebuilt;
+}
+
+/**
+ * One-pass serialiser: normalise every property element that has a declared
+ * canonical order, innermost first (pPr/rPr/tblPr all contain no property
+ * element with an order, but nesting-safety here costs nothing).
+ */
+const NORMALIZE_KEYS = ['tblPr', 'pPr', 'rPr'];
+function normalizeOrderedElements(xml) {
+  if (!xml || xml.indexOf('<w:') === -1) return xml;
+  let out = xml;
+  for (const key of NORMALIZE_KEYS) {
+    const order = WP_ORDER[key];
+    const open = `<w:${key}>`;
+    const openSelf = `<w:${key}/>`;
+    const closeTag = `</w:${key}>`;
+    let from = 0;
+    for (;;) {
+      const idx = out.indexOf(open, from);
+      if (idx === -1) break;
+      if (out.startsWith(openSelf, idx)) {
+        from = idx + openSelf.length;
+        continue;
+      }
+      const end = out.indexOf(closeTag, idx + open.length);
+      if (end === -1) break;
+      const after = end + closeTag.length;
+      const fragment = out.slice(idx, after);
+      const fixed = normalizeElement(key, fragment, order);
+      if (fixed !== fragment) out = out.slice(0, idx) + fixed + out.slice(after);
+      from = idx + fixed.length;
+    }
+  }
+  return out;
+}
+
+/* ================================================================== *
+ * Inline runs
+ * ================================================================== */
+const RUN_PROPS = {
+  bold: '<w:rPr><w:b/></w:rPr>',
+  italic: '<w:rPr><w:i/></w:rPr>',
+  boldItalic: '<w:rPr><w:b/><w:i/></w:rPr>',
+  strike: '<w:rPr><w:strike/></w:rPr>',
+  code: '<w:rPr><w:rStyle w:val="MonoChar"/></w:rPr>',
+};
+
+function run(text, propXml) {
+  if (text === '') return '';
+  return `<w:r>${propXml || ''}${t(text)}</w:r>`;
+}
+
+function inlineToXml(src, relAlloc) {
+  let out = '';
+  let buf = '';
+  const flush = (props) => {
+    if (buf) {
+      out += run(buf, props);
+      buf = '';
+    }
+  };
+  // TOKENISATION ORDER: code spans first, and opaque.
+  //
+  // `codeSpans` holds every index covered by an inline code span, so the
+  // emphasis branch below can refuse a delimiter that lives inside one. The
+  // scanner still walks the string once - the code-span branch a few lines down
+  // is what consumes a span - but no emphasis delimiter is now allowed to
+  // START or END inside a span, and none can span across one.
+  const codeSpans = codeSpanMap(src);
+  let i = 0;
+  const n = src.length;
+  // relAlloc(url) returns a COMPLETE id string ("rId8"), never a bare number:
+  // the allocator is the single source of truth for relationship ids.
+  while (i < n) {
+    const c = src[i];
+
+    if (c === '\\' && i + 1 < n && '\\`*_{}[]()#+-.!>|~'.indexOf(src[i + 1]) >= 0) {
+      buf += src[i + 1];
+      i += 2;
+      continue;
+    }
+
+    if (c === '`') {
+      let ticks = 0;
+      while (src[i + ticks] === '`') ticks++;
+      const close = src.indexOf('`'.repeat(ticks), i + ticks);
+      if (close > -1) {
+        flush();
+        let codeSpan = src.slice(i + ticks, close).replace(/\n/g, ' ');
+        if (/^ .* $/.test(codeSpan) && codeSpan.trim() !== '') codeSpan = codeSpan.slice(1, -1);
+        out += run(codeSpan, RUN_PROPS.code);
+        i = close + ticks;
+        continue;
+      }
+      buf += src.slice(i, i + ticks);
+      i += ticks;
+      continue;
+    }
+
+    if (c === '<') {
+      const m = /^<((?:https?|mailto):[^<>\s]+)>/.exec(src.slice(i));
+      if (m) {
+        flush();
+        const id = relAlloc ? relAlloc(m[1]) : null;
+        if (id !== null && id !== undefined) {
+          out +=
+            `<w:hyperlink r:id="${id}"><w:r><w:rPr><w:rStyle w:val="Hyperlink"/></w:rPr>${t(
+              m[1]
+            )}</w:r></w:hyperlink>`;
+        } else {
+          out += run(m[1], '<w:rPr><w:rStyle w:val="Hyperlink"/></w:rPr>');
+        }
+        i += m[0].length;
+        continue;
+      }
+      buf += c;
+      i++;
+      continue;
+    }
+
+    if (c === '[') {
+      const m = /^\[((?:[^\[\]\\]|\\.)*)\]\(\s*<?([^)\s>]+)>?(?:\s+["'][^"']*["'])?\s*\)/.exec(
+        src.slice(i)
+      );
+      if (m) {
+        flush();
+        const label = m[1].replace(/\\([\\`*_{}\[\]()#+\-.!>|~])/g, '$1');
+        const inner = inlineToXml(label, null);
+        const id = relAlloc ? relAlloc(m[2]) : null;
+        if (id !== null && id !== undefined) {
+          out += `<w:hyperlink r:id="${id}">${inner.replace(
+            /<w:r>(?!<w:rPr>)/g,
+            '<w:r><w:rPr><w:rStyle w:val="Hyperlink"/></w:rPr>'
+          )}</w:hyperlink>`;
+        } else {
+          out += inner;
+        }
+        i += m[0].length;
+        continue;
+      }
+      buf += c;
+      i++;
+      continue;
+    }
+
+    if (c === '*' || c === '_') {
+      const ch = c;
+      let len = 0;
+      while (src[i + len] === ch) len++;
+      // A marker inside a code span is literal text, never emphasis. This branch
+      // is normally unreachable (the backtick branch consumes the whole span
+      // first), but it is what makes the ordering explicit and total.
+      if (len <= 3 && !(codeSpans && codeSpans.has(i))) {
+        const marker = ch.repeat(len);
+        const close = findEmphasisClose(src, i + len, marker, codeSpans);
+        if (close > -1) {
+          const inner = src.slice(i + len, close);
+          if (inner.length > 0 && !/^\s|\s$/.test(inner)) {
+            flush();
+            const props =
+              len === 1 ? RUN_PROPS.italic : len === 2 ? RUN_PROPS.bold : RUN_PROPS.boldItalic;
+            const nested = inlineToXml(inner, null);
+            out += nested.replace(/<w:r>(?!<w:rPr>)/g, `<w:r>${props}`);
+            i = close + len;
+            continue;
+          }
+        }
+      }
+      buf += ch.repeat(len);
+      i += len;
+      continue;
+    }
+
+    if (c === '~' && src[i + 1] === '~') {
+      const close = src.indexOf('~~', i + 2);
+      if (close > -1 && close > i + 2) {
+        flush();
+        out += run(src.slice(i + 2, close), RUN_PROPS.strike);
+        i = close + 2;
+        continue;
+      }
+      buf += '~~';
+      i += 2;
+      continue;
+    }
+
+    buf += c;
+    i++;
+  }
+  flush();
+  return out;
+}
+
+/**
+ * Map every inline CODE SPAN in `src`: index -> {start,end,ticks} for each
+ * backtick character that opens or closes a span AND for the span interior.
+ * Returns null for an unusual line (an unterminated run of 4+ backticks), which
+ * tells the caller to fall back to the plain, non-skipping emphasis rule.
+ *
+ * Code spans are delimited by a run of N backticks closed by the NEXT run of
+ * exactly N backticks - the CommonMark rule, and the same rule the inline
+ * scanner below applies. Escaped backticks match nothing, exactly as in the
+ * scanner.
+ */
+function codeSpanMap(src) {
+  const n = src.length;
+  let map = null;
+  const mark = (from, to) => {
+    if (map === null) map = new Map();
+    for (let k = from; k < to; k++) if (!map.has(k)) map.set(k, true);
+  };
+  let i = 0;
+  while (i < n) {
+    if (src[i] === '\\' && i + 1 < n && '\\`*_{}[]()#+-.!>|~'.indexOf(src[i + 1]) >= 0) {
+      i += 2;
+      continue;
+    }
+    if (src[i] === '`') {
+      let ticks = 0;
+      while (src[i + ticks] === '`') ticks++;
+      const close = src.indexOf('`'.repeat(ticks), i + ticks);
+      if (close > -1) {
+        // the opening run, the interior and the closing run are all opaque
+        mark(i, close + ticks);
+        i = close + ticks;
+        continue;
+      }
+      if (ticks > 3) return null; // pathological: keep the historical behaviour
+      i += ticks;
+      continue;
+    }
+    i++;
+  }
+  return map;
+}
+
+/**
+ * Index of the closing emphasis marker for the delimiter opened at `from`, or -1.
+ *
+ * Codes spans are tokenised BEFORE emphasis, so a candidate close that sits
+ * inside a code span is not emphasis at all - it is a literal underscore,
+ * asterisk or tilde in code. Skipping those candidates is what keeps the
+ * delimiter search from cutting a code span in half: without `protectedAt`,
+ * `Keep strict `rp_filter` ...` would close on the '_' INSIDE the span and emit
+ * an italic run containing a stray backtick.
+ *
+ * The digit rule is the pre-existing heuristic for `*` used as a footnote
+ * marker; it is unchanged.
+ */
+function findEmphasisClose(src, from, marker, codeSpans) {
+  let idx = src.indexOf(marker, from);
+  while (idx > -1) {
+    if (codeSpans && (codeSpans.has(idx) || codeSpans.has(idx + marker.length - 1))) {
+      idx = src.indexOf(marker, idx + 1);
+      continue;
+    }
+    const after = src[idx + marker.length];
+    if (after === undefined || !/[0-9]/.test(after)) return idx;
+    idx = src.indexOf(marker, idx + 1);
+  }
+  return -1;
+}
+
+/* ================================================================== *
+ * Markdown block parser
+ * ================================================================== */
+const LIST_INDENT_UNIT = 2;
+
+function isTableSeparator(line) {
+  return (
+    /^\s*\|?\s*:?-{1,}:?\s*(\|\s*:?-{1,}:?\s*)*\|?\s*$/.test(line) && line.indexOf('-') > -1
+  );
+}
+
+/**
+ * Split a GitHub-flavoured Markdown table row into cells.
+ *
+ * Two things must survive that a naive split on every '|' destroys:
+ *
+ *   1. '\|' - an escaped pipe becomes a LITERAL pipe inside one cell and never a
+ *      separator. This is what the corpus uses for cells such as
+ *      `DL-{Share}-{RW\|RO}` and file paths containing '|'.
+ *   2. A '|' inside an inline code span - `ansible.builtin.command: awk -F: ...`,
+ *      or `{A|B|C|D}` - is cell CONTENT, not a separator. Inside a code span the
+ *      rendered text is literal, so treating it as a separator would split one
+ *      cell into several and shift every later column.
+ *
+ * PRECEDENCE, as implemented (and as GitHub renders it): escaping always wins.
+ * '\|' is consumed as a literal pipe before the code-span toggle is consulted, so
+ * a pipe written as '\|' inside a code span is also literal. Outside code spans
+ * an unescaped '|' is always a separator.
+ *
+ * The toggle below is deliberately simple: it flips on every backtick. That is
+ * exactly how CommonMark delimits code spans of length 1, and it re-synchronises
+ * correctly even when a cell contains several code spans (the toggles cancel out).
+ */
+function splitTableRow(line) {
+  let s = line.trim();
+  if (s.startsWith('|')) s = s.slice(1);
+  if (s.endsWith('|') && !s.endsWith('\\|')) s = s.slice(0, -1);
+  const cells = [];
+  let cur = '';
+  let inCode = false;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (ch === '\\' && s[i + 1] === '|') {
+      cur += '|';
+      i++;
+      continue;
+    }
+    if (ch === '`') {
+      inCode = !inCode;
+      cur += ch;
+      continue;
+    }
+    if (ch === '|' && !inCode) {
+      cells.push(cur.trim());
+      cur = '';
+      continue;
+    }
+    cur += ch;
+  }
+  cells.push(cur.trim());
+  return cells;
+}
+
+const HR_RE = /^\s{0,3}(?:(?:-\s*){3,}|(?:\*\s*){3,}|(?:_\s*){3,})$/;
+
+/* ------------------------------------------------------------------ *
+ * Fenced code blocks: STRICT fence recognition
+ *
+ * A naive scanner (toggle on every line that begins with ```) shifts the fence
+ * parity of the rest of the file when a code block INTERNALLY contains a
+ * backtick sequence at the start of a line. 07-ai.md exercises exactly that
+ * shape: a doc-draft Skill example whose JSON payload embeds a ``` sequence.
+ *
+ * The rule used here is the CommonMark one, which makes a mis-detection
+ * impossible rather than merely unlikely:
+ *
+ *   - a fence line is indented by at most 3 spaces; 4+ spaces makes it code
+ *     content, even inside a fenced block;
+ *   - an OPENING fence may carry an info string (```json);
+ *   - a CLOSING fence must be BARE - nothing but the fence run and optional
+ *     whitespace - and must use the same character and be at least as long as
+ *     the opener.
+ *
+ * Consequence: "```json" can never close a block, an indented "    ```" can
+ * never open or close one, and "````" never closes a "```" block.
+ * ------------------------------------------------------------------ */
+const FENCE_OPEN_RE = /^ {0,3}(`{3,}|~{3,})[ \t]*([A-Za-z0-9_+.#-]*)[ \t]*$/;
+const FENCE_CLOSE_RE = /^ {0,3}(`{3,}|~{3,})[ \t]*$/;
+
+/** Opening fence => { marker, len, lang } or null. */
+function matchOpeningFence(line) {
+  const m = FENCE_OPEN_RE.exec(line);
+  if (!m) return null;
+  return { marker: m[1][0], len: m[1].length, lang: m[2] || '' };
+}
+
+/** True when `line` legally closes the block opened by `openFence`. */
+function isClosingFenceFor(line, openFence) {
+  const m = FENCE_CLOSE_RE.exec(line);
+  if (!m) return false;
+  return m[1][0] === openFence.marker && m[1].length >= openFence.len;
+}
+
+function parseMarkdown(md) {
+  const lines = md.split('\n');
+  const blocks = [];
+  let i = 0;
+  const N = lines.length;
+  const isBlank = (s) => /^\s*$/.test(s);
+  // Ragged table rows are recorded rather than thrown: a row whose cell count
+  // differs from the header must not abort a 300,000-word conversion, but the
+  // caller has to be told, because it usually means the Markdown is malformed.
+  const warnings = [];
+  const directives = [];
+  const noteRagged = (lineNo, got, want) =>
+    warnings.push({ line: lineNo + 1, cells: got, headerCells: want });
+
+  while (i < N) {
+    const line = lines[i];
+    if (isBlank(line)) {
+      i++;
+      continue;
+    }
+
+    const fence = matchOpeningFence(line);
+    if (fence) {
+      const body = [];
+      i++;
+      while (i < N) {
+        if (isClosingFenceFor(lines[i], fence)) {
+          i++;
+          break;
+        }
+        body.push(lines[i]);
+        i++;
+      }
+      blocks.push({ type: 'code', lang: fence.lang, lines: body });
+      continue;
+    }
+
+    // md2docx directives: HTML comments of the form <!-- md2docx:... --> are
+    // tooling instructions, consumed here and never written to the document.
+    const directive = /^\s*<!--\s*md2docx:([A-Za-z-]+)\s*-->\s*$/.exec(line);
+    if (directive) {
+      directives.push({ name: directive[1].toLowerCase(), line: i + 1 });
+      i++;
+      continue;
+    }
+
+    const h = /^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$/.exec(line);
+    if (h) {
+      blocks.push({ type: 'heading', level: h[1].length, text: h[2] });
+      i++;
+      continue;
+    }
+
+    if (HR_RE.test(line)) {
+      blocks.push({ type: 'hr' });
+      i++;
+      continue;
+    }
+
+    if (/^\s*\[TOC\]\s*$/i.test(line)) {
+      blocks.push({ type: 'toc' });
+      i++;
+      continue;
+    }
+
+    const fig = /^\s*\[FIGURE:\s*(.*?)\s*\]\s*$/i.exec(line);
+    if (fig) {
+      blocks.push({ type: 'figure', text: fig[1] });
+      i++;
+      continue;
+    }
+
+    if (/^\s{0,3}>/.test(line)) {
+      const inner = [];
+      while (i < N) {
+        const m = /^\s{0,3}>\s?(.*)$/.exec(lines[i]);
+        if (!m) {
+          if (isBlank(lines[i]) && i + 1 < N && /^\s{0,3}>/.test(lines[i + 1])) {
+            inner.push('');
+            i++;
+            continue;
+          }
+          break;
+        }
+        inner.push(m[1]);
+        i++;
+      }
+      blocks.push({ type: 'quote', text: inner.join('\n') });
+      continue;
+    }
+
+    if (line.indexOf('|') > -1 && i + 1 < N && isTableSeparator(lines[i + 1])) {
+      // A <!-- md2docx:expect-ragged --> directive immediately above the header
+      // declares that ragged rows in THIS table are intentional, so they are
+      // normalised quietly instead of being reported.
+      const tableExpectsRagged = i > 0 && /md2docx:expect-ragged/i.test(lines[i - 1]);
+      const header = splitTableRow(line);
+      const align = splitTableRow(lines[i + 1]).map((c) => {
+        const l = c.startsWith(':');
+        const r = c.endsWith(':');
+        return l && r ? 'center' : r ? 'right' : l ? 'left' : 'left';
+      });
+      i += 2;
+      const rows = [];
+      while (i < N && !isBlank(lines[i]) && lines[i].indexOf('|') > -1) {
+        const cells = splitTableRow(lines[i]);
+        if (cells.length !== header.length) {
+          if (!tableExpectsRagged) noteRagged(i, cells.length, header.length);
+        }
+        // Normalise to the header's column count so the Word table stays
+        // rectangular: short rows are padded with empty cells, long rows are
+        // truncated.
+        if (cells.length < header.length) {
+          while (cells.length < header.length) cells.push('');
+        } else if (cells.length > header.length) {
+          cells.length = header.length;
+        }
+        rows.push(cells);
+        i++;
+      }
+      blocks.push({ type: 'table', header, align, rows, headerCells: header.length });
+      continue;
+    }
+
+    if (/^\s{0,6}([-*+]|\d{1,9}[.)])\s+/.test(line)) {
+      const items = [];
+      let cur = null;
+      while (i < N) {
+        const li = lines[i];
+        if (isBlank(li)) {
+          if (i + 1 < N && /^\s{0,6}([-*+]|\d{1,9}[.)])\s+/.test(lines[i + 1])) {
+            i++;
+            continue;
+          }
+          break;
+        }
+        const m = /^(\s{0,6})([-*+]|\d{1,9}[.)])(\s+)(.*)$/.exec(li);
+        if (m) {
+          if (cur) items.push(cur);
+          cur = {
+            level: Math.min(2, Math.floor(m[1].replace(/\t/g, '  ').length / LIST_INDENT_UNIT)),
+            ordered: /^\d/.test(m[2]),
+            parts: [m[4]],
+          };
+          i++;
+          continue;
+        }
+        if (cur && /^\s+\S/.test(li)) {
+          cur.parts.push(li.trim());
+          i++;
+          continue;
+        }
+        break;
+      }
+      if (cur) items.push(cur);
+      blocks.push({ type: 'list', items });
+      continue;
+    }
+
+    const para = [line.trim()];
+    i++;
+    while (i < N) {
+      const l = lines[i];
+      if (isBlank(l)) break;
+      if (/^\s{0,3}(#{1,6}\s|>|```|~~~)/.test(l)) break;
+      if (/^\s*\[TOC\]\s*$/i.test(l) || /^\s*\[FIGURE:/i.test(l)) break;
+      if (HR_RE.test(l)) break;
+      if (/^\s{0,6}([-*+]|\d{1,9}[.)])\s+/.test(l)) break;
+      if (l.indexOf('|') > -1 && i + 1 < N && isTableSeparator(lines[i + 1])) break;
+      para.push(l.trim());
+      i++;
+    }
+    blocks.push({ type: 'para', lines: para });
+  }
+  // Attach the ragged-row warnings to the result without changing the shape of
+  // the array (callers iterate the blocks).
+  Object.defineProperty(blocks, 'tableWarnings', { value: warnings, enumerable: false });
+  Object.defineProperty(blocks, 'directives', { value: directives, enumerable: false });
+  return blocks;
+}
+
+/* ================================================================== *
+ * Section splitting (data-driven volumes)
+ * ================================================================== */
+/**
+ * Leading section number of a heading.
+ *
+ * Deliberately tolerant about the separator ('.', ')', ':', ',' or end of string)
+ * and about an optional word prefix, because real proposals write headings in
+ * many ways:
+ *     "# 3 Microsoft Infrastructure"
+ *     "## 3.2 Active Directory"
+ *     "# Volume Section 3: Linux Platform"
+ *     "## Chapter 7 - Automation"
+ * Split rules such as {"include":["1-6","12-20"]} are matched against the number
+ * returned here, so being strict here would silently mis-select whole chapters.
+ */
+function leadingSectionKey(text) {
+  const t = String(text === undefined || text === null ? '' : text).trim();
+  if (!t) return null;
+  const m = /(?:^|[\s([-])([A-Za-z]{0,12}[\s-]{0,2})?(\d{1,3})(?:[.)\]:,-]|\s|$)/.exec(t);
+  if (m) return String(parseInt(m[2], 10));
+  const a = /^(?:appendix\s+)?([A-Z])(?:[.)\]:,-]|\s|$)/i.exec(t);
+  if (a) return a[1].toUpperCase();
+  return null;
+}
+
+/** Expand ["1-6","12-20","A"] into a Set of section keys ("1".."20","A"). */
+function expandRangeList(list) {
+  const set = new Set();
+  for (const raw of list || []) {
+    const item = String(raw).trim();
+    if (!item) continue;
+    const range = /^(\d{1,3})\s*-\s*(\d{1,3})$/.exec(item);
+    if (range) {
+      const a = parseInt(range[1], 10);
+      const b = parseInt(range[2], 10);
+      for (let k = Math.min(a, b); k <= Math.max(a, b); k++) set.add(String(k));
+    } else {
+      set.add(/^\d+$/.test(item) ? String(parseInt(item, 10)) : item.toUpperCase());
+    }
+  }
+  return set;
+}
+
+function sectionKeyOfGroup(group, topLevel) {
+  for (const b of group.blocks) {
+    if (b.type === 'heading' && (!topLevel || b.level === topLevel)) {
+      const k = leadingSectionKey(b.text);
+      if (k) return k.toUpperCase();
+    }
+  }
+  return null;
+}
+
+/**
+ * Shallowest heading level present (the document's own top level).
+ *
+ * A corpus is not required to start at "# ". A document whose top-level sections
+ * are written as "## 7. Cisco Networking" has NO H1 at all, and hard-coding
+ * "level === 1" as the group boundary would then swallow the entire document into
+ * a single front-matter group: section keys would never be derived and every
+ * "include" rule would select nothing. Deriving the boundary from the content
+ * keeps the rule engine correct for both styles, and for the usual H1-based
+ * document minLevel is 1 and the behaviour is unchanged.
+ */
+function groupHeadingLevel(blocks) {
+  let min = null;
+  for (const b of blocks) {
+    if (b.type !== 'heading') continue;
+    const lvl = Math.min(6, Math.max(1, b.level));
+    if (min === null || lvl < min) min = lvl;
+  }
+  return min === null ? 1 : min;
+}
+
+/**
+ * Group a block list into top-level sections (each starting at the document's
+ * shallowest heading level - H1 normally, H2 when the document uses no H1) and
+ * apply a rule set: {include:[...], exclude:[...], match:"regex", frontMatter:bool}.
+ */
+function applySectionRules(blocks, rules) {
+  if (!rules) return blocks;
+  const include = rules.include ? expandRangeList(rules.include) : null;
+  const exclude = rules.exclude ? expandRangeList(rules.exclude) : new Set();
+  const match = rules.match ? new RegExp(rules.match, 'i') : null;
+  const topLevel = groupHeadingLevel(blocks);
+
+  const groups = [];
+  let current = { key: null, blocks: [], front: true };
+  for (const b of blocks) {
+    if (b.type === 'heading' && b.level === topLevel) {
+      if (current.blocks.length) groups.push(current);
+      const key = leadingSectionKey(b.text);
+      current = { key: key ? key.toUpperCase() : null, blocks: [b], front: !key, heading: b.text };
+    } else {
+      current.blocks.push(b);
+    }
+  }
+  if (current.blocks.length) groups.push(current);
+
+  const hasSection1 = groups.some((g) => g.key === '1');
+  const keepFrontMatter =
+    rules.frontMatter === undefined ? hasSection1 : rules.frontMatter === true;
+
+  const out = [];
+  for (const g of groups) {
+    if (g.front) {
+      if (keepFrontMatter) for (const b of g.blocks) out.push(b);
+      continue;
+    }
+    let keep;
+    if (match) keep = match.test(g.heading || '');
+    else if (include) keep = include.has(g.key);
+    else keep = true;
+    if (keep && exclude.has(g.key)) keep = false;
+    if (keep) for (const b of g.blocks) out.push(b);
+  }
+  return out;
+}
+
+/* ================================================================== *
+ * OOXML static parts
+ * ================================================================== */
+const A = esc;
+
+function stylesXml() {
+  const font = 'Calibri';
+  const heading = (id, name, size, color, before, after, lvl) =>
+    `<w:style w:type="paragraph" w:styleId="${id}"><w:name w:val="${name}"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:link w:val="${id}Char"/><w:uiPriority w:val="9"/><w:qFormat/><w:pPr><w:keepNext/><w:keepLines/><w:spacing w:before="${before}" w:after="${after}"/><w:outlineLvl w:val="${lvl}"/></w:pPr><w:rPr><w:rFonts w:ascii="${font}" w:hAnsi="${font}" w:cs="${font}"/><w:b/><w:bCs/><w:color w:val="${color}"/><w:sz w:val="${size}"/><w:szCs w:val="${size}"/></w:rPr></w:style>` +
+    `<w:style w:type="character" w:customStyle="1" w:styleId="${id}Char"><w:name w:val="${name} Char"/><w:basedOn w:val="DefaultParagraphFont"/><w:link w:val="${id}"/><w:uiPriority w:val="9"/><w:rPr><w:rFonts w:ascii="${font}" w:hAnsi="${font}" w:cs="${font}"/><w:b/><w:color w:val="${color}"/></w:rPr></w:style>`;
+
+  // NOTE: SourceCode pPr writes <w:shd/> BEFORE <w:jc/> (canonical pPr order is
+  // ... spacing, ind, contextualSpacing ..., jc) and its rPr writes <w:color/>
+  // before <w:sz/>. MonoChar likewise. Both were SDK violations when reversed.
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:eastAsia="SimSun" w:hAnsi="Calibri" w:cs="Calibri"/><w:sz w:val="22"/><w:szCs w:val="22"/><w:lang w:val="en-GB" w:eastAsia="zh-HK" w:bidi="ar-SA"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="120" w:line="276" w:lineRule="auto"/><w:jc w:val="both"/></w:pPr></w:pPrDefault></w:docDefaults>
+<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style>
+<w:style w:type="character" w:default="1" w:styleId="DefaultParagraphFont"><w:name w:val="Default Paragraph Font"/><w:uiPriority w:val="1"/><w:semiHidden/><w:unhideWhenUsed/></w:style>
+<w:style w:type="table" w:default="1" w:styleId="TableNormal"><w:name w:val="Normal Table"/><w:uiPriority w:val="99"/><w:semiHidden/><w:unhideWhenUsed/><w:tblPr><w:tblInd w:w="0" w:type="dxa"/><w:tblCellMar><w:top w:w="40" w:type="dxa"/><w:left w:w="80" w:type="dxa"/><w:bottom w:w="40" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tblCellMar></w:tblPr></w:style>
+<w:style w:type="numbering" w:default="1" w:styleId="NoList"><w:name w:val="No List"/><w:uiPriority w:val="99"/><w:semiHidden/><w:unhideWhenUsed/></w:style>
+<w:style w:type="paragraph" w:styleId="ListParagraph"><w:name w:val="List Paragraph"/><w:basedOn w:val="Normal"/><w:uiPriority w:val="34"/><w:qFormat/><w:pPr><w:ind w:left="720"/><w:contextualSpacing/></w:pPr></w:style>
+${heading('Heading1', 'heading 1', 36, '1F3864', 320, 160, 0)}
+${heading('Heading2', 'heading 2', 30, '2F5496', 260, 120, 1)}
+${heading('Heading3', 'heading 3', 26, '2F5496', 220, 100, 2)}
+${heading('Heading4', 'heading 4', 24, '2F5496', 180, 80, 3)}
+${heading('Heading5', 'heading 5', 22, '2F5496', 150, 70, 4)}
+${heading('Heading6', 'heading 6', 22, '404040', 130, 60, 5)}
+<w:style w:type="paragraph" w:customStyle="1" w:styleId="TitlePageTitle"><w:name w:val="Title Page Title"/><w:basedOn w:val="Normal"/><w:next w:val="TitlePageSubtitle"/><w:uiPriority w:val="10"/><w:qFormat/><w:pPr><w:spacing w:before="2400" w:after="240"/><w:jc w:val="center"/></w:pPr><w:rPr><w:rFonts w:ascii="${font}" w:hAnsi="${font}"/><w:b/><w:color w:val="1F3864"/><w:sz w:val="56"/><w:szCs w:val="56"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:customStyle="1" w:styleId="TitlePageSubtitle"><w:name w:val="Title Page Subtitle"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:uiPriority w:val="10"/><w:qFormat/><w:pPr><w:spacing w:after="240"/><w:jc w:val="center"/></w:pPr><w:rPr><w:i/><w:color w:val="595959"/><w:sz w:val="28"/><w:szCs w:val="28"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:customStyle="1" w:styleId="TOCHeading"><w:name w:val="TOC Heading"/><w:basedOn w:val="Heading1"/><w:next w:val="Normal"/><w:uiPriority w:val="39"/><w:qFormat/><w:pPr><w:spacing w:before="0" w:after="200"/></w:pPr></w:style>
+<w:style w:type="character" w:customStyle="1" w:styleId="MonoChar"><w:name w:val="Mono Char"/><w:basedOn w:val="DefaultParagraphFont"/><w:uiPriority w:val="99"/><w:rPr><w:rFonts w:ascii="Consolas" w:hAnsi="Consolas" w:cs="Consolas"/><w:color w:val="595959"/><w:sz w:val="20"/><w:szCs w:val="20"/><w:shd w:val="clear" w:color="auto" w:fill="F2F2F2"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:customStyle="1" w:styleId="SourceCode"><w:name w:val="Source Code"/><w:basedOn w:val="Normal"/><w:next w:val="SourceCode"/><w:uiPriority w:val="99"/><w:qFormat/><w:pPr><w:keepLines/><w:shd w:val="clear" w:color="auto" w:fill="F2F2F2"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/><w:ind w:left="284" w:right="284"/><w:jc w:val="left"/></w:pPr><w:rPr><w:rFonts w:ascii="Consolas" w:hAnsi="Consolas" w:cs="Consolas"/><w:noProof/><w:color w:val="404040"/><w:sz w:val="19"/><w:szCs w:val="19"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:customStyle="1" w:styleId="FigurePlaceholder"><w:name w:val="Figure Placeholder"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:uiPriority w:val="99"/><w:qFormat/><w:pPr><w:pBdr><w:top w:val="single" w:sz="12" w:space="6" w:color="C00000"/><w:left w:val="single" w:sz="12" w:space="6" w:color="C00000"/><w:bottom w:val="single" w:sz="12" w:space="6" w:color="C00000"/><w:right w:val="single" w:sz="12" w:space="6" w:color="C00000"/></w:pBdr><w:shd w:val="clear" w:color="auto" w:fill="FDF2F2"/><w:spacing w:before="180" w:after="180"/><w:ind w:left="142" w:right="142"/><w:jc w:val="center"/></w:pPr><w:rPr><w:rFonts w:ascii="Consolas" w:hAnsi="Consolas"/><w:b/><w:color w:val="C00000"/><w:sz w:val="20"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:customStyle="1" w:styleId="HorizontalRule"><w:name w:val="Horizontal Rule"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:uiPriority w:val="99"/><w:qFormat/><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="12" w:space="1" w:color="808080"/></w:pBdr><w:spacing w:before="120" w:after="240" w:line="240" w:lineRule="auto"/></w:pPr><w:rPr><w:sz w:val="2"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:customStyle="1" w:styleId="BlockQuote"><w:name w:val="Block Quote"/><w:basedOn w:val="Normal"/><w:next w:val="BlockQuote"/><w:uiPriority w:val="99"/><w:qFormat/><w:pPr><w:pBdr><w:left w:val="single" w:sz="18" w:space="10" w:color="2F5496"/></w:pBdr><w:shd w:val="clear" w:color="auto" w:fill="F7F9FC"/><w:spacing w:before="80" w:after="120"/><w:ind w:left="480" w:right="284"/></w:pPr><w:rPr><w:i/><w:iCs/><w:color w:val="404040"/></w:rPr></w:style>
+<w:style w:type="character" w:styleId="Hyperlink"><w:name w:val="Hyperlink"/><w:basedOn w:val="DefaultParagraphFont"/><w:uiPriority w:val="99"/><w:unhideWhenUsed/><w:rPr><w:color w:val="0563C1"/><w:u w:val="single"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:styleId="Footer"><w:name w:val="footer"/><w:basedOn w:val="Normal"/><w:uiPriority w:val="99"/><w:unhideWhenUsed/><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/><w:jc w:val="center"/></w:pPr><w:rPr><w:sz w:val="18"/><w:color w:val="595959"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:styleId="Header"><w:name w:val="header"/><w:basedOn w:val="Normal"/><w:uiPriority w:val="99"/><w:unhideWhenUsed/><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="BFBFBF"/></w:pBdr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/><w:jc w:val="right"/></w:pPr><w:rPr><w:sz w:val="18"/><w:color w:val="595959"/></w:rPr></w:style>
+<w:style w:type="table" w:customStyle="1" w:styleId="TableGrid"><w:name w:val="Table Grid"/><w:basedOn w:val="TableNormal"/><w:uiPriority w:val="39"/><w:qFormat/><w:tblPr><w:tblBorders><w:top w:val="single" w:sz="6" w:space="0" w:color="7F7F7F"/><w:left w:val="single" w:sz="6" w:space="0" w:color="7F7F7F"/><w:bottom w:val="single" w:sz="6" w:space="0" w:color="7F7F7F"/><w:right w:val="single" w:sz="6" w:space="0" w:color="7F7F7F"/><w:insideH w:val="single" w:sz="6" w:space="0" w:color="7F7F7F"/><w:insideV w:val="single" w:sz="6" w:space="0" w:color="7F7F7F"/></w:tblBorders><w:tblCellMar><w:top w:w="60" w:type="dxa"/><w:left w:w="100" w:type="dxa"/><w:bottom w:w="60" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tblCellMar></w:tblPr></w:style>
+</w:styles>`;
+}
+
+function numberingXml() {
+  const bullet = [
+    { lvlText: '\uF0B7', font: 'Symbol' },
+    { lvlText: 'o', font: 'Courier New' },
+    { lvlText: '\uF0A7', font: 'Wingdings' },
+  ];
+  const bulletLvls = bullet
+    .map(
+      (b, i) =>
+        `<w:lvl w:ilvl="${i}"><w:start w:val="1"/><w:numFmt w:val="bullet"/><w:lvlText w:val="${b.lvlText}"/><w:lvlJc w:val="left"/><w:pPr><w:ind w:left="${
+          720 + i * 360
+        }" w:hanging="360"/></w:pPr><w:rPr><w:rFonts w:ascii="${b.font}" w:hAnsi="${b.font}" w:hint="default"/></w:rPr></w:lvl>`
+    )
+    .join('');
+  const numLvls = [0, 1, 2]
+    .map(
+      (i) =>
+        `<w:lvl w:ilvl="${i}"><w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlText w:val="${
+          '%' + (i + 1)
+        }."/><w:lvlJc w:val="left"/><w:pPr><w:ind w:left="${
+          720 + i * 360
+        }" w:hanging="360"/></w:pPr><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:hint="default"/></w:rPr></w:lvl>`
+    )
+    .join('');
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:abstractNum w:abstractNumId="0"><w:multiLevelType w:val="multilevel"/>${bulletLvls}</w:abstractNum>
+<w:abstractNum w:abstractNumId="1">${numLvls}</w:abstractNum>
+<w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num>
+<w:num w:numId="2"><w:abstractNumId w:val="1"/></w:num>
+</w:numbering>`;
+}
+
+function settingsXml() {
+  // Canonical w:settings order: zoom, defaultTabStop, characterSpacingControl,
+  // updateFields, compat. `updateFields` used to be written BEFORE
+  // `characterSpacingControl`, which the SDK rejected with
+  // "unexpected child element 'w:characterSpacingControl'" (1 error per
+  // document, independent of document size).
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:zoom w:percent="100"/>
+<w:defaultTabStop w:val="708"/>
+<w:characterSpacingControl w:val="doNotCompress"/>
+<w:updateFields w:val="true"/>
+<w:compat><w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"/></w:compat>
+</w:settings>`;
+}
+
+function fontTableXml() {
+  const fonts = ['Calibri', 'Consolas', 'Symbol', 'Wingdings', 'Courier New', 'SimSun', 'Calibri Light'];
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:fonts xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+${fonts
+  .map(
+    (n) =>
+      `<w:font w:name="${n}"><w:panose1 w:val="020F0502020204030204"/><w:charset w:val="00"/><w:family w:val="swiss"/><w:pitch w:val="variable"/><w:sig w:usb0="00000000" w:usb1="00000000" w:usb2="00000000" w:usb3="00000000" w:csb0="000001FF" w:csb1="00000000"/></w:font>`
+  )
+  .join('\n')}
+</w:fonts>`;
+}
+
+function themeXml() {
+  const fonts = (tf) =>
+    `<a:latin typeface="${tf}"/><a:ea typeface=""/><a:cs typeface=""/><a:font script="Jpan" typeface="Yu Gothic"/><a:font script="Hang" typeface="Malgun Gothic"/><a:font script="Hans" typeface="SimSun"/><a:font script="Hant" typeface="MingLiU"/>`;
+  const fill =
+    '<a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"><a:lumMod val="110000"/><a:satMod val="105000"/><a:tint val="67000"/></a:schemeClr></a:gs><a:gs pos="50000"><a:schemeClr val="phClr"><a:lumMod val="105000"/><a:satMod val="103000"/><a:tint val="73000"/></a:schemeClr></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"><a:lumMod val="105000"/><a:satMod val="109000"/><a:tint val="81000"/></a:schemeClr></a:gs></a:gsLst><a:lin ang="5400000" scaled="0"/></a:gradFill>';
+  const line =
+    '<a:ln w="6350" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:prstDash val="solid"/></a:ln>';
+  const effect =
+    '<a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst><a:outerShdw blurRad="57150" dist="19050" dir="5400000" rotWithShape="0"><a:srgbClr val="000000"><a:alpha val="63000"/></a:srgbClr></a:outerShdw></a:effectLst></a:effectStyle></a:effectStyleLst>';
+  const bgFill =
+    '<a:solidFill><a:schemeClr val="phClr"><a:tint val="95000"/><a:satMod val="170000"/></a:schemeClr></a:solidFill>';
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="Office Theme">
+<a:themeElements>
+<a:clrScheme name="Office"><a:dk1><a:sysClr val="windowText" lastClr="000000"/></a:dk1><a:lt1><a:sysClr val="window" lastClr="FFFFFF"/></a:lt1><a:dk2><a:srgbClr val="44546A"/></a:dk2><a:lt2><a:srgbClr val="E7E6E6"/></a:lt2><a:accent1><a:srgbClr val="4472C4"/></a:accent1><a:accent2><a:srgbClr val="ED7D31"/></a:accent2><a:accent3><a:srgbClr val="A5A5A5"/></a:accent3><a:accent4><a:srgbClr val="FFC000"/></a:accent4><a:accent5><a:srgbClr val="5B9BD5"/></a:accent5><a:accent6><a:srgbClr val="70AD47"/></a:accent6><a:hlink><a:srgbClr val="0563C1"/></a:hlink><a:folHlink><a:srgbClr val="954F72"/></a:folHlink></a:clrScheme>
+<a:fontScheme name="Office"><a:majorFont>${fonts('Calibri Light')}</a:majorFont><a:minorFont>${fonts('Calibri')}</a:minorFont></a:fontScheme>
+<a:fmtScheme name="Office">
+<a:fillStyleLst>${fill}${fill}${fill}</a:fillStyleLst>
+<a:lnStyleLst>${line}${line}${line}</a:lnStyleLst>
+${effect}
+<a:bgFillStyleLst>${bgFill}${bgFill}${bgFill}</a:bgFillStyleLst>
+</a:fmtScheme>
+</a:themeElements>
+<a:objectDefaults/><a:extraClrSchemeLst/>
+</a:theme>`;
+}
+
+function contentTypesXml() {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+<Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/>
+<Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/>
+<Override PartName="/word/fontTable.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.fontTable+xml"/>
+<Override PartName="/word/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>
+<Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>
+<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>
+<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
+<Override PartName="/docProps/custom.xml" ContentType="application/vnd.openxmlformats-officedocument.custom-properties+xml"/>
+<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
+</Types>`;
+}
+
+function rootRelsXml() {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>
+<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>
+<Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties" Target="docProps/custom.xml"/>
+</Relationships>`;
+}
+
+function coreXml(title, author, iso) {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<dc:title>${A(title)}</dc:title>
+<dc:creator>${A(author)}</dc:creator>
+<cp:lastModifiedBy>${A(author)}</cp:lastModifiedBy>
+<dc:description>Generated from Markdown by md2docx/convert.js</dc:description>
+<dcterms:created xsi:type="dcterms:W3CDTF">${iso}</dcterms:created>
+<dcterms:modified xsi:type="dcterms:W3CDTF">${iso}</dcterms:modified>
+</cp:coreProperties>`;
+}
+
+function customXml(canonical, stats, sources) {
+  const props = [
+    ['md2docxCanonicalTextSHA256', canonical.hash],
+    ['md2docxCanonicalChars', String(canonical.chars)],
+    ['md2docxCanonicalCharsNoSpaces', String(canonical.charsNoSpaces)],
+    ['md2docxGenerator', 'md2docx/convert.js (Node.js, no pandoc)'],
+    ['md2docxSourceFiles', String(sources.length)],
+    ['md2docxParagraphs', String(stats.paragraphs)],
+    ['md2docxTables', String(stats.tables)],
+    ['md2docxCodeBlocks', String(stats.codeBlocks)],
+    ['md2docxListItems', String(stats.listItems)],
+  ];
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/custom-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
+${props
+  .map(
+    ([name, value], i) =>
+      `<property fmtid="{D5CDD505-2E9C-101B-9397-08002B2CF9AE}" pid="${
+        i + 2
+      }" name="${A(name)}"><vt:lpwstr>${A(value)}</vt:lpwstr></property>`
+  )
+  .join('')}
+</Properties>`;
+}
+
+function appXml(title, stats) {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
+<Application>md2docx (Node.js OOXML writer)</Application>
+<DocSecurity>0</DocSecurity><ScaleCrop>false</ScaleCrop>
+<HeadingPairs><vt:vector size="2" baseType="variant"><vt:variant><vt:lpstr>Title</vt:lpstr></vt:variant><vt:variant><vt:i4>1</vt:i4></vt:variant></vt:vector></HeadingPairs>
+<TitlesOfParts><vt:vector size="1" baseType="lpstr"><vt:lpstr>${A(title)}</vt:lpstr></vt:vector></TitlesOfParts>
+<Company></Company><Manager></Manager>
+<Pages>${stats.pages || 1}</Pages><Words>${stats.words}</Words><Characters>${stats.chars}</Characters>
+<CharactersWithSpaces>${stats.charsWithSpaces}</CharactersWithSpaces><Paragraphs>${stats.paragraphs}</Paragraphs>
+<Lines>${stats.lines}</Lines><AppVersion>16.0000</AppVersion>
+</Properties>`;
+}
+
+function headerXml(title) {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<w:p><w:pPr><w:pStyle w:val="Header"/></w:pPr><w:r>${t(title)}</w:r></w:p>
+</w:hdr>`;
+}
+
+function footerXml() {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<w:p><w:pPr><w:pStyle w:val="Footer"/></w:pPr><w:r>${t('Page ')}</w:r>
+<w:fldSimple w:instr=" PAGE "><w:r>${t('1')}</w:r></w:fldSimple><w:r>${t(' of ')}</w:r>
+<w:fldSimple w:instr=" NUMPAGES "><w:r>${t('1')}</w:r></w:fldSimple></w:p>
+</w:ftr>`;
+}
+
+/* ================================================================== *
+ * Body assembly
+ * ================================================================== */
+const PAGE_W = 11906;
+const MARGIN = 1418;
+const CONTENT_W = PAGE_W - MARGIN * 2;
+
+function para(pPr, runs) {
+  return `<w:p>${pPr || ''}${runs || ''}</w:p>`;
+}
+function pStyle(id, extra) {
+  return `<w:pPr><w:pStyle w:val="${id}"/>${extra || ''}</w:pPr>`;
+}
+const PAGE_BREAK_PARA = para('<w:pPr><w:spacing w:after="0"/></w:pPr>', '<w:r><w:br w:type="page"/></w:r>');
+
+/** The Word TOC field paragraph (levels 1-3, hyperlinked, marked dirty). */
+function tocFieldParagraphXml() {
+  return (
+    '<w:p><w:pPr><w:pStyle w:val="Normal"/><w:spacing w:after="60"/></w:pPr>' +
+    '<w:r><w:fldChar w:fldCharType="begin" w:dirty="true"/></w:r>' +
+    '<w:r><w:instrText xml:space="preserve">TOC \\o "1-3" \\h \\z \\u</w:instrText></w:r>' +
+    '<w:r><w:fldChar w:fldCharType="separate"/></w:r>' +
+    `<w:r><w:rPr><w:i/><w:color w:val="808080"/></w:rPr>${t(CANON_TOC_PLACEHOLDER)}</w:r>` +
+    '<w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>'
+  );
+}
+
+/**
+ * Synthesise the title page + TOC the corpus does not carry itself.
+ *
+ * When a volume is assembled from a corpus that has no "# " H1, there is no H1
+ * for the emitter to promote to the title page, so the volume would ship without
+ * a title page and without a TOC field. An output may therefore ask for one
+ * explicitly ("titlePage": true in the split manifest).
+ *
+ * The injected blocks deliberately reuse the ordinary "toc" block type so the
+ * title page and the TOC field are part of the canonical text as well - the
+ * converter's own body digest therefore stays self-consistent and the measure
+ * it publishes is not inflated by text the source could never produce.
+ */
+function withSyntheticTitlePage(blocks, opt) {
+  if (!blocks.length) return blocks;
+  const realTitle = blocks[0] && blocks[0].type === 'heading' && blocks[0].level === 1;
+  const hasToc = blocks.some((b) => b.type === 'toc');
+  if (realTitle && hasToc) return blocks;
+  const out = [];
+  if (!realTitle) {
+    out.push({ type: 'heading', level: 1, text: stripInlineSyntax(opt.title || '') });
+    if (opt.subtitle) out.push({ type: 'subtitle', text: String(opt.subtitle) });
+    if (!hasToc) out.push({ type: 'toc' });
+  }
+  for (const b of blocks) out.push(b);
+  return out;
+}
+
+/**
+ * Emit OOXML for a block list, invoking ctx.emit(chunkXml) for each fragment.
+ * The visible text of each fragment is measured separately, by scanning the XML
+ * on its way into the ZIP stream (see TextMeasurer), so the digest can never
+ * drift from what was actually written.
+ */
+function emitBlocks(blocks, ctx) {
+  const stats = ctx.stats;
+  const emit = ctx.emit;
+  let firstH1 = true;
+
+  // Every fragment goes through this wrapper rather than ctx.emit directly, so
+  // the ordered serialiser covers the whole emitter: pPr/rPr/tblPr children are
+  // re-ordered into their canonical WordprocessingML sequence on the way out,
+  // no matter which ad-hoc string in this function produced them. That is what
+  // makes the fix structural instead of one-off.
+  const emitBatch = (chunk) => {
+    if (chunk) emit(normalizeOrderedElements(chunk));
+  };
+
+  for (const b of blocks) {
+    switch (b.type) {
+      case 'heading': {
+        const lvl = Math.min(6, Math.max(1, b.level));
+        if (lvl === 1 && firstH1 && !ctx.isContinuation) {
+          firstH1 = false;
+          emitBatch(para(pStyle('TitlePageTitle'), inlineToXml(b.text, ctx.relAlloc)));
+          stats.paragraphs++;
+          stats.headings[1]++;
+          if (ctx.subtitle) {
+            emitBatch(para(pStyle('TitlePageSubtitle'), inlineToXml(ctx.subtitle, ctx.relAlloc)));
+            stats.paragraphs++;
+          }
+          emitBatch(PAGE_BREAK_PARA);
+          stats.paragraphs++;
+          continue;
+        }
+        if (lvl === 1) firstH1 = false;
+        emitBatch(para(pStyle('Heading' + lvl), inlineToXml(b.text, ctx.relAlloc)));
+        stats.paragraphs++;
+        stats.headings[lvl]++;
+        break;
+      }
+      case 'subtitle': {
+        // Only produced by withSyntheticTitlePage() for a corpus with no H1:
+        // the H1 path below the title-page branch already writes the subtitle.
+        emitBatch(para(pStyle('TitlePageSubtitle'), inlineToXml(b.text, ctx.relAlloc)));
+        stats.paragraphs++;
+        break;
+      }
+      case 'para': {
+        // A soft line break: the space before <w:br/> keeps the two lines from
+        // being fused into one word (HTML collapses the equivalent newline to a
+        // space), and it is what the markdown-side canonical join produces too.
+        const runs = b.lines.map((l) => inlineToXml(l, ctx.relAlloc)).join(' <w:r><w:br/></w:r>');
+        emitBatch(para('', runs));
+        stats.paragraphs++;
+        break;
+      }
+      case 'list': {
+        for (const it of b.items) {
+          let text = it.parts.join(' ');
+          const task = /^\[( |x|X)\]\s+(.*)$/.exec(text);
+          if (task) text = (task[1].toLowerCase() === 'x' ? '\u2611 ' : '\u2610 ') + task[2];
+          const pPr = `<w:pPr><w:pStyle w:val="ListParagraph"/><w:numPr><w:ilvl w:val="${
+            it.level
+          }"/><w:numId w:val="${
+            it.ordered ? 2 : 1
+          }"/></w:numPr><w:spacing w:before="0" w:after="60" w:line="276" w:lineRule="auto"/><w:jc w:val="left"/></w:pPr>`;
+          emitBatch(para(pPr, inlineToXml(text, ctx.relAlloc)));
+          stats.paragraphs++;
+          stats.listItems++;
+        }
+        break;
+      }
+      case 'table': {
+        const cols = Math.max(1, b.header.length);
+        const width = Math.floor(CONTENT_W / cols);
+        const border =
+          '<w:tblBorders><w:top w:val="single" w:sz="6" w:space="0" w:color="7F7F7F"/><w:left w:val="single" w:sz="6" w:space="0" w:color="7F7F7F"/><w:bottom w:val="single" w:sz="6" w:space="0" w:color="7F7F7F"/><w:right w:val="single" w:sz="6" w:space="0" w:color="7F7F7F"/><w:insideH w:val="single" w:sz="6" w:space="0" w:color="7F7F7F"/><w:insideV w:val="single" w:sz="6" w:space="0" w:color="7F7F7F"/></w:tblBorders>';
+        emitBatch(
+          `<w:tbl><w:tblPr><w:tblStyle w:val="TableGrid"/><w:tblW w:w="${CONTENT_W}" w:type="dxa"/><w:tblLayout w:type="fixed"/>` +
+            border +
+            `<w:tblCellMar><w:top w:w="60" w:type="dxa"/><w:left w:w="100" w:type="dxa"/><w:bottom w:w="60" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>` +
+            b.header.map(() => `<w:gridCol w:w="${width}"/>`).join('') +
+            '</w:tblGrid>'
+        );
+        // header row: shaded + repeats across page breaks
+        emitBatch(
+          '<w:tr><w:trPr><w:tblHeader/><w:cantSplit/></w:trPr>' +
+            b.header
+              .map(
+                (h, ci) =>
+                  `<w:tc><w:tcPr><w:tcW w:w="${width}" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="D9E2F3"/><w:vAlign w:val="center"/></w:tcPr>` +
+                  para(
+                    `<w:pPr><w:spacing w:before="40" w:after="40" w:line="240" w:lineRule="auto"/><w:jc w:val="${
+                      b.align[ci] || 'left'
+                    }"/></w:pPr>`,
+                    inlineToXml(h, ctx.relAlloc).replace(
+                      /<w:r>(?!<w:rPr>)/g,
+                      '<w:r><w:rPr><w:b/></w:rPr>'
+                    )
+                  ) +
+                  '</w:tc>'
+              )
+              .join('') +
+            '</w:tr>'
+        );
+        for (const row of b.rows) {
+          emitBatch(
+            '<w:tr><w:trPr><w:cantSplit/></w:trPr>' +
+              b.header
+                .map((_, ci) => {
+                  const cell = row[ci] === undefined ? '' : row[ci];
+                  return (
+                    `<w:tc><w:tcPr><w:tcW w:w="${width}" w:type="dxa"/><w:vAlign w:val="top"/></w:tcPr>` +
+                    para(
+                      `<w:pPr><w:spacing w:before="40" w:after="40" w:line="240" w:lineRule="auto"/><w:jc w:val="${
+                        b.align[ci] || 'left'
+                      }"/></w:pPr>`,
+                      inlineToXml(cell, ctx.relAlloc)
+                    ) +
+                    '</w:tc>'
+                  );
+                })
+                .join('') +
+              '</w:tr>'
+          );
+        }
+        emitBatch('</w:tbl>' + para('<w:pPr><w:spacing w:after="0" w:line="120" w:lineRule="auto"/></w:pPr>', ''));
+        stats.tables++;
+        stats.paragraphs++;
+        break;
+      }
+      case 'code': {
+        stats.codeBlocks++;
+        stats.codeLines += b.lines.length;
+        if (b.lang) {
+          emitBatch(
+            para(
+              pStyle('SourceCode', '<w:spacing w:before="160" w:after="0"/>'),
+              `<w:r><w:rPr><w:noProof/><w:rFonts w:ascii="Consolas" w:hAnsi="Consolas"/><w:b/><w:sz w:val="17"/><w:color w:val="7F7F7F"/></w:rPr>${t(
+                b.lang
+              )}</w:r>`
+            )
+          );
+          stats.paragraphs++;
+        }
+        if (b.lines.length === 0) {
+          emitBatch(para(pStyle('SourceCode', '<w:spacing w:before="160" w:after="160"/>'), '<w:r><w:rPr><w:noProof/></w:rPr><w:t> </w:t></w:r>'));
+          stats.paragraphs++;
+        }
+        for (let k = 0; k < b.lines.length; k++) {
+          const text = b.lines[k].replace(/\t/g, '    ');
+          emitBatch(
+            para(
+              pStyle(
+                'SourceCode',
+                (k === 0 && !b.lang ? '<w:spacing w:before="160"/>' : '') +
+                  (k === b.lines.length - 1 ? '<w:spacing w:after="160"/>' : '')
+              ),
+              `<w:r><w:rPr><w:noProof/><w:rFonts w:ascii="Consolas" w:hAnsi="Consolas"/><w:sz w:val="19"/><w:szCs w:val="19"/></w:rPr>${t(
+                text
+              )}</w:r>`
+            )
+          );
+          stats.paragraphs++;
+        }
+        break;
+      }
+      case 'quote': {
+        let group = [];
+        const flushQuote = () => {
+          if (!group.length) return;
+          emitBatch(para(pStyle('BlockQuote'), inlineToXml(group.join(' '), ctx.relAlloc)));
+          stats.paragraphs++;
+          stats.quotes++;
+          group = [];
+        };
+        for (const p of b.text.split('\n')) {
+          if (/^\s*$/.test(p)) flushQuote();
+          else group.push(p.trim());
+        }
+        flushQuote();
+        break;
+      }
+      case 'hr': {
+        // A horizontal rule is a paragraph border with no visible glyph, so it
+        // carries a U+2015 sentinel run: Word renders it invisibly, and the text
+        // scanner measures it, which keeps the markdown-side canonical text (which
+        // also uses U+2015 for a rule) comparable character for character.
+        emitBatch(para(pStyle('HorizontalRule'), `<w:r><w:rPr><w:sz w:val="2"/></w:rPr>${t(CANON_RULE)}</w:r>`));
+        stats.paragraphs++;
+        stats.rules++;
+        break;
+      }
+      case 'figure': {
+        stats.figures++;
+        emitBatch(
+          para(
+            pStyle('FigurePlaceholder'),
+            `<w:r><w:rPr><w:b/><w:color w:val="C00000"/><w:rFonts w:ascii="Consolas" w:hAnsi="Consolas"/></w:rPr>${t(
+              CANON_FIGURE_PREFIX
+            )}</w:r>` +
+              `<w:r><w:rPr><w:color w:val="C00000"/><w:rFonts w:ascii="Consolas" w:hAnsi="Consolas"/></w:rPr>${t(
+                b.text
+              )}</w:r>`
+          )
+        );
+        stats.paragraphs++;
+        break;
+      }
+      case 'toc': {
+        emitBatch(para(pStyle('TOCHeading'), `<w:r>${t('Table of Contents')}</w:r>`));
+        stats.paragraphs++;
+        emitBatch(
+          '<w:p><w:pPr><w:pStyle w:val="Normal"/><w:spacing w:after="60"/></w:pPr>' +
+            '<w:r><w:fldChar w:fldCharType="begin" w:dirty="true"/></w:r>' +
+            '<w:r><w:instrText xml:space="preserve">TOC \\o "1-3" \\h \\z \\u</w:instrText></w:r>' +
+            '<w:r><w:fldChar w:fldCharType="separate"/></w:r>' +
+            `<w:r><w:rPr><w:i/><w:color w:val="808080"/></w:rPr>${t(CANON_TOC_PLACEHOLDER)}</w:r>` +
+            '<w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>'
+        );
+        stats.paragraphs++;
+        emitBatch(PAGE_BREAK_PARA);
+        stats.paragraphs++;
+        break;
+      }
+      default:
+        break;
+    }
+  }
+  ctx.isContinuation = true;
+}
+
+/* ================================================================== *
+ * XML text scanner: measures the visible text written to document.xml
+ *
+ * It walks the byte stream counting <w:t> content and paragraph boundaries. The
+ * completeness digest is taken from THIS sweep, so the digest always describes
+ * what was actually written to the package rather than what the writer intended.
+ *
+ * Chunk-boundary safety: the buffer is only consumed up to a safe point. While
+ * inside a text node the buffer is held until the closing </w:t> is seen; the
+ * rest is consumed per complete tag. Callers also batch their writes (see
+ * FLUSH_BYTES in buildDocument) so a bare space run can never be stranded.
+ * ================================================================== */
+class XmlTextScanner {
+  constructor() {
+    this.buf = '';
+    this.paragraphs = [];
+    this.current = [];
+    this.inTextKind = null; // 't' | 'w:instrText' | 'w:delText' | null
+    this.total = 0;
+  }
+
+  push(chunk) {
+    this.buf += chunk;
+    this._scan(false);
+  }
+
+  _scan(final) {
+    let i = 0;
+    while (true) {
+      if (this.inTextKind) {
+        const closeTag = this.inTextKind === 't' ? '</w:t>' : '</' + this.inTextKind + '>';        const end = this.buf.indexOf(closeTag, i);
+        if (end === -1) {
+          if (final) {
+            throw new Error('md2docx: unterminated <' + this.inTextKind + '> while measuring text');
+          }
+          break; // keep the partial text node for the next chunk
+        }
+        if (this.inTextKind === 't') {
+          this.current.push(unesc(this.buf.slice(i, end)));
+        }
+        this.inTextKind = null;
+        i = end + closeTag.length;
+        continue;
+      }
+      const start = this.buf.indexOf('<', i);
+      if (start === -1) {
+        i = this.buf.length;
+        break;
+      }
+      const gt = this.buf.indexOf('>', start);
+      if (gt === -1) break; // partial tag at the tail: keep it for the next chunk
+      if (start > i) {
+        // Text that sits between two tags. This is real content: a run may be a
+        // bare space (emitted before <w:br/> to separate two soft-wrapped lines),
+        // so dropping it would fuse the words on either side. Word ignores such
+        // whitespace, but the completeness measurement must not.
+        this.current.push(unesc(this.buf.slice(i, start)));
+      }
+      const tag = this.buf.slice(start, gt + 1);
+      if (/^<w:t(?:\s[^>]*)?>$/.test(tag)) {
+        this.inTextKind = 't';
+        i = gt + 1;
+        continue;
+      }
+      if (/^<w:t(?:\s[^>]*)?\/>$/.test(tag)) {
+        i = gt + 1; // self-closing <w:t/> contributes nothing, not even a separator
+        continue;
+      }
+      // Field instructions and tracked-deletion text are not visible content:
+      // <w:instrText> can hold "TOC \o \"1-3\" ..." or " PAGE ", which Word never
+      // shows. They must be excluded or the completeness digest would report
+      // phantom text that has no counterpart in the Markdown.
+      if (/^<w:instrText(?:\s[^>]*)?>$/.test(tag)) {
+        this.inTextKind = 'w:instrText';
+        i = gt + 1;
+        continue;
+      }
+      if (/^<w:delText(?:\s[^>]*)?>$/.test(tag)) {
+        this.inTextKind = 'w:delText';
+        i = gt + 1;
+        continue;
+      }
+      if (tag === '</w:instrText>' || tag === '</w:delText>') {
+        this.inTextKind = null;
+        i = gt + 1;
+        continue;
+      }
+      if (tag === '</w:p>' || /^<w:p\s/.test(tag)) {
+        this._flushParagraph();
+        i = gt + 1;
+        continue;
+      }
+      i = gt + 1;
+    }
+    this.buf = this.buf.slice(i);
+    if (final) {
+      this._flushParagraph();
+      this.buf = '';
+    }
+  }
+
+  _flushParagraph() {
+    // Concatenate the runs FIRST, then trim once. A whitespace-only run (the
+    // space emitted before a <w:br/>) must not be trimmed away, or "... a soft"
+    // and "line break ..." would be measured as the single word "softline".
+    // canon() then collapses whitespace, and the markdown side reproduces that
+    // exact collapse, so both digests are comparable.
+    const text = this.current.join('').trim();
+    this.total += text.length;
+    if (text) {
+      this.paragraphs.push(text);
+
+    }
+    this.current = [];
+  }
+
+  finish() {
+    this._scan(true);
+    return this.total;
+  }
+}
+/* ================================================================== *
+ * Argument / config handling
+ * ================================================================== */
+function parseArgs(argv) {
+  const out = {
+    inputs: [],
+    config: null,
+    output: null,
+    title: null,
+    author: 'FYP Proposal',
+    subtitle: null,
+    _positional: [],
+  };
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === '--input' || a === '-i') {
+      const v = argv[++i];
+      if (!v) throw new Error('--input needs a value');
+      out.inputs.push(...v.split(/[,;]/).filter(Boolean));
+    } else if (a === '--output' || a === '-o') out.output = argv[++i];
+    else if (a === '--title' || a === '-t') out.title = argv[++i];
+    else if (a === '--author') out.author = argv[++i];
+    else if (a === '--subtitle') out.subtitle = argv[++i];
+    else if (a === '--config' || a === '-c') out.config = argv[++i];
+    else if (a === '--selftest') out.selftest = true;
+    else if (a === '--help' || a === '-h') out.help = true;
+    else if (!a.startsWith('-')) out._positional.push(a);
+  }
+
+  /*
+   * Positional convention:  <input.md> [more.md ...] <output.docx> [title]
+   *
+   * The output is the FIRST positional with a .docx extension (that is where the
+   * user always puts it), and everything after it is treated as the title. Using
+   * the LAST .docx-looking positional instead is wrong: a perfectly ordinary title
+   * such as "Sample.docx Migration Report" would be mistaken for the output path.
+   */
+  if (!out.output) {
+    const idx = out._positional.findIndex((p) => /\.docx$/i.test(p));
+    if (idx >= 0) {
+      out.output = out._positional[idx];
+      out.inputs.push(...out._positional.slice(0, idx));
+      const rest = out._positional.slice(idx + 1);
+      if (rest.length && !out.title) out.title = rest.join(' ');
+    } else {
+      out.inputs.push(...out._positional);
+    }
+  } else {
+    out.inputs.push(...out._positional);
+  }
+  delete out._positional;
+  return out;
+}
+
+const USAGE = `md2docx convert.js - Markdown to .docx (no pandoc required)
+
+  node convert.js <input.md> [more.md ...] <output.docx> [title]
+  node convert.js --input a.md,b.md --output out.docx [--title "T"] [--subtitle "S"]
+  node convert.js --config plan.json
+  node convert.js --selftest
+
+--config JSON shape:
+  { "title": "...", "author": "...", "subtitle": "...",
+    "inputs": ["01.md","02.md"],
+    "outputs": [ { "path": "all.docx", "title": "Combined" },
+                 { "path": "vol1.docx", "title": "Volume 1",
+                   "rules": { "include": ["1-6","12-20"], "exclude": [], "match": null,
+                              "frontMatter": true } } ] }
+
+Relative paths inside a config are resolved against the config file's directory.
+An output may also set "titlePage": true to synthesise a title page and a TOC
+field when the corpus has no "# " H1 to promote (e.g. "## 7. Cisco Networking").
+
+--selftest runs the built-in parser/emitter assertions (table pipe handling,
+section keys, inline syntax) and exits non-zero on the first failure.`;
+
+/* ================================================================== *
+ * Built-in self-test
+ *
+ * table pipe handling is the part most likely to silently corrupt a document, so
+ * the exact rules are asserted here rather than only described in comments:
+ *   node convert.js --selftest
+ * ================================================================== */
+function runSelfTest() {
+  const results = [];
+  const check = (name, actual, expected) => {
+    const a = JSON.stringify(actual);
+    const e = JSON.stringify(expected);
+    const ok = a === e;
+    results.push({ name, ok, actual: a, expected: e });
+    return ok;
+  };
+  const count = (row) => splitTableRow(row).length;
+
+  // --- escaped pipes -------------------------------------------------------
+  check('\\| becomes a literal pipe in ONE cell', splitTableRow('| a | b \\| c | d |'), [
+    'a',
+    'b | c',
+    'd',
+  ]);
+  check('\\| cell count is 3', count('| a | b \\| c | d |'), 3);
+  check('real-corpus escaped-pipe cell', splitTableRow('| `DL-{Share}-{RW\\|RO}` | Domain Local | Mapped |'), [
+    '`DL-{Share}-{RW|RO}`',
+    'Domain Local',
+    'Mapped',
+  ]);
+
+  // --- pipes inside inline code spans -------------------------------------
+  check('pipe inside a code span is content', splitTableRow('| `a|b` | plain | x |'), [
+    '`a|b`',
+    'plain',
+    'x',
+  ]);
+  check('several code spans still resynchronise', splitTableRow('| `a|b` | `c|d` | e |'), [
+    '`a|b`',
+    '`c|d`',
+    'e',
+  ]);
+  check('code span with braces', splitTableRow('| Member `{A|B|C|D}` | path | z |'), [
+    'Member `{A|B|C|D}`',
+    'path',
+    'z',
+  ]);
+  check('awk example keeps its pipe', count("| 2 | x | `awk -F: '($2==\"\"){print $1}' /etc/shadow` | y |"), 4);
+  // the exact row from sections/06-automation.md line 1129 of the real corpus
+  check(
+    'real-corpus awk row keeps 5 cells',
+    splitTableRow(
+      "| 2 | Assert no account has an empty password | `ansible.builtin.command: awk -F: '($2==\"\"){print $1}' /etc/shadow` + `assert` | A fail-closed control |"
+    ),
+    [
+      '2',
+      'Assert no account has an empty password',
+      "`ansible.builtin.command: awk -F: '($2==\"\"){print $1}' /etc/shadow` + `assert`",
+      'A fail-closed control',
+    ]
+  );
+  check(
+    'real-corpus template row keeps 5 cells',
+    splitTableRow(
+      '| 3 | Lock the template bootstrap account | `ansible.builtin.user` with `password_lock: true` and `shell: /usr/sbin/nologin` | `fypadmin` from `UBU2404-TEMPLATE-01` |'
+    ),
+    [
+      '3',
+      'Lock the template bootstrap account',
+      '`ansible.builtin.user` with `password_lock: true` and `shell: /usr/sbin/nologin`',
+      '`fypadmin` from `UBU2404-TEMPLATE-01`',
+    ]
+  );
+
+  // --- escaping wins over code spans --------------------------------------
+  check('\\| inside a code span is literal too', splitTableRow('| `a\\|b` | c |'), ['`a|b`', 'c']);
+
+  // --- ragged rows ---------------------------------------------------------
+  check('short row yields fewer cells (caller pads)', count('| a | b |'), 2);
+  check('long row yields more cells (caller truncates/reports)', count('| a | b | c | d |'), 4);
+
+  // --- section keys --------------------------------------------------------
+  check('key: "3 Title"', leadingSectionKey('3 Microsoft Infrastructure'), '3');
+  check('key: "3.2 Title"', leadingSectionKey('3.2 Active Directory'), '3');
+  check('key: "Volume Section 3: X"', leadingSectionKey('Volume Section 3: Linux Platform'), '3');
+  check('key: "Chapter 7 - X"', leadingSectionKey('Chapter 7 - Automation'), '7');
+  check('key: "Appendix A"', leadingSectionKey('Appendix A'), 'A');
+
+  // --- range expansion -----------------------------------------------------
+  check('range 1-6 expands', [...expandRangeList(['1-6'])].sort(), ['1', '2', '3', '4', '5', '6']);
+  check('mixed list', [...expandRangeList(['3', 'A'])].sort(), ['3', 'A']);
+
+  // --- section boundary derives from the content's shallowest heading -------
+  // A corpus with NO H1 (real case: proposal/sections, "## 7. Cisco Networking")
+  // must still split by section number instead of collapsing into front matter.
+  const h2Only = [
+    { type: 'para', lines: ['preamble'] },
+    { type: 'heading', level: 2, text: 'Executive Summary' },
+    { type: 'para', lines: ['front matter body'] },
+    { type: 'heading', level: 2, text: '7. Microsoft Server Networking' },
+    { type: 'para', lines: ['seven'] },
+    { type: 'heading', level: 2, text: '8. Linux Server Administration' },
+    { type: 'para', lines: ['eight'] },
+    { type: 'heading', level: 3, text: '8.1 Sub' },
+    { type: 'para', lines: ['sub'] },
+  ];
+  check('H2-only: shallowest heading level is 2', groupHeadingLevel(h2Only), 2);
+  check('H1-based: shallowest heading level is 1', groupHeadingLevel([{ type: 'heading', level: 1, text: '1. X' }]), 1);
+  check(
+    'H2-only: include 7-11 keeps 7 and 8',
+    applySectionRules(h2Only, { include: ['7-11'], frontMatter: false }).map((b) => b.text || b.lines[0]),
+    ['7. Microsoft Server Networking', 'seven', '8. Linux Server Administration', 'eight', '8.1 Sub', 'sub']
+  );
+  check(
+    'H2-only: include 99 selects nothing (rules really are applied)',
+    applySectionRules(h2Only, { include: ['99'], frontMatter: false }).map((b) => b.text || b.lines[0]),
+    []
+  );
+  check(
+    'H2-only: exclude 8 drops section 8 and keeps its H3 nested with it',
+    applySectionRules(h2Only, { include: ['7-11'], exclude: ['8'], frontMatter: false }).map((b) => b.text || b.lines[0]),
+    ['7. Microsoft Server Networking', 'seven']
+  );
+  check(
+    'key of "8. Linux Server Administration"',
+    leadingSectionKey('8. Linux Server Administration'),
+    '8'
+  );
+  check('range 7-11 expands', [...expandRangeList(['7-11'])].sort(), ['10', '11', '7', '8', '9']);
+  check(
+    'H2-only: include 7 keeps only section 7 (unnumbered H2 is front matter)',
+    applySectionRules(h2Only, { include: ['7'], frontMatter: false }).map((b) => b.text || b.lines[0]),
+    ['7. Microsoft Server Networking', 'seven']
+  );
+  check(
+    'H2-only: frontMatter true keeps the unnumbered blocks before section 1',
+    applySectionRules(h2Only, { include: ['7'], frontMatter: true }).map((b) => b.text || b.lines[0]),
+    ['preamble', 'Executive Summary', 'front matter body', '7. Microsoft Server Networking', 'seven']
+  );
+  check(
+    'H2-only: sectionKeyOfGroup reads the group heading',
+    sectionKeyOfGroup({ blocks: [{ type: 'heading', level: 3, text: 'x' }, { type: 'heading', level: 2, text: '9. Cisco Networking' }] }, 2),
+    '9'
+  );
+  // The title page + TOC a corpus without H1 cannot produce on its own.
+  const synth = withSyntheticTitlePage(
+    [{ type: 'heading', level: 2, text: '7. X' }, { type: 'para', lines: ['body'] }],
+    { title: 'T', subtitle: 'S' }
+  );
+  check('title page synthesis injects H1 + subtitle + TOC', synth.map((b) => b.type), ['heading', 'subtitle', 'toc', 'heading', 'para']);
+  check('title page synthesis leaves a real H1 document alone', withSyntheticTitlePage(
+    [{ type: 'heading', level: 1, text: 'T' }, { type: 'toc' }, { type: 'para', lines: ['b'] }],
+    { title: 'T' }
+  ).map((b) => b.type), ['heading', 'toc', 'para']);
+  check('title page synthesis inserts no TOC when the body already has one', withSyntheticTitlePage(
+    [{ type: 'heading', level: 2, text: '7. X' }, { type: 'toc' }],
+    { title: 'T' }
+  ).map((b) => b.type), ['heading', 'heading', 'toc']);
+
+  // --- inline syntax -------------------------------------------------------
+  check('bold/italic stripped', stripInlineSyntax('**b** *i*'), 'b i');
+  check('link label kept', stripInlineSyntax('[label](https://x)'), 'label');
+  check('autolink unwrapped', stripInlineSyntax('<https://x>'), 'https://x');
+  check('code span content survives', stripInlineSyntax('`a_*b*_c`'), 'a_*b*_c');
+  check('XML-unsafe chars escaped', esc('a & b < c > d " e'), 'a &amp; b &lt; c &gt; d &quot; e');
+  check('illegal XML chars stripped', stripIllegalXmlChars('a\u0000b\u0008c'), 'abc');
+  check('CRLF normalised', normaliseNewlines('a\r\nb\rc'), 'a\nb\nc');
+
+  // --- code spans vs emphasis: tokenisation ORDER ---------------------------
+  //
+  // Code spans are tokenised first and are OPAQUE. These assertions pin the
+  // emission ([props, visible text] per run) so that a future edit which puts
+  // the emphasis scan back in front of the code-span scan fails here rather
+  // than in the delivered documents.
+  //
+  // The historical defect: `Keep strict `rp_filter` on this design` closed the
+  // emphasis delimiter on the '_' INSIDE the span, producing the italic run
+  // "filter ... `rp" - underscores eaten, backticks literal, and one span split
+  // across three runs.
+  const runShape = (xml) =>
+    (xml.match(/<w:r>(?:<w:rPr>[\s\S]*?<\/w:rPr>)?<w:t[^>]*>[\s\S]*?<\/w:t><\/w:r>/g) || []).map((r) => {
+      const p = /<w:rPr>([\s\S]*?)<\/w:rPr>/.exec(r);
+      const tt = /<w:t[^>]*>([\s\S]*?)<\/w:t>/.exec(r);
+      return [p ? p[1] : '', tt ? tt[1].replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"') : ''];
+    });
+  const CODE = '<w:rStyle w:val="MonoChar"/>';
+  const ITAL = '<w:i/>';
+  const BOLD = '<w:b/>';
+
+  check(
+    'underscore inside a code span is literal (the rp_filter defect)',
+    runShape(inlineToXml('Keep strict `rp_filter` on this design', null)),
+    [['', 'Keep strict '], [CODE, 'rp_filter'], ['', ' on this design']]
+  );
+  check(
+    'the same defect in a two-span table cell',
+    runShape(inlineToXml('Keep strict `rp_filter` on this design (the pair is symmetric), and use `rp_filter = 2` (loose)', null)),
+    [
+      ['', 'Keep strict '],
+      [CODE, 'rp_filter'],
+      ['', ' on this design (the pair is symmetric), and use '],
+      [CODE, 'rp_filter = 2'],
+      ['', ' (loose)'],
+    ]
+  );
+  check(
+    'asterisk inside a code span is literal',
+    runShape(inlineToXml('the `a*b` token is literal', null)),
+    [['', 'the '], [CODE, 'a*b'], ['', ' token is literal']]
+  );
+  check(
+    'tilde and mixed markers inside a code span are literal',
+    runShape(inlineToXml('the `a~~b~~_c_*d*` token is literal', null)),
+    [['', 'the '], [CODE, 'a~~b~~_c_*d*'], ['', ' token is literal']]
+  );
+  check(
+    'a delimiter may not start inside a span: emphasis wraps the span whole',
+    runShape(inlineToXml('_a `b_c` d_', null)),
+    [[ITAL, 'a '], [CODE, 'b_c'], [ITAL, ' d']]
+  );
+  check(
+    'a delimiter may not END inside a span (asterisk form)',
+    runShape(inlineToXml('*a `b_c` d*', null)),
+    [[ITAL, 'a '], [CODE, 'b_c'], [ITAL, ' d']]
+  );
+  check(
+    '* immediately adjacent to a span boundary is emphasis, not span content',
+    runShape(inlineToXml('*x* `rp_filter` *y*', null)),
+    [[ITAL, 'x'], ['', ' '], [CODE, 'rp_filter'], ['', ' '], [ITAL, 'y']]
+  );
+  check(
+    '_ immediately adjacent to a span boundary is emphasis, not span content',
+    runShape(inlineToXml('_x_ `rp_filter` _y_', null)),
+    [[ITAL, 'x'], ['', ' '], [CODE, 'rp_filter'], ['', ' '], [ITAL, 'y']]
+  );
+  check(
+    'two code spans on one line each stay whole',
+    runShape(inlineToXml('`rp_filter` and `tcp_syncookies` both', null)),
+    [[CODE, 'rp_filter'], ['', ' and '], [CODE, 'tcp_syncookies'], ['', ' both']]
+  );
+  check(
+    'a span containing a space is still one opaque run',
+    runShape(inlineToXml('run `sudo sysctl -a | grep -E "ip_forward|rp_filter"` now', null)),
+    [['', 'run '], [CODE, 'sudo sysctl -a | grep -E "ip_forward|rp_filter"'], ['', ' now']]
+  );
+  check(
+    'bold across a span stays legal and the span stays whole',
+    runShape(inlineToXml('**a `b_c` d**', null)),
+    [[BOLD, 'a '], [CODE, 'b_c'], [BOLD, ' d']]
+  );
+  check(
+    'an escaped backtick is text, so an underscore after it is still emphasis',
+    runShape(inlineToXml('a \\`b_c\\` _d e_', null)),
+    [['', 'a `b_c` '], [ITAL, 'd e']]
+  );
+
+  // ======================================================================
+  // Schema-order regression assertions.
+  //
+  // The expected sequences below are the child order Microsoft's Open XML SDK
+  // 2.9.1 declares for each complex type (read from the assembly's property
+  // order and confirmed with OpenXmlValidator). They are duplicated here on
+  // purpose: if a future edit reorders WP_ORDER, these assertions fail locally
+  // instead of surfacing as ~10,000 "unexpected child element" errors from
+  // tools/md2docx/sdk-validate.ps1.
+  // ======================================================================
+  const SDK_RPR_ORDER = [
+    'rStyle', 'rFonts', 'b', 'bCs', 'i', 'iCs', 'caps', 'smallCaps', 'strike', 'dstrike',
+    'outline', 'shadow', 'emboss', 'imprint', 'noProof', 'snapToGrid', 'vanish', 'webHidden',
+    'color', 'spacing', 'w', 'kern', 'position', 'sz', 'szCs', 'highlight', 'u', 'effect',
+    'bdr', 'shd', 'fitText', 'vertAlign', 'rtl', 'cs', 'em', 'lang', 'eastAsianLayout',
+    'specVanish', 'oMath',
+  ];
+  const SDK_PPR_ORDER = [
+    'pStyle', 'keepNext', 'keepLines', 'pageBreakBefore', 'framePr', 'widowControl', 'numPr',
+    'suppressLineNumbers', 'pBdr', 'shd', 'tabs', 'suppressAutoHyphens', 'kinsoku', 'wordWrap',
+    'overflowPunct', 'topLinePunct', 'autoSpaceDE', 'autoSpaceDN', 'bidi', 'adjustRightInd',
+    'snapToGrid', 'spacing', 'ind', 'contextualSpacing', 'mirrorIndents', 'suppressOverlap',
+    'jc', 'textDirection', 'textAlignment', 'textboxTightWrap', 'outlineLvl', 'divId', 'cnfStyle',
+    'rPr', 'sectPr', 'pPrChange',
+  ];
+  const SDK_TBLPR_ORDER = [
+    'tblStyle', 'tblpPr', 'tblOverlap', 'bidiVisual', 'tblStyleRowBandSize',
+    'tblStyleColBandSize', 'tblW', 'jc', 'tblCellSpacing', 'tblInd', 'tblBorders', 'shd',
+    'tblLayout', 'tblCellMar', 'tblLook', 'tblCaption', 'tblDescription', 'tblPrChange',
+  ];
+  const SDK_TCPR_ORDER = [
+    'cnfStyle', 'tcW', 'gridSpan', 'hMerge', 'vMerge', 'tcBorders', 'shd', 'noWrap',
+    'tcMar', 'textDirection', 'tcFitText', 'vAlign', 'hideMark', 'headers', 'tcPrChange',
+  ];
+  const SDK_SETTINGS_ORDER_HEAD = [
+    'zoom', 'defaultTabStop', 'characterSpacingControl', 'updateFields', 'compat',
+  ];
+  check('WP_ORDER.rPr equals the SDK RunProperties sequence', WP_ORDER.rPr, SDK_RPR_ORDER);
+  check('WP_ORDER.pPr equals the SDK ParagraphProperties sequence', WP_ORDER.pPr, SDK_PPR_ORDER);
+  check('WP_ORDER.tblPr equals the SDK TableProperties sequence', WP_ORDER.tblPr, SDK_TBLPR_ORDER);
+  check('WP_ORDER.tcPr equals the SDK TableCellProperties sequence', WP_ORDER.tcPr, SDK_TCPR_ORDER);
+  check(
+    'settings.xml emits zoom, defaultTabStop, characterSpacingControl, updateFields, compat (in order)',
+    (settingsXml().match(/<w:(zoom|defaultTabStop|characterSpacingControl|updateFields|compat)\b/g) || []).map(
+      (s) => s.slice(3)
+    ),
+    SDK_SETTINGS_ORDER_HEAD
+  );
+
+  /**
+   * Names of the DIRECT child elements of a property element. Only top-level
+   * names are collected: a container child (w:tblBorders, w:tblCellMar) is
+   * reported as itself, not as its own children.
+   */
+  const childNamesOf = (fragment) => {
+    const inner = fragment.replace(/^<w:[A-Za-z]+[^>]*>/, '').replace(/<\/w:[A-Za-z]+>$/, '');
+    return splitChildElements(inner)
+      .children.map((c) => elementNameOf(c))
+      .filter(Boolean);
+  };
+
+  // The exact bug that produced ~10,000 SDK errors: noProof before rFonts.
+  check(
+    'normalizeElement moves w:noProof AFTER w:rFonts (the dominant historical defect)',
+    childNamesOf(
+      normalizeElement(
+        'rPr',
+        '<w:rPr><w:noProof/><w:rFonts w:ascii="Consolas" w:hAnsi="Consolas"/><w:b/><w:sz w:val="17"/><w:color w:val="7F7F7F"/></w:rPr>',
+        WP_ORDER.rPr
+      )
+    ),
+    ['rFonts', 'b', 'noProof', 'color', 'sz']
+  );
+  check(
+    'normalizeElement moves w:sz AFTER w:color',
+    childNamesOf(normalizeElement('rPr', '<w:rPr><w:sz w:val="20"/><w:color w:val="595959"/></w:rPr>', WP_ORDER.rPr)),
+    ['color', 'sz']
+  );
+  check(
+    'normalizeElement moves w:tblLayout AFTER w:tblBorders (and w:tblCellMar after it)',
+    childNamesOf(
+      normalizeElement(
+        'tblPr',
+        '<w:tblPr><w:tblStyle w:val="TableGrid"/><w:tblW w:w="100" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders><w:top w:val="single"/></w:tblBorders><w:tblCellMar><w:top w:w="60" w:type="dxa"/></w:tblCellMar></w:tblPr>',
+        WP_ORDER.tblPr
+      )
+    ),
+    ['tblStyle', 'tblW', 'tblBorders', 'tblLayout', 'tblCellMar']
+  );
+  check(
+    'normalizeElement moves w:jc AFTER w:shd in w:pPr',
+    childNamesOf(normalizeElement('pPr', '<w:pPr><w:jc w:val="left"/><w:shd w:val="clear"/></w:pPr>', WP_ORDER.pPr)),
+    ['shd', 'jc']
+  );
+
+  // Whole-document sweep: the serialiser must fix every property element in a
+  // fragment, including several in one string, without touching anything else.
+  const dirtyDoc =
+    '<w:p><w:pPr><w:jc w:val="left"/><w:shd w:val="clear" w:fill="F2F2F2"/></w:pPr><w:r><w:rPr><w:noProof/><w:rFonts w:ascii="Consolas"/><w:sz w:val="19"/></w:rPr><w:t>x</w:t></w:r></w:p>';
+  const cleanDoc = normalizeOrderedElements(dirtyDoc);
+  check('normalizeOrderedElements fixes w:pPr in a whole paragraph', childNamesOf(cleanDoc.match(/<w:pPr>[\s\S]*?<\/w:pPr>/)[0]), [
+    'shd',
+    'jc',
+  ]);
+  check(
+    'normalizeOrderedElements fixes w:rPr in a whole paragraph',
+    childNamesOf(cleanDoc.match(/<w:rPr>[\s\S]*?<\/w:rPr>/)[0]),
+    ['rFonts', 'noProof', 'sz']
+  );
+  check('normalizeOrderedElements leaves w:t content untouched', cleanDoc.match(/<w:t>x<\/w:t>/)[0], '<w:t>x</w:t>');
+  check(
+    'normalizeOrderedElements is a no-op on already-canonical XML',
+    normalizeOrderedElements('<w:rPr><w:rFonts w:ascii="Consolas"/><w:color w:val="404040"/><w:sz w:val="19"/></w:rPr>'),
+    '<w:rPr><w:rFonts w:ascii="Consolas"/><w:color w:val="404040"/><w:sz w:val="19"/></w:rPr>'
+  );
+  check(
+    'the shipped styles.xml is canonical for SourceCode pPr (shd before jc) and rPr (color before sz)',
+    (() => {
+      const sx = stylesXml();
+      const sc = sx.match(/<w:style [^>]*w:styleId="SourceCode"[\s\S]*?<\/w:style>/)[0];
+      const p = sc.match(/<w:pPr>[\s\S]*?<\/w:pPr>/)[0];
+      const r = sc.match(/<w:rPr>[\s\S]*?<\/w:rPr>/)[0];
+      const monochar = sx.match(/<w:style [^>]*w:styleId="MonoChar"[\s\S]*?<\/w:style>/)[0];
+      const mr = monochar.match(/<w:rPr>[\s\S]*?<\/w:rPr>/)[0];
+      return [
+        childNamesOf(p). indexOf('shd') < childNamesOf(p).indexOf('jc'),
+        childNamesOf(r).indexOf('color') < childNamesOf(r).indexOf('sz'),
+        childNamesOf(mr).indexOf('color') < childNamesOf(mr).indexOf('sz'),
+        childNamesOf(sx.match(/<w:style [^>]*w:styleId="FigurePlaceholder"[\s\S]*?<\/w:style>/)[0].match(/<w:pPr>[\s\S]*?<\/w:pPr>/)[0]).indexOf('shd') <
+          childNamesOf(sx.match(/<w:style [^>]*w:styleId="FigurePlaceholder"[\s\S]*?<\/w:style>/)[0].match(/<w:pPr>[\s\S]*?<\/w:pPr>/)[0]).indexOf('spacing'),
+      ];
+    })(),
+    [true, true, true, true]
+  );
+
+  // ======================================================================
+  // Relationship-id allocator + package integrity assertions
+  // ======================================================================
+  check('relAllocator: ids are rId1..rIdN, unique and monotonic', (() => {
+    const A1 = createRelIdAllocator('rId');
+    const ids = [A1('part:header1.xml'), A1('part:footer1.xml'), A1('href:https://a'), A1('href:https://b')];
+    return [ids, new Set(ids).size];
+  })(), [['rId1', 'rId2', 'rId3', 'rId4'], 4]);
+  check('relAllocator: the same key reuses its id', (() => {
+    const A2 = createRelIdAllocator('rId');
+    const a = A2('href:https://x');
+    const b = A2('href:https://y');
+    const c = A2('href:https://x');
+    return [a, b, c, a === c];
+  })(), ['rId1', 'rId2', 'rId1', true]);
+  check('relAllocator: the historical 2-hyperlink collision cannot recur', (() => {
+    // Reproduce the exact old scheme and the new one on the same input.
+    // Old: header/footer ids were 11 + rels.length evaluated BEFORE the body
+    // streamed (so always rId11/rId12), while hyperlinks were rels.length + 10
+    // (so the first hyperlink was also rId11).
+    const urls = ['https://example.com/path?q=1&r=2', 'https://example.org'];
+    const oldHeaderRid = 11; // 11 + rels.length, evaluated before streaming
+    const oldFooterRid = 12;
+    // Old emitter: <w:hyperlink r:id="rId(rels.length + 10)"> with rels growing
+    // during the body, so the first two hyperlinks are rId11 and rId12 - the
+    // very ids already used by the header and footer.
+    const oldHyperlinkIds = ['rId11', 'rId12'];
+    const oldIds = ['rId1', 'rId2', 'rId3', 'rId4', 'rId5']
+      .concat(['rId' + oldHeaderRid, 'rId' + oldFooterRid])
+      .concat(oldHyperlinkIds);
+    // New scheme: the first five ids are reserved for the fixed part
+    // relationships, header/footer are reserved from the SAME allocator, and the
+    // hyperlink responses are remembered exactly as buildDocument does (it
+    // stores the returned id in the inline XML, it does not re-ask later).
+    const A3 = createRelIdAllocator('rId', 5);
+    const newIds = ['rId1', 'rId2', 'rId3', 'rId4', 'rId5'];
+    newIds.push(A3('part:header1.xml'));
+    newIds.push(A3('part:footer1.xml'));
+    const emittedHyperlinkIds = urls.map((u) => A3('href:' + u));
+    newIds.push(...emittedHyperlinkIds);
+    const relsPartIds = ['rId1', 'rId2', 'rId3', 'rId4', 'rId5'].concat(emittedHyperlinkIds);
+    relsPartIds.push(A3('part:header1.xml'), A3('part:footer1.xml'));
+    return [
+      oldIds.length - new Set(oldIds).size, // 2 duplicates -> the old bug
+      newIds.length - new Set(newIds).size, // 0 duplicates -> fixed
+      relsPartIds.length - new Set(relsPartIds).size, // 0 -> what lands in the .rels part
+    ];
+  })(), [2, 0, 0]);
+
+  /** checkThrows: the assertion must fire, with a message naming the offender. */
+  const checkThrows = (name, fn, mustContain) => {
+    let threw = null;
+    try {
+      fn();
+    } catch (err) {
+      threw = err;
+    }
+    const ok = !!threw && String(threw.message).indexOf(mustContain) !== -1;
+    results.push({
+      name,
+      ok,
+      actual: threw ? threw.message.slice(0, 120) : '(no error thrown)',
+      expected: 'throws containing ' + JSON.stringify(mustContain),
+    });
+    return ok;
+  };
+
+  check('assertRelsUnique accepts a unique .rels part', (() => {
+    try {
+      assertRelsUnique(
+        'word/_rels/document.xml.rels',
+        '<Relationships><Relationship Id="rId1" Target="a"/><Relationship Id="rId2" Target="b"/></Relationships>'
+      );
+      return true;
+    } catch (err) {
+      return String(err.message);
+    }
+  })(), true);
+  checkThrows(
+    'assertRelsUnique REJECTS a duplicate relationship Id',
+    () =>
+      assertRelsUnique(
+        'word/_rels/document.xml.rels',
+        '<Relationships><Relationship Id="rId11" Target="https://example.com"/><Relationship Id="rId11" Target="header1.xml"/></Relationships>'
+      ),
+    "'rId11' x2"
+  );
+  checkThrows(
+    'assertPackageRelsUnique REJECTS a duplicate across the package',
+    () =>
+      assertPackageRelsUnique(
+        new Map([
+          ['_rels/.rels', '<Relationships><Relationship Id="rId1" Target="a"/></Relationships>'],
+          [
+            'word/_rels/document.xml.rels',
+            '<Relationships><Relationship Id="rId7" Target="a"/><Relationship Id="rId7" Target="b"/></Relationships>',
+          ],
+        ])
+      ),
+    'document.xml.rels'
+  );
+  check('assertContentTypesUnique accepts unique declarations', (() => {
+    try {
+      assertContentTypesUnique(
+        '<Types><Default Extension="xml" ContentType="a"/><Override PartName="/word/document.xml" ContentType="b"/></Types>'
+      );
+      return true;
+    } catch (err) {
+      return String(err.message);
+    }
+  })(), true);
+  checkThrows(
+    'assertContentTypesUnique REJECTS a duplicate Override PartName',
+    () =>
+      assertContentTypesUnique(
+        '<Types><Override PartName="/word/document.xml" ContentType="a"/><Override PartName="/word/document.xml" ContentType="b"/></Types>'
+      ),
+    '/word/document.xml'
+  );
+  checkThrows(
+    'assertContentTypesUnique REJECTS a duplicate Default Extension',
+    () => assertContentTypesUnique('<Types><Default Extension="xml" ContentType="a"/><Default Extension="xml" ContentType="b"/></Types>'),
+    'xml'
+  );
+  check('the shipped package parts declare no duplicate relationship Ids', (() => {
+    try {
+      assertRelsUnique('_rels/.rels', rootRelsXml());
+      assertContentTypesUnique(contentTypesXml());
+      return true;
+    } catch (err) {
+      return String(err.message);
+    }
+  })(), true);
+
+  // ======================================================================
+  // STRICT fence recognition (see matchOpeningFence / isClosingFenceFor).
+  //
+  // The trap: a code block whose CONTENT contains a backtick sequence. A parser
+  // that toggles on every line beginning with ``` ends the block early here and
+  // then mis-reads every later fence, so blocks split/merge and the rest of the
+  // file is styled wrongly. 07-ai.md really does contain this shape (in the
+  // doc-draft Skill JSON example), so the property is load-bearing.
+  // ======================================================================
+  check('opening fence with an info string is recognised', (() => {
+    const f = matchOpeningFence('```json');
+    return [!!f, f && f.marker, f && f.len, f && f.lang];
+  })(), [true, '`', 3, 'json']);
+  check('4-space-indented ``` is NOT a fence (it is code content)', matchOpeningFence('    ```') === null, true);
+  check('```json can never CLOSE a block', isClosingFenceFor('```json', { marker: '`', len: 3 }), false);
+  check('a bare ``` closes a ``` block', isClosingFenceFor('```', { marker: '`', len: 3 }), true);
+  check('a SHORTER run does not close a longer block', isClosingFenceFor('```', { marker: '`', len: 4 }), false);
+  check('a longer bare run DOES close a shorter block', isClosingFenceFor('````', { marker: '`', len: 3 }), true);
+  check('~~~ does not close a ``` block', isClosingFenceFor('~~~', { marker: '`', len: 3 }), false);
+
+  // NOTE the leading four-space indents below are real code-block CONTENT: the
+  // embedded ``` must not be treated as a fence by any of these parsers.
+  const nestedFenceDoc = [
+    '```json',
+    '{',
+    '  "payload": {',
+    '  "embedded": "```",',
+    '  "inner": "```json"',
+    '  }',
+    '}',
+    '```',
+    'after the block',
+  ].join('\n');
+  check(
+    'a ``` sequence INSIDE a fenced block does not end it (strict parse keeps 1 block of 6 content lines)',
+    (() => {
+      const bs = parseMarkdown(nestedFenceDoc);
+      const code = bs.filter((b) => b.type === 'code');
+      return [code.length, code[0] && code[0].lang, code[0] && code[0].lines.length, code[0] && code[0].lines[2]];
+    })(),
+    [1, 'json', 6, '  "embedded": "```",']
+  );
+  check(
+    'the paragraph AFTER that block is still a plain paragraph, not swallowed',
+    (() => {
+      const bs = parseMarkdown(nestedFenceDoc);
+      const last = bs[bs.length - 1];
+      return [last.type, last.lines && last.lines.join('|')];
+    })(),
+    ['para', 'after the block']
+  );
+  check(
+    'an INDENTED fence inside a block is content, and the block still ends correctly',
+    (() => {
+      const bs = parseMarkdown(['```text', 'a', '    ```', 'b', '```', 'tail'].join('\n'));
+      const code = bs.filter((b) => b.type === 'code');
+      return [code.length, code[0].lines.length, code[0].lines[1], bs[bs.length - 1].type];
+    })(),
+    [1, 3, '    ```', 'para']
+  );
+  check(
+    'four independent blocks separated by prose parse as four blocks',
+    (() => {
+      const bs = parseMarkdown(['```', '1', '```', 'p', '```', '2', '```', 'p', '```', '3', '```', 'p', '```', '4', '```'].join('\n'));
+      return bs.filter((b) => b.type === 'code').length;
+    })(),
+    4
+  );
+  check(
+    'the real 07-ai.md corpus yields the strict, expected fence count',
+    (() => {
+      const p = path.join(__dirname, '..', '..', 'sections', '07-ai.md');
+      if (!fs.existsSync(p)) return 'skipped: corpus not present';
+      const md = stripIllegalXmlChars(normaliseNewlines(fs.readFileSync(p, 'utf8')));
+      const blocks = parseMarkdown(md).filter((b) => b.type === 'code');
+      const langs = {};
+      for (const b of blocks) langs[b.lang || '(none)'] = (langs[b.lang || '(none)'] || 0) + 1;
+      // 23 blocks / 14 ```json / 9 ```text / 442 code content lines is what the
+      // strict parser measures. A naive toggling scanner also returns 23 on this
+      // file (its embedded ``` is indented), which is exactly why the strict
+      // rule is asserted against the synthetic cases above as well.
+      return [blocks.length, langs.json, langs.text, blocks.reduce((n, b) => n + b.lines.length, 0)];
+    })(),
+    [23, 14, 9, 442]
+  );
+
+  const failed = results.filter((r) => !r.ok);
+  if (process.env.MD2DOCX_SELFTEST_JSON) {
+    process.stdout.write('SELFTEST|' + JSON.stringify(results) + '\n');
+  } else {
+    for (const r of results) {
+      process.stdout.write(
+        (r.ok ? '  ok   ' : '  FAIL ') + r.name + (r.ok ? '' : '\n         expected ' + r.expected + '\n         actual   ' + r.actual) + '\n'
+      );
+    }
+  }
+  process.stdout.write(
+    'SELFTEST SUMMARY|' + JSON.stringify({ total: results.length, passed: results.length - failed.length, failed: failed.length }) + '\n'
+  );
+  return failed.length === 0;
+}
+
+/* ================================================================== *
+ * One output document
+ * ================================================================== */
+function buildDocument(opt) {
+  const tStart = Date.now();
+  const sources = opt.inputs.map((p) => path.resolve(p));
+  for (const p of sources) {
+    if (!fs.existsSync(p)) throw new Error('md2docx: input not found: ' + p);
+  }
+  fs.mkdirSync(path.dirname(opt.outPath), { recursive: true });
+
+  const loaded = sources.map((p) => {
+    const text = normaliseNewlines(fs.readFileSync(p, 'utf8'));
+    return { path: p, text: stripIllegalXmlChars(text) };
+  });
+
+  // One document: all files concatenated in the given order, page break between.
+  const allBlocks = [];
+  const tableWarnings = [];
+  for (let i = 0; i < loaded.length; i++) {
+    const blocks = parseMarkdown(loaded[i].text);
+    if (blocks.tableWarnings && blocks.tableWarnings.length) {
+      for (const w of blocks.tableWarnings) {
+        tableWarnings.push({ source: path.basename(loaded[i].path), line: w.line, cells: w.cells, headerCells: w.headerCells });
+      }
+    }
+    if (i > 0) allBlocks.push({ type: 'pagebreak' });
+    for (const b of blocks) allBlocks.push(b);
+  }
+  const selected = applySectionRules(allBlocks, opt.rules);
+
+  // The document title: explicit --title / "title" in the manifest, else the
+  // first heading of the selected body, else the first "# " heading of the first
+  // input, else the output file name.
+  const title =
+    opt.title ||
+    (selected.find((b) => b.type === 'heading')
+      ? stripInlineSyntax(selected.find((b) => b.type === 'heading').text).trim()
+      : null) ||
+    deriveTitle(sources) ||
+    path.basename(opt.outPath, '.docx');
+
+  // "titlePage": true synthesises the title page + TOC field for a corpus that has
+  // no H1 of its own to promote (see withSyntheticTitlePage). It is applied AFTER
+  // the section rules, so it can never be filtered out, and BEFORE the canonical
+  // text is derived, so the digest stays self-consistent.
+  const finalBlocks = opt.titlePage
+    ? withSyntheticTitlePage(selected, { title, subtitle: opt.subtitle })
+    : selected;
+
+  // canonical text: markdown of the SELECTED blocks, through the same pipeline.
+  // File boundaries contribute no canonical text: the page-break paragraph
+  // emitted between files has no <w:t>, so the measurer skips it too.
+  const canonicalParts = markdownToCanonicalPartsFromBlocks(finalBlocks);
+  // An explicit subtitle is written to the title page, so it must be part of the
+  // comparison text as well - otherwise supplying one would make the digest
+  // self-check report a (false) mismatch.
+  if (opt.subtitle && !opt.titlePage) canonicalParts.unshift(String(opt.subtitle));
+  const canonical = canon(canonicalParts);
+
+  const stats = {
+    paragraphs: 0,
+    headings: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 },
+    tables: 0,
+    tableRows: 0,
+    codeBlocks: 0,
+    codeLines: 0,
+    listItems: 0,
+    figures: 0,
+    quotes: 0,
+    rules: 0,
+    pageBreaks: 0,
+    textChars: 0,
+    words: 0,
+  };
+
+  // ------------------------------------------------------------------
+  // Relationship ids.
+  //
+  // ONE monotonic allocator for every relationship id in the package. The
+  // header/footer ids are reserved FIRST (before the body is streamed), so the
+  // ids are deterministic AND cannot collide with the hyperlink ids that
+  // relAlloc hands out while the body is written. Previously the hyperlink ids
+  // were `rels.length + 10` while header/footer were `11 + rels.length`,
+  // evaluated before streaming - so they were always 11 and 12 and a document
+  // with exactly two distinct hyperlinks emitted rId11/rId12 twice.
+  // ------------------------------------------------------------------
+  const relAlloc = createRelIdAllocator('rId', 5); // rId1..rId5 are fixed part rels
+  const rels = []; // distinct external hyperlink targets, in first-seen order
+  const hyperlinkRid = (url) => {
+    if (!url) return null;
+    const id = relAlloc('href:' + url);
+    if (!rels.includes(url)) rels.push(url);
+    return id;
+  };
+  const headerRid = relAlloc('part:header1.xml');
+  const footerRid = relAlloc('part:footer1.xml');
+
+  const zip = new ZipWriter(opt.outPath);
+  const staticParts = new Map();
+  const addPart = (partName, xml) => {
+    staticParts.set(partName, xml);
+    zip.add(partName, xml);
+  };
+  addPart('[Content_Types].xml', contentTypesXml());
+  addPart('_rels/.rels', rootRelsXml());
+  addPart('word/styles.xml', normalizeOrderedElements(stylesXml()));
+  addPart('word/numbering.xml', numberingXml());
+  addPart('word/settings.xml', normalizeOrderedElements(settingsXml()));
+  addPart('word/fontTable.xml', fontTableXml());
+  addPart('word/theme/theme1.xml', themeXml());
+  addPart('word/header1.xml', normalizeOrderedElements(headerXml(title)));
+  addPart('word/footer1.xml', normalizeOrderedElements(footerXml()));
+  // Package-level assertions for the static parts, before the body is written.
+  assertContentTypesUnique(staticParts.get('[Content_Types].xml'));
+  assertRelsUnique('_rels/.rels', staticParts.get('_rels/.rels'));
+
+  // ---- streamed document.xml ----
+  //
+  // Each emitted fragment is appended to a small in-memory chunk array; when the
+  // array reaches FLUSH_BYTES of XML it is written to the ZIP deflate stream and
+  // handed to the text scanner. Buffering matters: if every tiny fragment (a
+  // '<w:r><w:br/></w:r>' tag is 17 bytes) were pushed to the scanner separately,
+  // a stand-alone whitespace text node could land at a chunk boundary and be
+  // dropped, which would silently corrupt the completeness measurement.
+  const FLUSH_BYTES = 1 << 20; // 1 MiB
+  const sink = zip.beginStream('word/document.xml');
+  const scanner = new XmlTextScanner();
+  const measuredParagraphs = [];
+
+  let pending = [];
+  let pendingBytes = 0;
+  const flushPending = () => {
+    if (!pending.length) return;
+    const payload = pending.join('');
+    pending = [];
+    pendingBytes = 0;
+    scanner.push(payload);
+    sink.write(payload);
+  };
+
+  const write = (s) => {
+    if (!s) return;
+    pending.push(s);
+    pendingBytes += s.length;
+    if (pendingBytes >= FLUSH_BYTES) flushPending();
+  };
+
+  write(
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+      // Only the namespaces actually used are declared. Do NOT add
+      // mc:Ignorable with a prefix that is not declared - that is an XML
+      // namespace error and makes Word refuse the file as corrupt.
+      '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" ' +
+      'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>'
+  );
+
+  const ctx = {
+    relAlloc: hyperlinkRid,
+    subtitle: opt.subtitle,
+    stats,
+    isContinuation: false,
+    emit: write,
+  };
+
+  // Emit in batches so that no more than BATCH_BLOCKS blocks' worth of fragments
+  // exists at once (the pending array is flushed at 1 MiB regardless).
+  const BATCH_BLOCKS = 64;
+  for (let i = 0; i < finalBlocks.length; i += BATCH_BLOCKS) {
+    const slice = finalBlocks.slice(i, i + BATCH_BLOCKS);
+    let pageBreakBefore = false;
+    const clean = [];
+    for (const b of slice) {
+      if (b.type === 'pagebreak') {
+        pageBreakBefore = true;
+        continue;
+      }
+      clean.push(b);
+    }
+    if (pageBreakBefore) {
+      ctx.isContinuation = true;
+      write(PAGE_BREAK_PARA);
+      stats.paragraphs++;
+      stats.pageBreaks++;
+    }
+    emitBlocks(clean, ctx);
+  }
+
+  write(
+    `<w:sectPr><w:headerReference w:type="default" r:id="${headerRid}"/><w:footerReference w:type="default" r:id="${footerRid}"/>` +
+      `<w:pgSz w:w="${PAGE_W}" w:h="16838"/>` +
+      `<w:pgMar w:top="${MARGIN}" w:right="${MARGIN}" w:bottom="${MARGIN}" w:left="${MARGIN}" w:header="720" w:footer="720" w:gutter="0"/>` +
+      `<w:cols w:space="708"/><w:docGrid w:linePitch="360"/></w:sectPr></w:body></w:document>`
+  );
+  flushPending();
+
+  const measuredTotal = scanner.finish();
+  for (const p of scanner.paragraphs) measuredParagraphs.push(p);
+
+  /*
+   * Normalise the measured paragraphs the same way the markdown side was
+   * normalised, then compare digests. Both sides go through the same stripper,
+   * so this is a genuine self-consistency check: a dropped or truncated
+   * paragraph changes the digest. It is deliberately NOT a completeness proof -
+   * that is validate.ps1's per-line coverage check, because markdown emphasis and
+   * a literal '*' inside a code span cannot be told apart once backticks are gone.
+   */
+  // raw statistics for docProps/app.xml (words/characters as Word would count them)
+  const measuredRaw = canon(measuredParagraphs);
+  // digest comparison: both sides normalised identically. Small divergences are
+  // expected and harmless - the normalisation of code spans, backslash escapes and
+  // emphasis cannot be inverted, so a few tenths of a percent of characters
+  // legitimately differ on content that is in fact complete (measured: 0.01-0.4%
+  // on the real 2 MB corpus). A LARGE divergence is the real signal, and that is
+  // what the warning threshold is for.
+  const measured = canon(measuredParagraphs.map((p) => stripInlineSyntax(p).replace(/[`*~]/g, '')));
+  const digestDivergenceChars = Math.abs(measured.chars - canonical.chars);
+  const digestDivergenceRatio = canonical.chars ? digestDivergenceChars / canonical.chars : 0;
+  const bodyDigestMatches = measured.hash === canonical.hash;
+  const digestPlausible = digestDivergenceRatio <= 0.005;
+  if (process.env.MD2DOCX_DEBUG_CANON) {
+    let k = 0;
+    while (
+      k < Math.min(measured.text.length, canonical.text.length) &&
+      measured.text[k] === canonical.text[k]
+    )
+      k++;
+    process.stderr.write(
+      '--- canonical self-check ---\n' +
+        'markdown chars=' +
+        canonical.chars +
+        ' body paragraphs=' +
+        measuredParagraphs.length +
+        ' body chars=' +
+        measured.chars +
+        '\nmarkdown digest=' +
+        canonical.hash +
+        '\nbody     digest=' +
+        measured.hash +
+        '\nfirst diff at ' +
+        k +
+        '\n  md  : ' +
+        JSON.stringify(canonical.text.slice(Math.max(0, k - 80), k + 80)) +
+        '\n  body: ' +
+        JSON.stringify(measured.text.slice(Math.max(0, k - 80), k + 80)) +
+        '\n'
+    );
+  }
+  return sink.finish().then(({ bytes, compressed }) => {
+    // Hyperlink relationships: each id comes from the SAME allocator that
+    // reserved the header/footer ids, so a collision is impossible.
+    const hyperlinkRels = rels
+      .map(
+        (u) =>
+          `<Relationship Id="${relAlloc(
+            'href:' + u
+          )}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="${A(
+            u
+          )}" TargetMode="External"/>`
+      )
+      .join('');
+    const docRelsXml =
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
+      '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/>' +
+      '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/>' +
+      '<Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/fontTable" Target="fontTable.xml"/>' +
+      '<Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/>' +
+      hyperlinkRels +
+      `<Relationship Id="${headerRid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header1.xml"/>` +
+      `<Relationship Id="${footerRid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>` +
+      '</Relationships>';
+    // Hard assertion: never write a .rels part with a duplicate Id.
+    assertRelsUnique('word/_rels/document.xml.rels', docRelsXml);
+    staticParts.set('word/_rels/document.xml.rels', docRelsXml);
+    // The rId1..rId5 above are literal part relationships; prove they do not
+    // collide with the allocator's output either.
+    {
+      const literal = new Set(['rId1', 'rId2', 'rId3', 'rId4', 'rId5']);
+      const allocatorIds = [headerRid, footerRid, ...rels.map((u) => relAlloc('href:' + u))];
+      const clash = allocatorIds.filter((id) => literal.has(id));
+      if (clash.length) {
+        throw new Error(
+          'md2docx: relationship-id allocator produced id(s) ' +
+            clash.join(', ') +
+            ' that collide with the fixed document relationship ids'
+        );
+      }
+    }
+    zip.add('word/_rels/document.xml.rels', docRelsXml);
+
+    const iso = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+    zip.add('docProps/core.xml', coreXml(title, opt.author, iso));
+    zip.add('docProps/custom.xml', customXml(canonical, stats, sources));
+    zip.add(
+      'docProps/app.xml',
+      appXml(title, {
+        words: measuredRaw.words,
+        chars: measuredRaw.charsNoSpaces,
+        charsWithSpaces: measuredRaw.chars,
+        paragraphs: stats.paragraphs,
+        lines: measuredParagraphs.length,
+        pages: 1,
+      })
+    );
+
+    // Final package-level gate: every .rels part written must be duplicate-free.
+    // A duplicate relationship Id produces a package Microsoft's parser rejects
+    // outright, so this must be a hard failure, never a warning.
+    assertPackageRelsUnique(staticParts);
+
+    const partCount = zip.close();
+    const digestMatches = measured.hash === canonical.hash;
+
+    return {
+      // Reference figures first: the single-line MD2DOCX| report can be truncated
+      // by some shells, so the numbers a caller most likely wants lead the object.
+      output: opt.outPath,
+      outputBytes: fs.statSync(opt.outPath).size,
+      words: measuredRaw.words,
+      chars: measuredRaw.chars,
+      charsNoSpaces: measuredRaw.charsNoSpaces,
+      paragraphs: stats.paragraphs,
+      tables: stats.tables,
+      raggedTableRows: tableWarnings.length,
+      tableWarnings: tableWarnings.slice(0, 50),
+      codeBlocks: stats.codeBlocks,
+      listItems: stats.listItems,
+      bodyDigestMatches: digestMatches,
+      digestDivergenceRatio: Math.round(digestDivergenceRatio * 1e6) / 1e6,
+      digestPlausible: digestPlausible,
+      sources: sources,
+      inputsBytes: sources.reduce((n, p) => n + fs.statSync(p).size, 0),
+      title: title,
+      parts: partCount,
+      hyperlinks: rels.length,
+      documentXmlBytes: bytes,
+      documentXmlCompressed: compressed,
+      blocks: finalBlocks.length,
+      stats,
+      measuredParagraphs: measuredParagraphs.length,
+      textChars: measuredTotal,
+      canonicalChars: canonical.chars,
+      measuredChars: measured.chars,
+      canonicalSha256: canonical.hash,
+      sourceDigest: opt.sourceDigest || null,
+      sourceDigestMatches: opt.sourceDigest ? opt.sourceDigest === canonical.hash : null,
+      ms: Date.now() - tStart,
+    };
+  });
+}
+
+/** canonical parts for already-parsed blocks (used after section filtering) */
+function markdownToCanonicalPartsFromBlocks(blocks) {
+  return partsOfBlocks(blocks);
+}
+
+/* ================================================================== *
+ * main
+ * ================================================================== */
+async function main() {
+  const args = parseArgs(process.argv.slice(2));
+  if (args.help) {
+    process.stdout.write(USAGE + '\n');
+    return;
+  }
+  if (args.selftest) {
+    const ok = runSelfTest();
+    process.exit(ok ? 0 : 1);
+  }
+
+  const jobs = []; // { outPath, inputs, title, subtitle, rules }
+
+  if (args.config) {
+    const cfgPath = path.resolve(args.config);
+    if (!fs.existsSync(cfgPath)) throw new Error('md2docx: config not found: ' + cfgPath);
+    const cfgDir = path.dirname(cfgPath);
+    const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+    const inputs = (cfg.inputs || []).map((p) => (path.isAbsolute(p) ? p : path.join(cfgDir, p)));
+    if (!inputs.length) throw new Error('md2docx: config has no "inputs"');
+    const outputs = cfg.outputs && cfg.outputs.length ? cfg.outputs : [{ path: cfg.output }];
+    for (const o of outputs) {
+      if (!o || !o.path) throw new Error('md2docx: every config output needs a "path"');
+      jobs.push({
+        outPath: path.isAbsolute(o.path) ? o.path : path.join(cfgDir, o.path),
+        inputs: o.inputs
+          ? o.inputs.map((p) => (path.isAbsolute(p) ? p : path.join(cfgDir, p)))
+          : inputs,
+        title: o.title || cfg.title || null,
+        subtitle: o.subtitle === undefined ? cfg.subtitle : o.subtitle,
+        author: o.author || cfg.author || args.author,
+        titlePage: o.titlePage === undefined ? cfg.titlePage === true : o.titlePage === true,
+        rules: o.rules || null,
+      });
+    }
+  } else {
+    if (!args.inputs.length || !args.output) {
+      process.stderr.write('md2docx: need at least one input and an output .docx\n' + USAGE + '\n');
+      process.exit(2);
+    }
+    jobs.push({
+      outPath: path.resolve(args.output),
+      inputs: args.inputs,
+      title: args.title,
+      subtitle: args.subtitle,
+      author: args.author,
+      rules: null,
+    });
+  }
+
+  // The digest of the *unsplit* combined source, for cross-checking volumes:
+  // every volume must contain a subset of this text.
+  const reports = [];
+  for (const job of jobs) {
+    const srcs = job.inputs.map((p) => path.resolve(p));
+    let sourceDigest = null;
+    if (jobs.length > 1 || job.rules) {
+      const all = [];
+      for (const p of srcs) {
+        for (const b of parseMarkdown(stripIllegalXmlChars(normaliseNewlines(fs.readFileSync(p, 'utf8'))))) all.push(b);
+      }
+      sourceDigest = canon(markdownToCanonicalPartsFromBlocks(all)).hash;
+    }
+    const title =
+      job.title ||
+      deriveTitle(job.inputs) ||
+      path.basename(job.outPath, '.docx');
+    const r = await buildDocument({ ...job, title, sourceDigest });
+    reports.push(r);
+    process.stdout.write('MD2DOCX|' + JSON.stringify(r) + '\n');
+    if (!r.digestPlausible) {
+      // Only a LARGE divergence is evidence of loss. Small ones are the expected
+      // residue of normalising code spans, escapes and emphasis, which cannot be
+      // inverted; the authoritative completeness gate is validate.ps1's
+      // per-line coverage proof.
+      process.stderr.write(
+        'md2docx: WARNING: the generated body text differs from the markdown-derived text by ' +
+          (r.digestDivergenceRatio * 100).toFixed(3) +
+          '% (' +
+          r.measuredChars +
+          ' vs ' +
+          r.canonicalChars +
+          ' chars) for ' +
+          r.output +
+          '; that is larger than the 0.5% normalisation tolerance, so run validate.ps1 ' +
+          'to confirm no content was lost.\n'
+      );
+    }
+    if (r.raggedTableRows > 0) {
+      process.stderr.write(
+        'md2docx: NOTE: ' +
+          r.raggedTableRows +
+          ' table row(s) had a different cell count from their header and were padded/truncated; ' +
+          'see raggedTableRows in the report for the source line numbers.\n'
+      );
+    }
+  }
+
+  const totalMs = reports.reduce((n, r) => n + r.ms, 0);
+  process.stdout.write(
+    'MD2DOCX-SUMMARY|' +
+      JSON.stringify({
+        documents: reports.length,
+        totalMs,
+        outputs: reports.map((r) => ({
+          path: r.output,
+          bytes: r.outputBytes,
+          words: r.words,
+          tables: r.stats.tables,
+          codeBlocks: r.stats.codeBlocks,
+          digest: r.canonicalSha256.slice(0, 12),
+          digestOk: r.bodyDigestMatches,
+        })),
+      }) +
+      '\n'
+  );
+}
+
+/** Title for the document: from the first "# " heading of the first input. */
+function deriveTitle(inputs) {
+  for (const p of inputs) {
+    try {
+      const text = normaliseNewlines(fs.readFileSync(p, 'utf8'));
+      const m = /^\s{0,3}#\s+(.+?)\s*#*\s*$/m.exec(text);
+      if (m) return stripInlineSyntax(m[1]).trim();
+    } catch (_) {
+      /* ignore */
+    }
+  }
+  return null;
+}
+
+main().catch((err) => {
+  process.stderr.write('md2docx: ' + (err && err.stack ? err.stack : String(err)) + '\n');
+  process.exit(1);
+});

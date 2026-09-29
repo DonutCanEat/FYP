@@ -1,0 +1,1 @@
+**`vpnz-mon01` is the only automation control node [DECIDED].** Ansible never runs from a student laptop, so that the engine version is pinned, the working tree is single-sourced, and every run log in the evidence chapter can be reproduced by anybody holding the repository. `vpnz-mon01` already carries the roles that make this placement natural:

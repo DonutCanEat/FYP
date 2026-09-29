@@ -1,0 +1,9 @@
+```text
+WARNING: 2026-11-09 14:09:03 [WARN] User kwong.cy already exists - checking drift
+WARNING: 2026-11-09 14:09:04 [WARN] User tsang.mh already exists - checking drift
+
+SamAccountName DistinguishedName                                              Created GroupCount HomeCreated QuotaApplied Status
+-------------- -----------------                                              ------- ---------- ----------- ------------ ------
+kwong.cy       CN=Kwong Chun-Yu,OU=Engineering,OU=HQ-ShaTin,OU=Users,OU=Ve...    False          1        True         True OK
+tsang.mh       CN=Tsang Man-Ho,OU=Finance,OU=HQ-ShaTin,OU=Users,OU=VertexP...    False          1        True         True OK
+```

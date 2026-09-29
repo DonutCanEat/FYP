@@ -1,0 +1,1 @@
+For **Ansible this setting is irrelevant**: the control node is Linux and `pywinrm` performs its own certificate validation. There is no `TrustedHosts` in the Ansible path at all; the equivalent control is `ansible_winrm_server_cert_validation: validate` plus a trusted certificate chain.

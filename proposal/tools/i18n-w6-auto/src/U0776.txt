@@ -1,0 +1,1 @@
+The AI operations layer of section 11 is a **consumer** of this chapter's output, never an executor of it. Three concrete integration points exist, and each is a file or an endpoint that this chapter already produces:

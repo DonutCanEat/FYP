@@ -1,0 +1,14 @@
+| # | Task | Module | Notes |
+|---|---|---|---|
+| 1 | Install `nftables` (1.0.9) | `ansible.builtin.apt` | |
+| 2 | Resolve and record the interface names | `ansible.builtin.set_fact` from `ansible_facts` + `assert` | The baseline forbids hard-coding `ens192`; the role asserts that two interfaces exist and records their names in the run log |
+| 3 | Deploy the ruleset fragments | `template` → `/etc/nftables.d/10-sets.nft`, `20-filter-input.nft`, `30-filter-forward.nft`, `40-nat.nft`, `90-logging.nft` | The fragments are `include`d by the main file and are **never loaded independently** — nftables is one ruleset |
+| 4 | Deploy the main ruleset | `template` → `/etc/nftables.conf` | `flush ruleset`, `table inet fyp_filter`, includes |
+| 5 | **Validate the candidate ruleset before applying it** | `command: nft -c -f /etc/nftables.conf` with `changed_when: false` | Syntax-only check (`-c`), no apply. A syntax failure aborts the role while the old ruleset is still active |
+| 6 | **Arm the rollback timer** | `command: /usr/local/sbin/fyp-nft-rollback-arm.sh {{ nftables_rollback_seconds }}` | Writes a systemd timer that will restore the previously validated ruleset if the playbook does not explicitly disarm it. Default `600` seconds |
+| 7 | Apply the ruleset | `ansible.builtin.systemd_service` restart of `nftables.service`, then `command: nft list ruleset` to load the running ruleset into a fact | |
+| 8 | **Verify from the far side** | `ansible.builtin.wait_for` / `uri` against a known-reachable target through the pair | The verification that matters is *from the outside in*, because that is the path the new ruleset could have broken |
+| 9 | **Disarm the rollback timer** | `command: /usr/local/sbin/fyp-nft-rollback-disarm.sh` `when: nftables_verify_ok \| bool` | Only disarms if task 8 succeeded |
+| 10 | Persist the ruleset across reboot | `ansible.builtin.systemd_service: enabled=true` | A firewall that disappears on reboot is worse than no firewall |
+| 11 | Publish the active ruleset as evidence | `command: nft list ruleset` with `changed_when: false`, `register`, `copy` with `content:` into `runs/` | The ruleset text is evidence for TC-L2-03 |
+| 12 | Hand the ruleset to Git | `ansible.builtin.copy` of the running `nft list ruleset` output into `docs/current-ruleset-{{ inventory_hostname }}.txt` **with a diff task that fails the run if it differs from the template output** | This is the drift detector of section 10.8. If the running ruleset differs from the template, someone has changed a live firewall by hand and the role says so |

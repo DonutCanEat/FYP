@@ -1,0 +1,29 @@
+| Setting | Value | Reason |
+|---|---|---|
+| `inventory` | `./inventory/hosts.yml` | A repository-relative path, so the repository is portable between the four students' machines and `vpnz-mon01`. Anyone who runs `ansible-playbook` from the repository root gets the right inventory with no flag |
+| `roles_path` | `./roles` | Roles are found relative to the repository, so a role's location is never a matter of the machine's Ansible defaults |
+| `collections_path` | the virtual-environment path | Makes the community package version in use explicit and prevents an accidental fallback to a system collection |
+| `library` | `./library` | Present so that a bespoke module, if one is ever written, has a defined home |
+| `filter_plugins` | `./filter_plugins` | The project's custom Jinja2 filters (for example the nftables-set renderer) must be found automatically |
+| `remote_user` | `adm-w4` | A named personal account, never `root`, never a shared account. Overridden per host where a different administrator owns a host |
+| `host_key_checking` | `False` | **[DECLARED LAB SIMPLIFICATION — not best practice]** The 19 VMs are rebuilt from templates repeatedly during the 12-week build, so their SSH host keys legitimately change and a strict check would block every automation run with a false alarm. The compensating controls are stated: the lab is entirely host-only with no bridging, no lab host is reachable from outside the hypervisor host, and the group additionally records the host keys of the steady-state estate in `docs/04-variable-dictionary.md` after week 9. The report must present this as a lab simplification with its justification — exactly as §12.2 requires for the Keepalived `PASS` authentication simplification |
+| `retry_files_enabled` / `retry_files_save_path` | `True`, `./logs/retry` | A failed run leaves a retry file, so recovery is a single command and the failed host list is preserved |
+| `gathering` / `fact_caching` | `smart` + `jsonfile` | Facts are gathered once and cached for 24 h. Without caching, a nine-host Windows gather dominates the runtime of every small playbook and tempts the team to disable fact gathering, which then breaks templates that depend on facts |
+| `stdout_callback` | `yaml` | The readable recap. A plain `default` callback makes a long diff unreadable in a log, and the log *is* the evidence |
+| `callbacks_enabled` | `profile_tasks, timer` | Records per-task duration, which is how slow roles get found and how the scheduling estimates in section 10.8 are justified |
+| `display_skipped_hosts` | `False` | Skipped tasks are noise in a log that must be read by a reviewer |
+| `log_path` | `./logs/ansible.log` | A persistent, committable log. `04-automation/runs/` additionally holds the timestamped per-run log written by the wrapper |
+| `interpreter_python` | `auto_silent` | Discovers the interpreter and suppresses the discovery warning that would otherwise pollute every single run's output. The Linux estate has one interpreter (`/usr/bin/python3` from Ubuntu 24.04.3 LTS); Windows uses PowerShell through `pywinrm`, where this setting does not apply |
+| `forks` | `10` | Ten parallel connections against a 19-VM estate on one hypervisor host is a deliberate ceiling: higher values exhaust the host's RAM before they save wall-clock time (§15.1) |
+| `timeout` | `30` | Connection timeout. Long enough for a loaded host-only segment, short enough that a dead host fails a rollout in half a minute |
+| `nocows` | `1` | ASCII art in a log is noise |
+| `vault_password_file` | `/home/adm-w4/.ansible/vault-pass-vp` | The vault password file lives **outside the repository**, in the administrator's home directory, mode 0600. See 10.4.4 |
+| `ask_vault_pass` | `False` | Because the file is used. The trade-off (the file is a secret on disk) is stated and compensated: the file is excluded by `.gitignore`, by the pre-tag secret sweep, and by file permissions, and scheduled runs use it through a `systemd` unit whose environment file is also 0600 root-owned |
+| `allow_world_readable_tmpfiles` | `False` | The safe default; enabling it would be a security regression for convenience |
+| `[privilege_escalation] become` | `True` | True globally, and then explicitly **overridden to `false` in `group_vars/windows.yml`**, because Windows targets have no `sudo`. Ansible's Windows modules are invoked in an already-elevated session |
+| `become_method` / `become_user` | `sudo` / `root` | The Linux estate's escalation path. The members of the local `gg-infra-admins` group are the only accounts permitted to escalate |
+| `become_flags` | `-H -S -n` | `-H` sets `$HOME` to root's home (avoids the classic `sudo: a password is required` / profile errors), `-S` reads the password from stdin, `-n` makes a non-interactive failure explicit rather than hanging |
+| `[inventory] unparsed_is_failed` | `True` | If an inventory file exists but fails to parse, the run stops. The default is to warn and continue with an empty inventory, which in a firewall playbook would mean "no hosts, all good" — the most dangerous possible outcome |
+| `[ssh_connection] pipelining` | `True` | A large speed-up, and safe here because `requiretty` is not set in the Ubuntu 24.04 sudoers configuration |
+| `ssh_args` | `ControlMaster=auto`, `ControlPersist=300s` | Reuses one SSH connection for the duration of a rollout |
+| `scp_if_ssh` | `smart` | Uses `scp` when the transfer is small and the target's SSH supports it; avoids the `sftp` failure mode on a minimal Ubuntu install |

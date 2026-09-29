@@ -1,0 +1,18 @@
+| # | Task | Module | Notes |
+|---|---|---|---|
+| 1 | Set the hostname and `/etc/hosts` entry | `ansible.builtin.hostname`, `ansible.builtin.lineinfile` | Hostname comes from `inventory_hostname`; the FQDN is `{{ inventory_hostname }}.{{ fyp_domain }}` |
+| 2 | Install the baseline package set | `ansible.builtin.apt` | `chrony`, `rsyslog`, `auditd`, `unattended-upgrades`, `nftables`, `curl`, `jq`, `ca-certificates`, `python3-apt` |
+| 3 | Remove the packages the design forbids | `ansible.builtin.apt` with `state: absent` | `telnet`, `rsh-client`, `tftp-hpa` (the TFTP *server* exists only on `vpnz-mon01`; a client on a server VM is an unnecessary path) |
+| 4 | Configure chrony to the domain time source | `ansible.builtin.template` → `/etc/chrony/chrony.conf` | `server 10.10.30.11 iburst`, then `10.10.30.12`. Time skew greater than five minutes breaks Kerberos, so this task protects authentication, not just convenience |
+| 5 | Configure DNS resolution | `ansible.builtin.template` → `/etc/resolv.conf` (managed via `systemd-resolved` drop-in) | `nameserver 10.10.30.11`, then `10.10.30.12`. **No public resolver may be configured on any Linux guest** |
+| 6 | Create the local `gg-infra-admins` group and the four administrator accounts | `ansible.builtin.group`, `ansible.builtin.user` | Members mirror `GG-Infra-Admins`; no shared accounts; `root` login is disabled |
+| 7 | Install the four Ed25519 public keys | `ansible.posix.authorized_key` | From `files/ssh/authorized_keys/`, one task per account via `loop` |
+| 8 | Install the sudoers drop-in | `ansible.builtin.template` + `ansible.builtin.validate` | `%gg-infra-admins ALL=(ALL:ALL) ALL`, validated with `visudo -cf %s` |
+| 9 | Deploy SSH hardening | `ansible.builtin.template` → `/etc/ssh/sshd_config.d/10-fyp-hardening.conf` | `PermitRootLogin no`, `PasswordAuthentication no`, `AllowGroups gg-infra-admins`, `KexAlgorithms`/`Ciphers` modern set |
+| 10 | Deploy sysctl hardening | `ansible.builtin.template` → `/etc/sysctl.d/99-fyp-hardening.conf` | `rp_filter`, SYN cookies, ICMP behaviour; `net.ipv4.ip_forward=1` **only** where `fyp_role` implies a router (the nftables pair) |
+| 11 | Configure unattended security upgrades | `ansible.builtin.template` → `/etc/apt/apt.conf.d/50unattended-upgrades` | Security-only; no automatic reboot; a reboot-required flag is reported by the health script rather than acted upon |
+| 12 | Configure rsyslog forwarding | `ansible.builtin.template` → `/etc/rsyslog.d/50-fyp-forward.conf` | Forward to `10.10.30.31:514` per §8.7. The DMZ hosts forward too, which is how DMZ events reach Loki under TB-13's constraint that DMZ may only initiate limited outbound traffic |
+| 13 | Install and configure `auditd` | `ansible.builtin.template`, `ansible.builtin.service` | Execve and identity-file watches |
+| 14 | Install `node_exporter` | `ansible.builtin.apt` + `ansible.builtin.service` | Port 9100, listening only where the monitoring host can reach it |
+| 15 | Install the internal CA certificate | `ansible.builtin.copy` → `/usr/local/share/ca-certificates/vp-root-ca.crt` + `command: update-ca-certificates` with `creates:` guard | This is what allows the same certificate conventions to work on Windows and Linux |
+| 16 | Apply the vendor-recommended MOTD banner | `ansible.builtin.copy` | Authorised-use notice; harmless and expected in an enterprise estate |

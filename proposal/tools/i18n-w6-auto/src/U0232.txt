@@ -1,0 +1,38 @@
+```yaml
+---
+- name: INVENTORY-CONSISTENCY - assert inventory matches the design baseline
+  hosts: localhost
+  gather_facts: false
+  vars:
+    expected:
+      vpnz-dc01: 10.10.30.11
+      vpnz-dc02: 10.10.30.12
+      vpnz-fs01: 10.10.30.21
+      vpnz-san01: 10.10.80.21
+      vpnz-rras01: 10.10.30.41
+      vpnz-lnxra01: 10.10.30.42
+      vpnz-mon01: 10.10.30.31
+      vpnz-ai01: 10.10.30.51
+      vpnz-jump01: 10.20.20.31
+      vpnz-nft01: 10.10.50.11
+      vpnz-nft02: 10.10.50.12
+      vpnz-dmzrev01: 10.10.90.28
+      vpnz-dmzrev02: 10.10.90.29
+      vpnz-dmzweba01: 10.10.90.21
+      vpnz-dmzweba02: 10.10.90.22
+      vpnz-dmzwp01: 10.10.90.25
+      vpnz-dmzwp02: 10.10.90.26
+      vpnz-dmzjump01: 10.10.90.27
+      vpnz-brdc01: 10.10.113.11
+  tasks:
+    - name: Every host in hosts.yml must carry the baseline address
+      ansible.builtin.assert:
+        that:
+          - hostvars[item.key].ansible_host | default('') == item.value
+        fail_msg: >-
+          {{ item.key }} is {{ hostvars[item.key].ansible_host | default('unset') }}
+          but the design baseline requires {{ item.value }}.
+          A writer may not re-address a host locally; the baseline must be revised.
+      loop: "{{ expected | dict2items }}"
+      loop_control: { label: "{{ item.key }}" }
+```

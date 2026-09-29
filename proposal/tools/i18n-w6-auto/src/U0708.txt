@@ -1,0 +1,21 @@
+```bash
+# --- nftables drop summary ----------------------------------------------------
+$ sudo ./07-nftables-log-summary.sh -s "2026-11-09 20:00:00" -b 24 -n 5
+FYP nftables drop summary
+host        : vpnz-nft01
+window      : since 2026-11-09 20:00:00
+generated   : 2026-11-09T22:15:44+08:00
+total drops : 1834
+
+SOURCE PREFIX            DROPS
+---------------------- ----------
+10.10.40.0/24              1487
+10.10.70.0/24               301
+192.0.2.0/24                 38
+198.51.100.0/24               8
+
+Interpretation: a source inside 10.10.0.0/16 is an INTERNAL host whose traffic
+the policy correctly denied (see TB-02/TB-03/TB-09 - check the source VLAN).
+A source inside 10.70.0.0/24 is the deliberately isolated lab segment and any
+traffic from it at the egress pair is a policy finding, not routine noise (TB-09/TB-10).
+```

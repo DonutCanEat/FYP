@@ -1,0 +1,1 @@
+Every function in `modules/VPCommon/VPCommon.psm1` and every script uses a verb from `Get-Verb`. The project's own vocabulary is deliberately small and is fixed in `04-automation/ansible/docs/04-variable-dictionary.md`:

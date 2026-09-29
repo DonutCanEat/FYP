@@ -1,0 +1,8 @@
+| Claim | Permitted? |
+|---|---|
+| "The intended configuration of all 16 Packet Tracer devices is managed as code in Git, with peer review and tagged milestones" | **Yes** — this is true and it satisfies the `Git` and configuration-as-code requirements |
+| "The configurations were generated from templates with per-device variables" | **Yes, if it was actually done** — and the generated files must be committed so the claim is checkable |
+| "A read-only verification playbook checks the completeness of every device configuration file and archives it with a manifest" | **Yes** — this is what `08-collect-network-configs.yml` does |
+| "Ansible (or any automated tool) logged in to a Packet Tracer device and pushed a configuration" | **No — forbidden.** No evidence could exist, because the capability does not exist |
+| "Network-device configuration is fully automated" | **No.** The delivery step is manual and must be described as manual |
+| "The same design would be automated on real equipment using SSH-based configuration push" | **Yes** — as an explicitly labelled gap analysis and future-work statement |

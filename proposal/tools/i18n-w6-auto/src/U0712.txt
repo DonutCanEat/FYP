@@ -1,0 +1,19 @@
+```bash
+# --- Certificate expiry -------------------------------------------------------
+$ ./08-cert-expiry-check.sh -d 45
+FYP certificate expiry report
+host       : vpnz-mon01
+generated  : 2026-11-09T22:20:11+08:00
+window     : 45 day(s)
+findings   : 1
+
+SOURCE                       DAYS     STATUS SUBJECT / DETAIL
+---------------------------- -------- ------ ------------------------------
+/etc/nginx/ssl/portal.crt    84       PASS   CN=portal.vertexpeak.example | expires in 84 day(s)
+/etc/openvpn/easy-rsa/pki/ca.crt 3475 PASS  CN=Easy-RSA CA | expires in 3475 day(s)
+vpnz-dmzrev01:443            84       PASS   CN=portal.vertexpeak.example | expires in 84 day(s) (2027-02-01 00:00:00 GMT)
+vpnz-dmzweba01:443           31       FAIL   CN=www.vertexpeak.example | inside the 45-day window (expires 2026-12-10 00:00:00 GMT)
+vpnz-rras01:443              -        FAIL   cannot connect or complete a TLS handshake
+$ echo $?
+1
+```

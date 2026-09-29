@@ -1,0 +1,8 @@
+| Task | Real-equipment method | Tooling that would be needed |
+|---|---|---|
+| Push an intended configuration to a device | SSH to the device with an automation account, enter configuration mode, apply the template, exit, then save | An SSH-based configuration library — `netmiko` or `napalm` in Python, invoked by an Ansible module or a playbook using `connection: network_cli`. **Python, `napalm`, `netmiko`, YANG, RESTCONF and NETCONF are not named in the WSOS 2026 and are therefore presented as future work, not as project requirements** |
+| Retrieve the running configuration | `show running-config` over SSH, saved and committed automatically | The same library, plus a scheduled job |
+| Enforce a configuration | Compare the running configuration against the intended configuration, fail the run on any difference, optionally remediate | An idempotent configuration-management module; Ansible's `ios_config` family in a real collection |
+| Validate the configuration | Parse the running configuration and assert expected values | The same tooling, plus assertions written as code |
+| Roll back a bad change | Keep the previous configuration, and apply it through the same SSH path when a check fails | The same tooling plus a Git-tracked history, which is exactly the pattern the Linux estate already uses |
+| Use model-driven interfaces | Retrieve and set configuration through YANG models over NETCONF/RESTCONF | Model-driven tooling — explicitly out of scope here, and absent from the WSOS 2026 Domain 5 as revised |

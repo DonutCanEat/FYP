@@ -1,0 +1,1 @@
+Each entry states the **symptom** as it appears, the **cause**, the **diagnostic command** that distinguishes it from the look-alikes, and the **resolution**. The order is the order the group is likely to meet them.

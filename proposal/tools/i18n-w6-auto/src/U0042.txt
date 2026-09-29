@@ -1,0 +1,1 @@
+Domain 4 — Network and System Operations (25 %) is served as well, through `Install and manage backup systems` with its nested `Script based backup, e.g. Bash, Batch or PowerShell`, and Domain 1 (5 %) through `The importance of methodical working practices` and `The techniques of planning, scheduling, and prioritizing`.

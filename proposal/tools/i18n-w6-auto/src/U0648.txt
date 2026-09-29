@@ -1,0 +1,1 @@
+Bash is the right tool when the task is **a procedure on one host**, when the primitives are already installed (`awk`, `grep`, `openssl`, `nft`, `journalctl`, `ss`), and when the result is a log line or an exit code rather than a managed state.

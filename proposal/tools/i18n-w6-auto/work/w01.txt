@@ -1,0 +1,107 @@
+%%U0068%%
+#### 10.2.3 The source of truth
+%%U0070%%
+Every piece of configuration has exactly one authoritative home, and that home is a file in Git:
+%%U0072%%
+| Object | Source of truth |
+|---|---|
+| Host identity, addresses, groups | `04-automation/ansible/inventory/hosts.yml` |
+| Per-group and per-host variables | `inventory/group_vars/`, `inventory/host_vars/` |
+| Secrets | Ansible-Vault-encrypted variable files, decrypted at run time only |
+| Configuration templates | `04-automation/ansible/templates/*.j2` |
+| Intended Packet Tracer device configurations | `03-build/packet-tracer/configs/*.txt` (Track A of §11.4) |
+| Test definitions and their expected results | `06-verification/` |
+| The design itself | `00-baseline/` — frozen, read-only after each freeze |
+%%U0074%%
+The corollary is a rule the group must enforce: **if a value changes in the lab and the change is not committed, the source of truth is a lie.** Every manual change made during troubleshooting is followed by the same change being written back into the repository, or the manual change is reverted. Where a manual change cannot be captured by the automation (for instance a Packet Tracer CLI action during a demonstration), it is recorded in the decision log with its justification.
+%%U0076%%
+#### 10.2.4 Peer review
+%%U0078%%
+The due-diligence item asks for a *process*, not a tool. The group implements peer review socially as well as technically: every playbook, script and template change is committed on a branch, pushed to `vpnz-mon01`, and reviewed by a second group member before merge into `main`. The reviewer's name and the review outcome are recorded in the meeting minutes under `01-proposal/`. A commit that changes anything under `04-automation/` without a recorded second reader is treated as unreviewed, and the tagged release at week 12 must contain none.
+%%U0080%%
+#### 10.2.5 Staging before production
+%%U0082%%
+The lab has no physically separate staging environment, so staging is implemented as **three graded steps** in the same estate:
+%%U0084%%
+1. **Syntax and lint gate** — `ansible-playbook --syntax-check`, plus ShellCheck for Bash and PSScriptAnalyzer for PowerShell. Nothing runs until it parses and lints.
+2. **Dry-run gate** — `--check --diff` against the whole target group. This reports what *would* change without changing it.
+3. **Canary gate** — the real run against **one host** first (`--limit`), verified by hand, then the remainder of the group, then the site.
+%%U0086%%
+For the Windows estate the canary is always a non-DC member server; for the DMZ the canary is the secondary node (`vpnz-dmzrev02`), never the node currently holding the VIP. This ordering is a design decision, not a habit.
+%%U0088%%
+#### 10.2.6 Blast-radius control
+%%U0090%%
+Blast radius is the set of systems that a single mistake can damage. It is controlled by four mechanisms:
+%%U0092%%
+- **Groupings over wildcards.** No playbook targets `all` except the read-only audit playbook of section 10.4.6.4. Deployment playbooks target a named group with an explicit `hosts:` line.
+- **`serial` and `max_fail_percentage`.** Rolling deployment across a tier (`serial: 1` for the two-node pairs) so that a failure stops the rollout while a majority of the service is still healthy.
+- **`--limit` as the default discipline.** Every group member prefixes a first run with `--limit`.
+- **Tier separation of credentials.** The GitHub-style service account `svc_ansible` is a member of `GG-WINRM-Admins` **only**. It is not a Domain Admin. Administering `vpnz-dc01` and `vpnz-dc02` requires one of the four named `adm-{initials}` accounts, two of which are in `GG-Tier0-Admins`. A playbook aimed at the domain controllers therefore cannot be run by the automation account alone, which is itself a blast-radius control.
+%%U0094%%
+#### 10.2.7 Rollback
+%%U0096%%
+Three rollback mechanisms exist, in increasing order of severity:
+%%U0098%%
+| Mechanism | Applies to | How |
+|---|---|---|
+| Declarative revert | Anything Ansible manages | Revert the Git commit and re-run the playbook; because the code is idempotent, the state converges back |
+| Configuration-file revert | `nftables`, `keepalived`, `nginx`, `sshd` | The role keeps the previous file as `<file>.bak.<timestamp>`, and the handlers restore it if the new file fails its validation |
+| Firewall lock-out timer | nftables only | `02-nftables-apply.sh` arms an automatic revert before applying a new ruleset, so a bad ruleset cannot strand the group outside a remote VM — this is the documented lock-out mitigation required by §12.2 |
+| Hypervisor snapshot | Anything | One snapshot before every significant change, removed once the change is verified; **snapshots are never a backup** (§15.3) |
+%%U0100%%
+Rollback is tested, not assumed. At least one deliberate rollback is executed and captured as evidence, because an untested rollback path is an unverified claim.
+%%U0102%%
+#### 10.2.8 Secrets management
+%%U0104%%
+No plaintext secret may ever be committed. The controls are:
+%%U0106%%
+- **Ansible Vault** for every secret consumed by a playbook (Windows local administrator passwords during bootstrap, the vault-encrypted `svc_ansible` credential, iSCSI CHAP secrets, the Grafana administrator password, and the SMTP-style alert webhook tokens if configured).
+- **`svc_ansible`** is created with a 32-character random password stored in the group's password manager, never in Git; "Password never expires" is disabled and the password is rotated by playbook, per §8.4.
+- **`.gitignore`** covering `*.key`, `wg*.conf`, `*.pem`, `*.pfx`, `pki/`, `vault-pass*`, `*.retry` and `logs/`.
+- **A pre-tag sweep.** Before each tagged release, the repository is searched for secret-shaped strings — `gitleaks` if it is available in the Ubuntu archive, otherwise a `git grep` sweep plus a PowerShell `Select-String` sweep for `password=`, `PRIVATE KEY` and `BEGIN OPENSSH`. The sweep output is evidence.
+- **A deliberate negative test.** A fake key is committed once, on a throwaway branch, to prove the sweep catches it; the branch is deleted and the capture is retained in `06-verification/`.
+%%U0108%%
+#### 10.2.9 Relationship of each principle to the WSOS Domain 5 requirement
+%%U0110%%
+The WSOS Domain 5 requirement is `Identify and implement infrastructure as code` (nested: `Ansible.`). The mapping from principle to requirement is direct and is stated here because it is the chapter's justification:
+%%U0112%%
+| Principle | How it satisfies `Identify and implement infrastructure as code` |
+|---|---|
+| Declarative model | Infrastructure as code is only meaningful when the code describes *state*; the declarative choice is what makes the repository the description of the estate |
+| Idempotence | A repository that is not idempotent cannot be the source of truth, because applying it changes the estate in unstated ways; `changed=0` is the proof that the code and the estate agree |
+| Source of truth | "As code" means the file is authoritative and the running system is the derivative — the single-home rule is the operational form of the requirement |
+| Peer review | Code is reviewable; a CLI session is not. Review is what makes the artefact "code" rather than "a log of what someone typed" |
+| Staging before production | The `Capabilities of various automation tools` and `Behaviour of infrastructure automation tools.` know/understand lines require the team to know how the tool behaves before it acts; the dry-run gate is that knowledge in practice |
+| Blast-radius control | `The importance of methodical working practices` (Domain 1) applied to change management |
+| Rollback | `Importance of code version control` (Domain 5) — version control exists precisely so that a previous state can be recovered |
+| Secrets management | A repository that cannot be shared is not a source of truth; vaulting is what allows the code to be complete *and* committable |
+%%U0114%%
+`Use modern automation tools for systems deployment and configuration management` (nested `Git`) is satisfied by the repository, the branch strategy of section 10.3 and the tagged releases; `Setup and run routine infrastructure maintenance operations using various scripting\programming languages` (nested `Bash`, `PowerShell`) is satisfied by sections 10.5 and 10.6.
+%%U0116%%
+---
+%%U0118%%
+### 10.3 Repository and Project Structure
+%%U0120%%
+#### 10.3.1 The exact directory layout
+%%U0122%%
+The automation repository is at `C:\FYP\04-automation\` on the working copies and is mirrored to Git on `vpnz-mon01`. All paths below are verbatim from the baseline and must not be re-arranged:
+%%U0126%%
+#### 10.3.2 What every directory is for
+%%U0128%%
+| Path | Purpose and rules |
+|---|---|
+| `ansible/ansible.cfg` | The single configuration file, versioned. Every playbook run from the repository root picks it up automatically; nobody passes ad-hoc flags that change its behaviour, because a flag is invisible to the next reader (see 10.4.3) |
+| `inventory/hosts.yml` | The **authoritative** inventory: every host, its address, and its group membership. `lab.ini` is retained as the baseline's INI-format inventory and kept in sync by a consistency check, because the baseline names it; `hosts.yml` is what the playbooks actually consume |
+| `inventory/group_vars/` | Variables that apply to a group. `all.yml` holds the values true everywhere — domain name, NTP and DNS servers, admin groups, package update policy. Group files hold the tier-specific values |
+| `inventory/group_vars/all/vault.yml` | Vault-encrypted secrets (see 10.4.4). Committed **encrypted**; the plaintext never exists on disk in the repository |
+| `inventory/host_vars/` | Per-host overrides that genuinely differ, such as `keepalived_priority` and `keepalived_state` for the two VRRP pairs, or the backup destination for a specific host. Anything that could be a group variable belongs in a group variable — host_vars is for genuine per-host facts, not for convenience |
+| `playbooks/` | Entry points. A playbook describes *what deployment is being performed*; it contains as little logic as possible, delegating to roles. The numbered prefix is the recommended run order and is referenced by the schedule |
+| `roles/` | Reusable units. Each role contains `tasks/`, `handlers/`, `templates/`, `files/`, `defaults/`, `vars/` and `meta/` as needed, plus a `README.md` stating the role's purpose and its idempotence note |
+| `templates/` | Jinja2 templates only. A template rendered anywhere in the project lives here; a role's `templates/` directory is used only when the template is genuinely private to that role |
+| `files/` | Static, non-templated content: the hand-written `nginx.conf`, and the administrators' Ed25519 public keys under `files/ssh/authorized_keys/`. Public keys are committed; **private keys are never stored on `vpnz-mon01`** |
+| `filter_plugins/` | Custom Jinja2 filters used by the templates. The project needs only a small number — for example a filter that renders a list of prefixes into nftables set syntax, and a filter that derives the correct VLAN interface name from a host's role — and they are unit-tested by a small assertion playbook so that a broken filter fails loudly rather than rendering an empty firewall rule |
+| `docs/` | The human-readable operational documentation that belongs beside the code: the runbooks, the variable dictionary, and the idempotence log that records each `changed=0` proof |
+| `logs/ansible.log` | Ansible's own log file, as configured by `log_path` in `ansible.cfg`. It is a convenience for debugging, not the evidence |
+| `powershell/` | The Windows-side scripts, a shared module, input data and script logs. `modules/VPCommon/` holds functions reused by more than one script and is versioned so that a change to a shared function is visible in `git log` |
+| `bash/` | The Linux-side scripts plus `lib/common.sh`, which provides logging, error handling and the `set -euo pipefail` preamble so that every script behaves identically |
+| `runs/` | **Evidence.** Timestamped run logs named `YYYY-MM-DD_HHMM_playbook.log`, committed so that the verification chapter can cite them. A playbook run whose log is not committed did not provably happen |

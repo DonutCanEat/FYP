@@ -1,0 +1,16 @@
+```bash
+# Canary on the BACKUP nftables node only
+ansible-playbook playbooks/05-nftables-egress.yml --limit vpnz-nft02
+
+# Canary on the secondary reverse proxy only
+ansible-playbook playbooks/03-nginx-reverseproxy.yml --limit vpnz-dmzrev02
+
+# A group-of-groups limit: only the non-DMZ Linux hosts
+ansible-playbook playbooks/02-baseline-linux.yml --limit 'linux:!dmz'
+
+# Exclude tier 0 from a baseline run in one expression
+ansible-playbook playbooks/01-baseline-windows.yml --limit 'windows:!vpnz-dc01:!vpnz-dc02'
+
+# Target only the edge pair
+ansible-playbook playbooks/05-nftables-egress.yml --limit edge
+```

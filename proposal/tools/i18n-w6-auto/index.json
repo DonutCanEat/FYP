@@ -1,0 +1,425 @@
+{
+ "src": "D:/File/School/FYP/proposal/sections/06-automation.md",
+ "bytes": 297919,
+ "bom": false,
+ "chars": 296594,
+ "crlf": 0,
+ "lines": 4605,
+ "headings": {
+  "h1": 0,
+  "h2": 1,
+  "h3": 11,
+  "h4": 42,
+  "h5": 47,
+  "total": 101,
+  "list": [
+   "## 10. Network Automation",
+   "### 10.1 Overview and Objectives",
+   "#### 10.1.1 What this line delivers",
+   "#### 10.1.2 The automation control node",
+   "#### 10.1.3 Which WSOS 2026 domain this develops",
+   "### 10.2 Automation Strategy and Principles",
+   "#### 10.2.1 Declarative versus imperative",
+   "#### 10.2.2 Idempotence",
+   "#### 10.2.3 The source of truth",
+   "#### 10.2.4 Peer review",
+   "#### 10.2.5 Staging before production",
+   "#### 10.2.6 Blast-radius control",
+   "#### 10.2.7 Rollback",
+   "#### 10.2.8 Secrets management",
+   "#### 10.2.9 Relationship of each principle to the WSOS Domain 5 requirement",
+   "### 10.3 Repository and Project Structure",
+   "#### 10.3.1 The exact directory layout",
+   "#### 10.3.2 What every directory is for",
+   "#### 10.3.3 Branch strategy",
+   "#### 10.3.4 Commit and review convention",
+   "### 10.4 Ansible",
+   "#### 10.4.1 Control node setup",
+   "##### 10.4.1.1 Pinned engine and Python environment",
+   "##### 10.4.1.2 SSH keys to the managed Linux hosts",
+   "##### 10.4.1.3 Windows managed-node prerequisites",
+   "##### 10.4.1.4 Verification of the control-node path",
+   "#### 10.4.2 Inventory design",
+   "##### 10.4.2.1 The complete inventory",
+   "##### 10.4.2.2 Groups, the group-of-groups pattern, and why the hierarchy is shaped this way",
+   "##### 10.4.2.3 Inventory consistency checks",
+   "#### 10.4.3 Configuration management: `ansible.cfg`",
+   "#### 10.4.4 Variables and secrets",
+   "##### 10.4.4.1 Variable precedence as the project uses it",
+   "##### 10.4.4.2 Ansible Vault",
+   "#### 10.4.5 Roles",
+   "##### 10.4.5.1 `common` — Linux baseline role",
+   "##### 10.4.5.2 `nginx` — reverse proxy and TLS termination role",
+   "##### 10.4.5.3 `keepalived` — VRRP pair role",
+   "##### 10.4.5.4 `nftables` — egress filter role",
+   "##### 10.4.5.5 `windows_baseline` — Windows security and service baseline role",
+   "##### 10.4.5.6 `users` — identity and group convergence role",
+   "##### 10.4.5.7 The remaining three roles",
+   "#### 10.4.6 Playbooks",
+   "##### 10.4.6.1 `01-baseline-windows.yml` — site baseline hardening (Windows estate)",
+   "##### 10.4.6.2 `03-nginx-reverseproxy.yml` — web-tier deployment",
+   "##### 10.4.6.3 `05-nftables-egress.yml` — firewall deployment",
+   "##### 10.4.6.4 `09-verify-services.yml` — read-only compliance audit",
+   "##### 10.4.6.5 `08-collect-network-configs.yml` — configuration collection and archive",
+   "##### 10.4.6.6 `02-baseline-linux.yml` — Linux baseline hardening (outline)",
+   "##### 10.4.6.7 The remaining playbooks",
+   "#### 10.4.7 Testing and safety",
+   "##### 10.4.7.1 `--check` and `--diff`",
+   "##### 10.4.7.2 `--limit`",
+   "##### 10.4.7.3 `--syntax-check`, linting and tags",
+   "##### 10.4.7.4 How the team avoids breaking the live lab",
+   "#### 10.4.8 Verification",
+   "##### 10.4.8.1 The exact commands",
+   "##### 10.4.8.2 The expected recap output — the idempotence proof",
+   "### 10.5 PowerShell",
+   "#### 10.5.1 Why PowerShell for the Windows estate",
+   "#### 10.5.2 PowerShell remoting setup",
+   "##### 10.5.2.1 `Enable-PSRemoting` on the target",
+   "##### 10.5.2.2 `TrustedHosts` versus HTTPS",
+   "##### 10.5.2.3 How Ansible connects to it",
+   "#### 10.5.3 Production-quality scripts",
+   "##### 10.5.3.1 `Invoke-NewStarterOnboarding.ps1`",
+   "##### 10.5.3.2 `Get-ServiceAndFirewallAudit.ps1`",
+   "##### 10.5.3.3 `Invoke-ScheduledBackupVerify.ps1`",
+   "##### 10.5.3.4 The remaining PowerShell scripts",
+   "#### 10.5.4 Modules and code quality",
+   "##### 10.5.4.1 `PSScriptAnalyzer`",
+   "##### 10.5.4.2 Function naming and the approved-verb convention",
+   "##### 10.5.4.3 The review checklist when a linter is unavailable",
+   "##### 10.5.4.4 The shared module",
+   "#### 10.5.5 Verification",
+   "##### 10.5.5.1 Example invocations",
+   "##### 10.5.5.2 Expected output",
+   "### 10.6 Bash",
+   "#### 10.6.1 Where Bash is the right tool, and where it is not",
+   "##### 10.6.1.1 `lib/common.sh` — the shared library",
+   "#### 10.6.2 Production-quality scripts",
+   "##### 10.6.2.1 `06-server-health-report.sh`",
+   "##### 10.6.2.2 `07-nftables-log-summary.sh`",
+   "##### 10.6.2.3 `08-cert-expiry-check.sh`",
+   "#### 10.6.3 ShellCheck and linting",
+   "#### 10.6.4 Verification",
+   "##### 10.6.4.1 Example runs and expected output",
+   "### 10.7 Automation of the Cisco Layer",
+   "#### 10.7.1 What can be automated against Packet Tracer",
+   "#### 10.7.2 What would be done in a real lab",
+   "#### 10.7.3 How the device configurations are managed",
+   "#### 10.7.4 The claim the report may and may not make",
+   "### 10.8 Scheduling and Orchestration",
+   "#### 10.8.1 How the routine jobs run",
+   "#### 10.8.2 How the monitoring layer detects drift",
+   "#### 10.8.3 How the AI line consumes the automation output",
+   "### 10.9 Evidence and Screenshot Checklist",
+   "### 10.10 Common Failure Modes and Troubleshooting",
+   "### 10.11 Findings",
+   "#### 10.11.1 Findings record template",
+   "#### 10.11.2 Worked example (illustrative)"
+  ]
+ },
+ "fences": {
+  "count": 55,
+  "unclosed": 0,
+  "tags": [
+   "text",
+   "text",
+   "bash",
+   "bash",
+   "powershell",
+   "yaml",
+   "bash",
+   "text",
+   "yaml",
+   "yaml",
+   "yaml",
+   "ini",
+   "yaml",
+   "yaml",
+   "bash",
+   "yaml",
+   "yaml",
+   "yaml",
+   "yaml",
+   "yaml",
+   "yaml",
+   "bash",
+   "bash",
+   "bash",
+   "bash",
+   "text",
+   "text",
+   "powershell",
+   "powershell",
+   "powershell",
+   "powershell",
+   "powershell",
+   "powershell",
+   "powershell",
+   "text",
+   "text",
+   "text",
+   "text",
+   "text",
+   "text",
+   "bash",
+   "bash",
+   "bash",
+   "bash",
+   "bash",
+   "bash",
+   "bash",
+   "bash",
+   "bash",
+   "bash",
+   "text",
+   "ini",
+   "ini",
+   "text",
+   "text"
+  ],
+  "chars": 148963
+ },
+ "tables": {
+  "count": 30,
+  "dataRows": 277,
+  "report": [
+   {
+    "idx": 1,
+    "headerLine": 11,
+    "cols": 3,
+    "dataRows": 8,
+    "bad": []
+   },
+   {
+    "idx": 2,
+    "headerLine": 87,
+    "cols": 2,
+    "dataRows": 7,
+    "bad": []
+   },
+   {
+    "idx": 3,
+    "headerLine": 126,
+    "cols": 3,
+    "dataRows": 4,
+    "bad": []
+   },
+   {
+    "idx": 4,
+    "headerLine": 149,
+    "cols": 2,
+    "dataRows": 8,
+    "bad": []
+   },
+   {
+    "idx": 5,
+    "headerLine": 265,
+    "cols": 2,
+    "dataRows": 15,
+    "bad": []
+   },
+   {
+    "idx": 6,
+    "headerLine": 287,
+    "cols": 3,
+    "dataRows": 5,
+    "bad": []
+   },
+   {
+    "idx": 7,
+    "headerLine": 387,
+    "cols": 3,
+    "dataRows": 3,
+    "bad": []
+   },
+   {
+    "idx": 8,
+    "headerLine": 804,
+    "cols": 3,
+    "dataRows": 27,
+    "bad": []
+   },
+   {
+    "idx": 9,
+    "headerLine": 842,
+    "cols": 3,
+    "dataRows": 5,
+    "bad": []
+   },
+   {
+    "idx": 10,
+    "headerLine": 976,
+    "cols": 4,
+    "dataRows": 16,
+    "bad": []
+   },
+   {
+    "idx": 11,
+    "headerLine": 1009,
+    "cols": 4,
+    "dataRows": 14,
+    "bad": []
+   },
+   {
+    "idx": 12,
+    "headerLine": 1040,
+    "cols": 4,
+    "dataRows": 8,
+    "bad": []
+   },
+   {
+    "idx": 13,
+    "headerLine": 1067,
+    "cols": 4,
+    "dataRows": 12,
+    "bad": []
+   },
+   {
+    "idx": 14,
+    "headerLine": 1096,
+    "cols": 4,
+    "dataRows": 13,
+    "bad": []
+   },
+   {
+    "idx": 15,
+    "headerLine": 1126,
+    "cols": 5,
+    "dataRows": 8,
+    "bad": [
+     {
+      "line": 1129,
+      "n": 4,
+      "expect": 5,
+      "ok": false
+     },
+     {
+      "line": 1130,
+      "n": 4,
+      "expect": 5,
+      "ok": false
+     }
+    ]
+   },
+   {
+    "idx": 16,
+    "headerLine": 1147,
+    "cols": 4,
+    "dataRows": 3,
+    "bad": []
+   },
+   {
+    "idx": 17,
+    "headerLine": 1928,
+    "cols": 4,
+    "dataRows": 3,
+    "bad": []
+   },
+   {
+    "idx": 18,
+    "headerLine": 2008,
+    "cols": 3,
+    "dataRows": 11,
+    "bad": []
+   },
+   {
+    "idx": 19,
+    "headerLine": 2175,
+    "cols": 6,
+    "dataRows": 9,
+    "bad": []
+   },
+   {
+    "idx": 20,
+    "headerLine": 3155,
+    "cols": 3,
+    "dataRows": 4,
+    "bad": []
+   },
+   {
+    "idx": 21,
+    "headerLine": 3189,
+    "cols": 3,
+    "dataRows": 7,
+    "bad": []
+   },
+   {
+    "idx": 22,
+    "headerLine": 3349,
+    "cols": 3,
+    "dataRows": 7,
+    "bad": []
+   },
+   {
+    "idx": 23,
+    "headerLine": 4286,
+    "cols": 3,
+    "dataRows": 9,
+    "bad": []
+   },
+   {
+    "idx": 24,
+    "headerLine": 4302,
+    "cols": 3,
+    "dataRows": 6,
+    "bad": []
+   },
+   {
+    "idx": 25,
+    "headerLine": 4349,
+    "cols": 2,
+    "dataRows": 6,
+    "bad": []
+   },
+   {
+    "idx": 26,
+    "headerLine": 4362,
+    "cols": 5,
+    "dataRows": 7,
+    "bad": []
+   },
+   {
+    "idx": 27,
+    "headerLine": 4422,
+    "cols": 4,
+    "dataRows": 4,
+    "bad": []
+   },
+   {
+    "idx": 28,
+    "headerLine": 4435,
+    "cols": 3,
+    "dataRows": 3,
+    "bad": []
+   },
+   {
+    "idx": 29,
+    "headerLine": 4449,
+    "cols": 5,
+    "dataRows": 30,
+    "bad": []
+   },
+   {
+    "idx": 30,
+    "headerLine": 4488,
+    "cols": 6,
+    "dataRows": 15,
+    "bad": [
+     {
+      "line": 4499,
+      "n": 7,
+      "expect": 6,
+      "ok": false
+     },
+     {
+      "line": 4504,
+      "n": 14,
+      "expect": 6,
+      "ok": false
+     }
+    ]
+   }
+  ]
+ },
+ "inlineSpans": 1537,
+ "proseChars": 147631
+}

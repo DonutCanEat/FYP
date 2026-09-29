@@ -1,0 +1,5 @@
+```text
+VERBOSE: 2026-11-09 14:22:51 [INFO] Audit complete. Findings: 61. FAIL: 2. CSV: C:\FYP\config\ServiceFirewallAudit-2026-11-09_1422.csv
+WARNING: 2 audit finding(s) FAILED - see C:\FYP\config\ServiceFirewallAudit-2026-11-09_1422.csv
+Audit CSV written to C:\FYP\config\ServiceFirewallAudit-2026-11-09_1422.csv
+```

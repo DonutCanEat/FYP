@@ -1,0 +1,75 @@
+%%U0654%%
+##### 10.6.1.1 `lib/common.sh` — the shared library
+%%U0656%%
+All Bash scripts source one library, so logging, error handling, cleanup and exit-code conventions are identical across the set. This is the Bash equivalent of the Ansible role dependency and the PowerShell module: one place to fix a convention, and one place to read to know what the convention is.
+%%U0660%%
+**`trap` for cleanup, and its limits.** `trap run_cleanup EXIT` runs the registered cleanup functions and removes the temporary file on **every** exit path, including a failure. `trap 'log WARN ...; exit 130' INT TERM HUP` makes an interrupted run visible in the log rather than silent. The most important trap in the repository is not in this library, however: `02-nftables-apply.sh` registers a cleanup action that **restores the previous firewall ruleset**, because an interrupted firewall apply is the one case where "leave things as they are" is not the safe default. That is stated here because it is the clearest example in the project of a trap carrying design significance rather than hygiene value.
+%%U0662%%
+#### 10.6.2 Production-quality scripts
+%%U0664%%
+##### 10.6.2.1 `06-server-health-report.sh`
+%%U0666%%
+**Design note.** This script produces the local evidence that the Linux estate is operating as designed: load, memory and swap pressure, filesystem headroom against warn and critical thresholds, the state of the services this host is supposed to run, failed systemd units, time synchronisation, listening sockets that fall outside the design's port matrix, certificate ages, and the reboot-required flag. It is read-only by construction. It logs to `/var/log/fyp/`, writes a machine-readable report, and exits non-zero when any threshold is breached, so a scheduled timer can alert on it and section 11's agent can consume the same facts a human reads.
+%%U0670%%
+##### 10.6.2.2 `07-nftables-log-summary.sh`
+%%U0672%%
+**Design note.** The egress pair logs every drop with the prefix `NFT-DROP: `, on both members, at a rate that a human cannot read. This script performs the reduction: it takes the journal for a chosen window, extracts the source addresses of dropped flows, aggregates them into prefixes, and ranks them. Its output is (a) a human-readable table for the daily operations log and (b) a JSON object that the AI layer of section 11 consumes as a tool result. It is read-only: `journalctl` is invoked without any state-changing option, and no rule is added, removed or flushed.
+%%U0676%%
+The `Interpretation` footer is deliberate. A raw count of dropped packets says nothing; a count attributed to a source prefix, read against the trust-boundary table, says whether the firewall is doing its job or whether a host is misconfigured. The blank-line accounting (`total` and the prefix count) also gives the section 11 agent a stable, parseable summary object rather than a wall of text to interpret.
+%%U0678%%
+##### 10.6.2.3 `08-cert-expiry-check.sh`
+%%U0680%%
+**Design note.** Certificates are the failure mode most likely to be discovered during the final demonstration rather than during testing. This script closes that gap: it walks a configurable list of hosts, reads the certificate each published endpoint presents, computes the remaining validity, and exits non-zero when anything is inside the warning window. It uses `openssl s_client` for remote endpoints and direct file reads for local material, and it treats an unreachable endpoint as a **finding**, never as a pass — a certificate that cannot be checked is not a certificate that is valid.
+%%U0684%%
+#### 10.6.3 ShellCheck and linting
+%%U0686%%
+**An honest statement, as the brief requires.** Whether ShellCheck is available in this lab is **not confirmed at the time of writing**. `shellcheck` is packaged in the Ubuntu 24.04 archive and is therefore installable with `sudo apt-get install shellcheck` on any Linux guest that can reach the archive or an on-site package mirror; the baseline's assumption A-04 requires package caches to be pre-downloaded to `vpnz-mon01` before the build week, and whether `shellcheck` is in that cache depends on a decision the group makes at that time. **[ASSUMPTION]** The group should therefore record one of two outcomes and state it in the report:
+%%U0690%%
+The scripts above are written to be ShellCheck-clean in intent: they use `set -euo pipefail`, quote every expansion, use `readonly`/`local` appropriately, guard against unset arrays with `${arr[@]+"${arr[@]}"}`, use `# shellcheck source=` directives where a library is sourced, and use `IFS= read -r`. Some of those details exist *because* ShellCheck's rules were followed by hand even before the tool was available.
+%%U0692%%
+**The human review procedure when no linter is available.** Two group members read each script against a fixed checklist, and the review is recorded in the meeting minutes with the script name and the reviewer:
+%%U0694%%
+1. Does the script start with `set -euo pipefail` and source `lib/common.sh`?
+2. Is every variable expansion quoted, and is every intentional word-splitting case commented?
+3. Is every `read` using `IFS= read -r`?
+4. Is every external command's absence handled (`require_cmd`, or an explicit `command -v` test)?
+5. Are temporary files created with `mktemp` and removed through the `trap` registry?
+6. Does every failure path exit non-zero, and is the exit code documented in the usage text?
+7. Are all arguments validated before use, including numeric bounds and mutual constraints?
+8. Does the script write to `/var/log/fyp/` through `log`, and never with an unredirected `echo`?
+9. Is there any unquoted `rm`, any `eval`, any `$( )` inside a double-quoted string used as a command, or any `kill` without a PID check?
+10. Does the script behave correctly when the log directory, the role file, or a target directory is missing?
+%%U0696%%
+A reviewer who cannot answer "yes" or "not applicable" to every question returns the script. The value of this checklist is that it is short enough to be applied honestly and specific enough that a superficial read cannot pass it.
+%%U0698%%
+#### 10.6.4 Verification
+%%U0700%%
+##### 10.6.4.1 Example runs and expected output
+%%U0702%%
+All output below is **illustrative** and reflects the shape required, not a captured run.
+%%U0710%%
+The `10.70.0.0/24` line is the interesting one in the output above: the isolated lab segment must not be able to reach the egress pair at all, and the summary surfaces that in a single line. This is exactly the output the section 11 agent is given as a tool result, which is why the script produces both a table and a JSON object.
+%%U0714%%
+Two findings in one run, and both are useful: one certificate is genuinely close to expiry, and one endpoint cannot complete a handshake at all. The second is the kind of finding that only a probe-based check produces — a file-based check would have reported the certificate as healthy while the service was unreachable.
+%%U0718%%
+A non-zero exit from a `oneshot` service triggered by a timer is visible in `systemctl status` and in `journalctl -u fyp-health-report.service`, which is how the monitoring layer and the AI layer both learn about a finding without either of them parsing a log line. This is the integration point described in 10.8.
+%%U0720%%
+---
+%%U0722%%
+### 10.7 Automation of the Cisco Layer
+%%U0724%%
+This subsection is written to be uncomfortable but accurate. The project's Cisco work is performed exclusively in **Cisco Packet Tracer** (a fixed project constraint), and the design baseline records the consequence bluntly: Packet Tracer has **no API, no SSH server reachable from real tooling, and no Ansible collection** (PT-06). No playbook, script or tool in this project can log in to a Packet Tracer device. Any statement to the contrary would be fabrication.
+%%U0726%%
+#### 10.7.1 What can be automated against Packet Tracer
+%%U0728%%
+| Capability | Possible? | How it is done |
+|---|---|---|
+| Keeping the **intended** configuration of every device under version control | **Yes** | `03-build/packet-tracer/configs/*.txt` — one file per device — is the source of truth, committed to Git. Each file holds the exact intended running configuration as it should appear in the device |
+| Generating those configurations from templates | **Yes, on the host** | A template plus a per-device variable file (hostname, management address, loopback, VLAN list, peer list) rendered by the same Jinja2 machinery used for the Linux templates, with the output committed as the `.txt` file. This is genuine infrastructure-as-code applied to device configuration, even though the *delivery* is manual |
+| Detecting drift between the intended configuration and the device | **Partly** | The group can compare the device's `show running-config` output, pasted into a file, against the committed `.txt`. The comparison is a `diff`, and it is manual because nothing can read the device directly |
+| Comparing configurations between milestones | **Yes** | `git diff` between tags shows exactly what changed in the network configuration between week 4 and week 8 |
+| Archiving device configurations with a timestamp | **Yes, as files** | The archive playbook of 10.4.6.5 copies the committed `.txt` files into a dated archive directory and writes a manifest stating that no device was logged into |
+| Verifying that a configuration is *complete* | **Yes, partially** | A validator can check that every device file contains the required elements (hostname, management IP, VLAN definitions, trunk settings, routing block, banner, `no ip domain-lookup`), which catches an omitted section even without a device |
+| Executing a configuration on the device | **No** | Packet Tracer offers no scriptable interface that external tooling can reach. The configuration is applied through PT's own CLI, by hand, in the simulator |
+| Retrieving a live configuration from the device | **No** | Same reason |
+| Automated testing of the device's response | **No** | Verification is by PT's own `show` output and simulation mode, captured as screenshots |

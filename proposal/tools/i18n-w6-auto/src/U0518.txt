@@ -1,0 +1,18 @@
+```powershell
+# What Enable-PSRemoting does, and what the project therefore adds on top of it.
+Enable-PSRemoting -Force -SkipNetworkProfileCheck
+# -SkipNetworkProfileCheck  : required in this lab, because hypervisor host-only
+#                             adapters are often classified as Public and the
+#                             cmdlet otherwise refuses to proceed.
+
+# Project additions, in order of importance:
+Set-Item WSMan:\localhost\Service\Auth\Basic -Value $false             # no cleartext auth
+Set-Item WSMan:\localhost\Service\AllowUnencrypted -Value $false       # no cleartext transport
+Get-ChildItem WSMan:\localhost\Listener |                            # remove the HTTP listener
+    Where-Object { $_.Keys -contains 'Transport=HTTP' } |
+    ForEach-Object { Remove-Item ("WSMan:\localhost\Listener\" + $_.Name) -Recurse -Force }
+New-Item WSMan:\localhost\Listener -Transport HTTPS -Address * `
+    -CertificateThumbprint $cert.Thumbprint                            # HTTPS listener only
+Set-Item WSMan:\localhost\MaxEnvelopeSizekb -Value 500
+Set-Item WSMan:\localhost\Shell\IdleTimeout -Value 300000
+```

@@ -1,0 +1,11 @@
+| Playbook | Hosts | First run changed | Second run changed | Log file | Date |
+|---|---|---|---|---|---|
+| `01-baseline-windows.yml` | 9 Windows guests | *(record)* | **0** | `runs/…_01-baseline-windows.SECOND-RUN.log` | *(record)* |
+| `02-baseline-linux.yml` | 9 Linux guests | *(record)* | **0** | `runs/…_02-baseline-linux.SECOND-RUN.log` | *(record)* |
+| `03-nginx-reverseproxy.yml` | `vpnz-dmzrev01/02` | *(record)* | **0** | `runs/…_03-nginx.SECOND-RUN.log` | *(record)* |
+| `04-keepalived.yml` | `web`, `edge` | *(record)* | **0** | `runs/…_04-keepalived.SECOND-RUN.log` | *(record)* |
+| `05-nftables-egress.yml` | `vpnz-nft01/02` | *(record)* | **0** | `runs/…_05-nftables.SECOND-RUN.log` | *(record)* |
+| `06-wireguard.yml` | `edge` | *(record)* | **0** | `runs/…_06-wireguard.SECOND-RUN.log` | *(record)* |
+| `07-ad-users.yml` | `vpnz-dc01` | *(record)* | **0** | `runs/…_07-ad-users.SECOND-RUN.log` | *(record)* |
+| `08-collect-network-configs.yml` | all reachable + localhost | *(record)* | **0** | `runs/…_08-collect.SECOND-RUN.log` | *(record)* |
+| `09-verify-services.yml` | all | *(record)* | **0** (by construction) | `runs/audit/audit-*.json` | *(record)* |

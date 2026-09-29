@@ -1,0 +1,15 @@
+```bash
+# Syntax gate - fast, no connection, catches YAML and Jinja2 errors
+ansible-playbook playbooks/05-nftables-egress.yml --syntax-check
+ansible-playbook --syntax-check playbooks/*.yml
+
+# Inventory gate
+ansible-inventory -i inventory/hosts.yml --graph
+ansible-inventory -i inventory/hosts.yml --list > /dev/null    # fails on unparsed groups
+
+# Vault integrity gate (no decryption of values, just readability)
+ansible-vault view inventory/group_vars/all/vault.yml > /dev/null
+
+# Tag discovery - documents what a targeted run can actually do
+ansible-playbook playbooks/05-nftables-egress.yml --list-tags
+```

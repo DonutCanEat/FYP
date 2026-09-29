@@ -1,0 +1,109 @@
+// Deterministic §F.3 rewrite for D:\File\School\FYP\FYP-Outline-DRAFT.md  (run with node)
+// Layout: label field = columns 1..19 (hard-padded), column 20 = 1-column gutter,
+// week w's cell = columns 21+5(w-1) .. 25+5(w-1). W12 therefore ends at column 80.
+const fs = require('fs');
+const P = 'D:\\File\\School\\FYP\\FYP-Outline-DRAFT.md';
+
+const LBL = 20;
+const colw = w => 21 + 5 * (w - 1);
+const colEnd = w => 25 + 5 * (w - 1);
+
+function put(parts) {
+  const arr = [];
+  for (const [c, t] of parts) {
+    const chars = [...t];
+    for (let k = 0; k < chars.length; k++) {
+      const idx = c - 1 + k;
+      while (arr.length <= idx) arr.push(' ');
+      if (arr[idx] !== ' ') throw new Error('collision at column ' + (idx + 1) + ': "' + arr[idx] + '" vs "' + chars[k] + '"');
+      arr[idx] = chars[k];
+    }
+  }
+  return arr.join('');
+}
+function label(t) {
+  if (t.length > LBL) throw new Error('label too long (' + t.length + '): ' + t);
+  return t + ' '.repeat(LBL - t.length);
+}
+function bar(labelText, segs) {
+  const parts = [[1, label(labelText)]];
+  for (const [a, b, ch] of segs) parts.push([colw(a), ch.repeat(colEnd(b) - colw(a) + 1)]);
+  return put(parts);
+}
+const RULER = put([[16, 'W1'], [21, 'W2'], [26, 'W3'], [31, 'W4'], [36, 'W5'], [41, 'W6'], [46, 'W7'], [51, 'W8'], [56, 'W9'], [60, 'W10'], [65, 'W11'], [70, 'W12']]);
+const GATES = put([[colw(3), 'G1'], [colw(6), 'G2'], [colw(8), 'G3'], [colw(10), 'G4']]);
+const GATE_H = put([[colw(6), 'G2-H']]);
+
+const B1 = [
+  ['Platform build', [[1, 2, '#']]],
+  ['Identity (AD/DNS)', [[2, 3, '#']]],
+  ['Cisco L2 VLAN/RSTP', [[2, 3, '#']]],
+  ['OSPF / inter-site', [[3, 4, '#']]],
+  ['nftables + perimeter', [[4, 5, '#']]],
+  ['File + storage + PKI', [[5, 6, '#']]],
+  ['Remote access', [[6, 7, '#']]],
+  ['EIGRP / BGP / HSRP', [[7, 8, '#']]],
+  ['Monitoring + syslog', [[1, 6, '='], [7, 7, '#'], [8, 9, '='], [10, 10, '#'], [11, 12, '=']]],
+  ['Ansible / Git', [[1, 5, '.'], [6, 6, '='], [7, 7, '#'], [8, 8, '=']]],
+  ['LOCAL MODEL SPIKE', [[4, 5, '#']]],
+  ['MCP servers (5)', [[6, 8, '#']]],
+  ['UC-1 / UC-3', [[7, 8, '#']]],
+  ['UC-2 / UC-4 / UC-5', [[8, 9, '#']]],
+  ['Evaluation set', [[10, 10, '#']]],
+  ['Documentation', [[1, 12, '#']]]
+];
+const B2 = [
+  ['STAGE A servers', [[2, 6, '='], [7, 7, '#']]],
+  ['STAGE B one dev', [[3, 6, '='], [7, 8, '#']]],
+  ['STAGE C Cisco', [[8, 10, '#']]],
+  ['STAGE D bonus', [[10, 12, '=']]]
+];
+
+const P1 = '**How to read the ruler, so that the chart and §F.1 cannot be read against each other.** Each week occupies a **five-character cell**, and the ruler\'s own header fixes where each cell begins: the `W` of `W1` sits in column 21, so `W1` occupies columns 21–25, `W2` columns 26–30, `W3` columns 31–35, and so on by the same step of five, `W12` occupying columns 76–80. **Every gate marker and every bar in both bands was re-measured character by character against this rule, and every one of them begins at column `21 + 5(w − 1)` for its own week `w`** — that is, at the **first character of its week\'s cell**, with no bar starting inside a label and no partial cell anywhere. **Every gate marker is drawn starting at its own week\'s cell** — `G1` at column 31 (week 3), `G2` at column 46 (week 6), `G3` at column 56 (week 8), `G4` at column 66 (week 10) — and **no bar extends past column 80**, the right edge of the `W12` cell. **Columns 1–20 are the label field and column 21 is where every bar begins:** every row label in both bands is **20 characters or fewer**, so that **no label can touch the bar it names** — there is always at least one blank column between a label\'s last character and its bar, and the bar begins under the `W` of the ruler line. **No bar was moved to achieve this; the only label shortened was the one that would otherwise have overrun the field** — `Cisco L2 (VLAN/RSTP)` became `Cisco L2 VLAN/RSTP`, because a label is shortened rather than a bar moved, which is the rule this chart follows.';
+
+const P2 = 'The same chart with **§C.6\'s staged AI-coverage ramp** and the **G2-H hardware gate** laid on top. The ramp is what the first chart cannot show — it is coverage growing in evidenced steps, not another bar — so it is drawn as a second band beneath the same week ruler rather than folded into the first:';
+
+const P3 = '**The same alignment rule applies to this band, and it is what makes the ramp readable against §C.6.** **The gate row sits at the top of the band, on the same week cells as the ruler above it:** `G1` at column 31 (week 3), `G2` at column 46 (week 6), `G3` at column 56 (week 8) and `G4` at column 66 (week 10); on the row below it **`G2-H` starts at column 46 and so sits directly beneath `G2` and beneath `W6`** (the deferred hardware gate, §F.1), and it is the only gate marker on that row. **The glyphs are defined here, once, for both bands:** the blank ` ` is a week in which the stage\'s thing is **not yet built**; `.` is a week that is **planned but not yet begun** (it appears only in the workstream rows of the first band); **`=`** is a week in which the stage\'s thing is **built or verified but not yet AI-covered**; and **`#`** is a week in which the AI layer **actually manages** what the stage covers. **A stage bar is read as one bar** — its `=` and `#` runs together — and **its overall span is exactly the span §C.6\'s own table states for that stage**: **`STAGE A` occupies weeks 2–7** (`=` weeks 2–6, `#` week 7), **`STAGE B` occupies weeks 3–8** (`=` weeks 3–6, `#` weeks 7–8), **`STAGE C` occupies weeks 8–10** (`#` throughout, because its build finishes in week 7 and its own bar opens where its coverage does) and **`STAGE D` occupies weeks 10–12** (`=` throughout — it has no `#` at all, because it is a bonus window, not a coverage window), which is the weeks 10–12 window §C.6 names for it. **Each bar therefore reaches the gate that closes its stage and not one column further**: `STAGE B` ends at column 60, the right edge of the week `G3` (week 8) closes in, and `STAGE C` ends at column 70, the right edge of the week `G4` (week 10) closes in. **The boundary between `=` and `#` inside a bar is where that stage\'s coverage begins, and it is never earlier than week 7**, when the AI line starts — which is why no bar carries `#` in weeks 1–6.';
+
+const P4 = '**What each stage bar covers, so that the band carries §C.6\'s stage names rather than an abbreviation.** **`STAGE A servers`** is the server estate — the Linux and Windows guests managed by the AI layer — built in weeks 2–6 and covered in week 7. **`STAGE B one dev`** is the first genuinely reachable Cisco device — one node only, and the minimum acceptable stage — built in weeks 3–6 and covered in weeks 7–8. **`STAGE C Cisco`** is the full Cisco target set fixed by D-16 — five devices — its build running through week 7 and its coverage weeks 8–10, once Stage B is exited at G3, closed at G4 in week 10. **`STAGE D bonus`** is the optional peer-side eBGP verification, a bonus window in weeks 10–12 that is never an exit criterion for the project.';
+
+if (process.argv[2] === '--show') {
+  console.log('RULER len=' + RULER.length);
+  console.log(RULER);
+  console.log(GATES);
+  console.log(GATE_H);
+  for (const [l, s] of B1) console.log(bar(l, s));
+  for (const [l, s] of B2) console.log(bar(l, s));
+  console.log('--- mapping check ---');
+  for (const [l, s] of B1.concat(B2)) {
+    const r = bar(l, s); const runs = [];
+    let cur = null;
+    for (let k = 0; k < r.length; k++) {
+      const ch = r[k];
+      if (ch === ' ') { if (cur) { runs.push(cur); cur = null; } }
+      else { if (cur && cur.ch === ch) cur.end = k + 1; else { if (cur) runs.push(cur); cur = { ch, start: k + 1, end: k + 1 }; } }
+    }
+    if (cur) runs.push(cur);
+    const desc = runs.filter(x => x.start > LBL).map(x => "'" + x.ch + "' " + x.start + '-' + x.end + ' = W' + (1 + (x.start - 21) / 5) + (x.end > x.start ? '-W' + (1 + (x.end - 21) / 5) : '')).join('  ');
+    console.log(('[' + l + ']').padEnd(24) + desc);
+  }
+  process.exit(0);
+}
+
+if (process.argv[2] === '--apply') {
+  const t = fs.readFileSync(P, 'utf8');
+  const L = t.split('\n');
+  const iF3 = L.findIndex(l => l.trim() === '### F.3 ASCII Gantt');
+  const iF4 = L.findIndex(l => l.trim() === '### F.4 Parallelism and hard dependencies');
+  if (iF3 < 0 || iF4 < 0 || iF4 <= iF3) { console.error('anchors: iF3=' + iF3 + ' iF4=' + iF4); process.exit(1); }
+  const sec = ['### F.3 ASCII Gantt', '', '```', RULER, GATES];
+  for (const [l, s] of B1) sec.push(bar(l, s));
+  sec.push('```', '', P1, '', P2, '', '```', RULER, GATES, GATE_H);
+  for (const [l, s] of B2) sec.push(bar(l, s));
+  sec.push('```', '', P3, '', P4, '');
+  const out = L.slice(0, iF3).concat(sec, L.slice(iF4));
+  fs.writeFileSync(P, out.join('\n'), 'utf8');
+  console.log('§F.3 replaced: old lines ' + (iF3 + 1) + '-' + iF4 + ' -> ' + sec.length + ' lines; file ' + out.length + ' lines');
+  process.exit(0);
+}
+console.log('usage: --show | --apply');

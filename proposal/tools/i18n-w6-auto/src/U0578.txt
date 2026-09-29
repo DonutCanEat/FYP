@@ -1,0 +1,14 @@
+```powershell
+# Install once on the authoring host only.
+Install-Module PSScriptAnalyzer -Scope CurrentUser -Force -AllowClobber
+
+# Analyse the repository with an explicit, committed settings file.
+Invoke-ScriptAnalyzer -Path C:\FYP\04-automation\powershell -Recurse `
+    -Settings C:\FYP\04-automation\powershell\PSScriptAnalyzerSettings.psd1 `
+    -Severity Error, Warning |
+    Export-Csv C:\FYP\06-verification\psscriptanalyzer-$(Get-Date -f yyyyMMdd).csv -NoTypeInformation
+
+# Gate the review on Error-severity findings; warnings are reviewed by a human.
+$errors = Invoke-ScriptAnalyzer -Path C:\FYP\04-automation\powershell -Recurse -Severity Error
+if ($errors) { Write-Error "$($errors.Count) PSScriptAnalyzer error(s) must be fixed before review"; exit 4 }
+```

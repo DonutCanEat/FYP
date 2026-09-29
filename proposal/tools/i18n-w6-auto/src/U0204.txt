@@ -1,0 +1,1 @@
+The `whoami` check is included deliberately: it proves *which identity* Ansible is using, which is the fact that most often differs from what the team believes.

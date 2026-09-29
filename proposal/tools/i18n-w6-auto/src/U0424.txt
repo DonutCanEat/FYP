@@ -1,0 +1,1 @@
+`02-baseline-linux.yml` is the Linux counterpart of 10.4.6.1. Its full text is not reproduced because it is structurally identical to the playbook above, with four differences that matter:

@@ -1,0 +1,10 @@
+# Byte fidelity is a verification requirement in this project, not a preference.
+#
+# The project verifies sources by SHA-256 and byte size (agent.md V7, H3). Git's
+# default end-of-line conversion would rewrite CRLF/LF on checkout and change the
+# bytes of a file whose hash was measured and pinned, producing a "drift" that is
+# pure tooling artefact. `-text` disables all EOL conversion for every path, so a
+# committed file is restored byte-for-byte.
+#
+# Do not remove this rule, and do not "normalise" a file through Git.
+* -text

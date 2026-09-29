@@ -1,0 +1,8 @@
+```powershell
+# ON vpnz-jump01 ONLY. Documented experimental use; NOT used by the Ansible path.
+$cur = (Get-Item WSMan:\localhost\Client\TrustedHosts).Value
+Set-Item WSMan:\localhost\Client\TrustedHosts -Value "10.10.90.21,10.10.90.22" -Concatenate -Force
+Test-WSMan -ComputerName 10.10.90.21 -UseSSL     # must negotiate; check the certificate it presents
+# ... capture the evidence, then revert the change and record the revert:
+Set-Item WSMan:\localhost\Client\TrustedHosts -Value $cur -Force
+```

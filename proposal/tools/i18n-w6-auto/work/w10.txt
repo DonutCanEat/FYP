@@ -1,0 +1,94 @@
+%%U0572%%
+#### 10.5.4 Modules and code quality
+%%U0574%%
+##### 10.5.4.1 `PSScriptAnalyzer`
+%%U0576%%
+`PSScriptAnalyzer` is the standard static-analysis tool for PowerShell, installed from the PowerShell Gallery (`Install-Module PSScriptAnalyzer`). Whether the lab can reach the Gallery from `vpnz-jump01` depends on connectivity, and **the group must record which case applied** rather than assuming the tool was available.
+%%U0580%%
+The committed settings file disables only rules the group has consciously rejected, and every exclusion carries a comment explaining why. One example: `PSAvoidUsingWriteHost` is downgraded from Error to Warning, because two scripts use `Write-Host` deliberately for a human-facing progress line while **all data goes to the object stream** — the rule's intent is satisfied even though the cmdlet appears. If `PSScriptAnalyzer` cannot be installed, the report says so plainly and the fallback is the peer-review checklist below; claiming to have run a tool that was not run is exactly the kind of claim the project treats as an integrity failure.
+%%U0582%%
+##### 10.5.4.2 Function naming and the approved-verb convention
+%%U0584%%
+Every function in `modules/VPCommon/VPCommon.psm1` and every script uses a verb from `Get-Verb`. The project's own vocabulary is deliberately small and is fixed in `04-automation/ansible/docs/04-variable-dictionary.md`:
+%%U0586%%
+| Approved verb | Used for | Project examples |
+|---|---|---|
+| `Get` | Read state, return objects, no side effect | `Get-VPFypHostRecord`, `Get-ADHealthReport.ps1`, `Get-ServiceAndFirewallAudit.ps1` |
+| `Test` | Return a boolean or a pass/fail finding | `Test-ServiceEndpoints.ps1`, `Test-VPNftRulePresent` |
+| `Invoke` | Perform an operation that changes state | `Invoke-NewStarterOnboarding.ps1`, `Invoke-ScheduledBackupVerify.ps1` |
+| `New` | Create an object | `New-VPFypReportRow` |
+| `Export` | Write data out to a file | `Export-GPOBackup.ps1`, `Export-VPFypCsv` |
+| `Backup` | Approved Windows verb, retained because the design names the script | `Backup-NetworkDeviceConfig.ps1` |
+| `Convert` | Change representation without changing substance | `ConvertTo-PlainText` |
+%%U0588%%
+Banned patterns: `Do-`, `Run-`, `Make-`, `Create-` (use `New-`), `Execute-` (use `Invoke-`), and `Fix-` (use `Repair-`, and only where a repair genuinely happens). The reason is not stylistic: with a consistent verb set, `Get-Command -Verb Get -Module VPCommon` lists every read-only operation the project owns, which is a **capability check a reviewer can perform in one command** — and the same check is what makes the read-only claim of section 11 verifiable instead of rhetorical.
+%%U0590%%
+The other rules the group applies to PowerShell code:
+%%U0592%%
+- **`[CmdletBinding()]` on every function that is not a one-liner**, so `-Verbose` and `-ErrorAction` behave as a caller expects.
+- **Typed parameters with `[Validate*]` attributes.** Parameter-boundary validation removes a whole class of defensive code from the body, as the three scripts above demonstrate.
+- **`Write-Verbose` for progress, `Write-Warning`/`Write-Error` for problems, the object stream for data.** `Write-Host` only for a human-facing progress line, never for data.
+- **No `exit` inside a function.** `exit` terminates the host and makes the function unusable in a pipeline or an Ansible run; the scripts above set `$global:LASTEXITCODE` and return instead.
+- **Comment-based help on every script**, including the runtime it was tested on and its known limitations. The help block is also where a non-obvious design decision is explained to the next reader.
+- **No credential in a parameter default, a log line, or an exception message.** Passwords arrive as `SecureString` and are cleared in a `finally` block.
+%%U0594%%
+##### 10.5.4.3 The review checklist when a linter is unavailable
+%%U0596%%
+If `PSScriptAnalyzer` cannot be installed, a human reviewer works through a fixed checklist and records the result in the meeting minutes. It is deliberately short enough to be completed honestly:
+%%U0598%%
+1. Does every function use a verb from `Get-Verb`?
+2. Does every script have comment-based help with an `.EXAMPLE` that can actually be run?
+3. Is there a `try`/`catch` around every external call (`wbadmin`, `netsh`, `dcdiag`, remote invocation)?
+4. Does any `catch` block swallow an error without logging it? (A silent `catch {}` is an automatic rejection.)
+5. Can any code path write a credential to a log, a console, a CSV or an exception message?
+6. Does the script emit objects rather than formatted text as its primary output?
+7. Is there any `Invoke-Expression`, string-concatenated command construction, or unvalidated path interpolation?
+8. Does the script behave correctly when its primary input is missing, empty, or malformed?
+%%U0600%%
+##### 10.5.4.4 The shared module
+%%U0602%%
+`modules/VPCommon/VPCommon.psm1` holds functions used by more than one script, and each is exported explicitly through `Export-ModuleMember`. It is versioned with a `ModuleVersion` in the manifest and every function change appears in `git log` because the module is code, not a helper file. Its initial contents are `Write-VPFypLog` (the common logging format), `Export-VPFypCsv` (CSV export with the project's naming convention), `Test-VPFypReachable` (WinRM reachability with a structured result), and `ConvertTo-VPFypSafeName` (path and object-name sanitisation). Keeping the module small is deliberate: a shared module that grows into a framework becomes unmaintainable within a 12-week project.
+%%U0604%%
+#### 10.5.5 Verification
+%%U0606%%
+##### 10.5.5.1 Example invocations
+%%U0610%%
+##### 10.5.5.2 Expected output
+%%U0612%%
+All output below is **illustrative**. The shape is what must hold; the values in a real run come from the group's own CSV and estate.
+%%U0614%%
+**Onboarding, `-WhatIf` preview:**
+%%U0618%%
+**Onboarding, real first run:**
+%%U0622%%
+**Onboarding, immediate re-run — the idempotence evidence:**
+%%U0626%%
+`Created = False` on the second pass, with no `Created`/`Added`/`Applied` lines in the log, is the property the report cites. It is **not** the same claim as Ansible's `changed=0`, and the report must not conflate them: PowerShell has no change counter, so the equivalent evidence is that every action flag is false and the log contains no action lines on the second pass. This distinction is stated here because an internship-examiner question about "how do you know it is idempotent" is very likely, and the honest answer differs between the two tools.
+%%U0628%%
+**Firewall and service audit, failures only:**
+%%U0632%%
+**Firewall and service audit, summary:**
+%%U0636%%
+**Backup and verify, all phases passing:**
+%%U0640%%
+A `SKIP` on `OffHostCheck` is a legitimate result when the restic repository is not reachable, and the report must present it as an unverified cross-check rather than as a pass. That distinction is the difference between an honest report and one that has quietly turned an absence of evidence into a positive result.
+%%U0642%%
+---
+%%U0644%%
+### 10.6 Bash
+%%U0646%%
+#### 10.6.1 Where Bash is the right tool, and where it is not
+%%U0648%%
+Bash is the right tool when the task is **a procedure on one host**, when the primitives are already installed (`awk`, `grep`, `openssl`, `nft`, `journalctl`, `ss`), and when the result is a log line or an exit code rather than a managed state.
+%%U0650%%
+| Task | Right tool | Why |
+|---|---|---|
+| Summarise hundreds of thousands of nftables drop-log lines by source prefix | **Bash** (`awk`) | A one-pass text reduction; `awk` is the correct instrument and is present everywhere |
+| Compare certificate `notAfter` values across nine hosts and exit non-zero before expiry | **Bash** (`openssl` + arithmetic) | A thin wrapper over a tool that already produces the fact |
+| Produce a health and capacity report from `/proc`, `df`, `systemctl` | **Bash** | A local read-only report whose output is a file; no state is being converged |
+| Apply a hardened SSH, sysctl and audit baseline to nine hosts, idempotently, with a change count | **Ansible** | State, not procedure. Bash can do it once; Ansible proves it, reports `changed=0`, and is reviewable as a diff |
+| Create and converge AD users and groups | **PowerShell** | The domain-aware cmdlets are the only sane interface, and `-WhatIf` provides the dry run |
+| Revert the estate after a failed change | **Ansible** | It ties back to Git, which is where the previous state lives |
+| Arm a rollback timer around a firewall apply | **Bash** | A time-bounded local action driven by a `systemd` timer — exactly what Bash and `systemd` are for, and the reason `02-nftables-apply.sh` exists as a script *and* is invoked by the Ansible role |
+%%U0652%%
+**Where Bash is the wrong tool, stated plainly.** Bash is the wrong choice when the task converges state across many hosts, when the desired end state must be reviewable as a diff, when error handling must distinguish "already satisfied" from "failed", or when the logic exceeds roughly 200 lines with more than three conditionals. In all of those cases the project uses Ansible or PowerShell, and the mixed model is presented in the report as a deliberate division of labour rather than as an accident of who wrote what. The anti-pattern the group forbids by name is the **Ansible-shaped Bash script** — a script that reimplements idempotence badly with a pile of `grep -q` guards and its own `--check` flag. If a Bash script starts needing a `--check` mode, that is the signal it should have been a role.

@@ -1,0 +1,7 @@
+```bash
+# --- The same scripts under a scheduled timer, checked by exit code -----------
+$ systemctl list-timers 'fyp-*' --all
+NEXT                        LEFT    LAST                        PASSED  UNIT                    ACTIVATES
+Mon 2026-11-10 06:00:00 CST 7h left Sun 2026-11-09 06:00:02 CST 10h ago fyp-health-report.timer  fyp-health-report.service
+Sun 2026-11-16 03:00:00 CST 6 days  Sun 2026-11-09 03:00:01 CST 13h ago fyp-cert-expiry.timer     fyp-cert-expiry.service
+```

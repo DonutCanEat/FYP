@@ -1,0 +1,1 @@
+A drift finding is a **finding record**, not a silent correction. The group's rule is that drift is written down in the findings records of 10.11 with what changed, when, how it was detected and what was done — because a drift that is corrected silently teaches the team nothing and leaves the report unable to explain its own configuration history.

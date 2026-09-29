@@ -1,0 +1,52 @@
+{
+  "_comment": "Production split plan for the Victor2 FYP proposal corpus in proposal\\sections. Run from this folder: node convert.js --config split-plan.fyp.json . Relative paths resolve against this config file's directory, so outputs land in the workspace root D:\\File\\School\\FYP. The corpus has NO '# ' H1 headings; its top-level sections are '## N. Title'. convert.js derives the section boundary from the document's shallowest heading level, so the include rules below match the '## N.' keys directly. 'titlePage': true synthesises a real title page and a TOC field for a document that has no H1 to promote.",
+
+  "author": "Victor Li",
+  "titlePage": true,
+
+  "inputs": [
+    "..\\..\\sections\\01-introduction.md",
+    "..\\..\\sections\\02-architecture.md",
+    "..\\..\\sections\\03-microsoft.md",
+    "..\\..\\sections\\04-linux.md",
+    "..\\..\\sections\\05-cisco.md",
+    "..\\..\\sections\\06-automation.md",
+    "..\\..\\sections\\07-ai.md",
+    "..\\..\\sections\\08-project-management.md"
+  ],
+
+  "outputs": [
+    {
+      "path": "..\\..\\..\\FYP-Proposal-COMPLETE.docx",
+      "title": "Victor2 – Enterprise Network Infrastructure and Architect — Final Year Project Proposal",
+      "titlePage": false,
+      "rules": null
+    },
+    {
+      "path": "..\\..\\..\\FYP-Proposal-Volume1-Plan.docx",
+      "title": "Victor2 – Enterprise Network Infrastructure and Architect — Volume 1: Proposal and Project Plan",
+      "subtitle": "Front matter, Sections 1–6, and Sections 12–20",
+      "titlePage": true,
+      "inputs": [
+        "..\\..\\sections\\01-introduction.md",
+        "..\\..\\sections\\02-architecture.md",
+        "..\\..\\sections\\08-project-management.md"
+      ],
+      "rules": { "include": ["1-6", "12-20"], "exclude": [], "match": null, "frontMatter": true }
+    },
+    {
+      "path": "..\\..\\..\\FYP-Proposal-Volume2-Technical.docx",
+      "title": "Victor2 – Enterprise Network Infrastructure and Architect — Volume 2: Technical Design and Build Manual",
+      "subtitle": "Sections 7–11",
+      "titlePage": true,
+      "inputs": [
+        "..\\..\\sections\\03-microsoft.md",
+        "..\\..\\sections\\04-linux.md",
+        "..\\..\\sections\\05-cisco.md",
+        "..\\..\\sections\\06-automation.md",
+        "..\\..\\sections\\07-ai.md"
+      ],
+      "rules": { "include": ["7-11"], "exclude": [], "match": null, "frontMatter": false }
+    }
+  ]
+}

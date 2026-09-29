@@ -1,0 +1,1 @@
+`PSScriptAnalyzer` is the standard static-analysis tool for PowerShell, installed from the PowerShell Gallery (`Install-Module PSScriptAnalyzer`). Whether the lab can reach the Gallery from `vpnz-jump01` depends on connectivity, and **the group must record which case applied** rather than assuming the tool was available.

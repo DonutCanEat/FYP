@@ -1,0 +1,1 @@
+The `ad_users` role is deliberately thin because the interesting logic belongs in the PowerShell script, where it can be reviewed and demonstrated on its own. A role that reimplements user provisioning in Ansible would duplicate a script the brief explicitly requires and would leave the PowerShell deliverable untested.

@@ -1,0 +1,7 @@
+| Branch | Lifetime | Rule |
+|---|---|---|
+| `main` | permanent | Always deployable. Only merges from `task/*` arrive here, always with one recorded reviewer. Tagged `v0.1`, `v0.2`, … at each milestone gate |
+| `task/{line}-{short-name}` | per change | One branch per change, named for the line and the change, e.g. `task-l4-nftables-egress-role`, `task-l2-keepalived-track-script` |
+| `fix/{short-name}` | per defect | A defect found during verification |
+| `docs/{short-name}` | per documentation change | Documentation-only changes, so that a documentation commit never mixes with a configuration commit |
+| `spike/{short-name}` | per experiment | Throwaway branches for Packet Tracer experiments and the AI feasibility spike; merged only as notes, never as configuration |

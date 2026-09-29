@@ -1,0 +1,1 @@
+A non-zero exit from a `oneshot` service triggered by a timer is visible in `systemctl status` and in `journalctl -u fyp-health-report.service`, which is how the monitoring layer and the AI layer both learn about a finding without either of them parsing a log line. This is the integration point described in 10.8.

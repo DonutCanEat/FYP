@@ -1,0 +1,1 @@
+This is a small amount of code for a large amount of consistency, and it is the mechanism by which the interface-contract discipline of the design baseline is enforced technically rather than by good intentions.

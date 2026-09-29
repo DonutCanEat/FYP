@@ -1,0 +1,1 @@
+**Default variables:** `users_linux_admins: [adm-w1, adm-w2, adm-w3, adm-w4]`, `users_linux_admin_group: gg-infra-admins`, `users_service_accounts:` (a list of sAMAccountName and target group), `users_tier0_admins: [adm-w1, adm-w2]`, `users_disable_template_account: true`, `users_rotate_service_passwords_days: 90`.

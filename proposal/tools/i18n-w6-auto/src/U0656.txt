@@ -1,0 +1,1 @@
+All Bash scripts source one library, so logging, error handling, cleanup and exit-code conventions are identical across the set. This is the Bash equivalent of the Ansible role dependency and the PowerShell module: one place to fix a convention, and one place to read to know what the convention is.

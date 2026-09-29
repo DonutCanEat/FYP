@@ -1,0 +1,6 @@
+| Mechanism | Applies to | How |
+|---|---|---|
+| Declarative revert | Anything Ansible manages | Revert the Git commit and re-run the playbook; because the code is idempotent, the state converges back |
+| Configuration-file revert | `nftables`, `keepalived`, `nginx`, `sshd` | The role keeps the previous file as `<file>.bak.<timestamp>`, and the handlers restore it if the new file fails its validation |
+| Firewall lock-out timer | nftables only | `02-nftables-apply.sh` arms an automatic revert before applying a new ruleset, so a bad ruleset cannot strand the group outside a remote VM — this is the documented lock-out mitigation required by §12.2 |
+| Hypervisor snapshot | Anything | One snapshot before every significant change, removed once the change is verified; **snapshots are never a backup** (§15.3) |

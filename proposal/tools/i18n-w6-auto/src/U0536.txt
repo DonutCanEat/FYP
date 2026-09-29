@@ -1,0 +1,1 @@
+The report must present this as a **lab simplification for one specific workgroup scenario**, with the security consequence stated: `TrustedHosts` disables target-identity verification and is therefore not the design's supported path. Where the DMZ hosts are domain-joined (open item O-05), this experiment is not needed at all.

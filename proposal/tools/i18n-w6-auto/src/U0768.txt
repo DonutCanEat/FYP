@@ -1,0 +1,1 @@
+Drift is any difference between the estate and the repository. It is detected at four levels, each with a different latency:

@@ -1,0 +1,10 @@
+| # | Task | Module | Notes |
+|---|---|---|---|
+| 1 | Install `keepalived` (2.2.8) | `ansible.builtin.apt` | |
+| 2 | Confirm the VRID/VIP pair matches the design | `ansible.builtin.assert` | Asserts `keepalived_vrid` is 51 or 61 and that it matches the host's group. This catches the highest-consequence copy-paste error in the whole project |
+| 3 | Allow VRRP protocol 112 in the host firewall | `ansible.posix.firewalld`/`ansible.builtin.command` for nftables, or an `nft` rule include | VRRP advertisements must traverse between pair members; the management-plane firewall must not silently break the pair |
+| 4 | Deploy the tree-check scripts | `ansible.builtin.copy` + `mode: '0750'` | `check_nginx.sh` / `check_nftables.sh`; each returns 0/1 and both are the same scripts used by `03-keepalived-check.sh` for manual verification, so the automated and manual views cannot disagree |
+| 5 | Deploy the configuration | `template` → `/etc/keepalived/keepalived.conf` with `ansible.builtin.validate` | `vrrp_instance FYP_<PAIR>` with `state`, `priority`, `virtual_router_id`, `virtual_ipaddress`, `track_script` |
+| 6 | Enable and start the service | `ansible.builtin.systemd_service` | |
+| 7 | Verify the VIP is present on the expected node | `ansible.builtin.command: ip -br addr show` + `assert` | The MASTER must own the VIP after convergence; this is the check that distinguishes "keepalived is running" from "keepalived is working" |
+| 8 | Record the VRRP state for evidence | `ansible.builtin.shell: journalctl -u keepalived --since "-5 min" -o cat` with `changed_when: false` | The transcript is committed to `runs/` as failover evidence |

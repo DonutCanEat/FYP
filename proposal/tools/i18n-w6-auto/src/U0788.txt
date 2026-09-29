@@ -1,0 +1,32 @@
+| # | Evidence | Host | What to capture | Test ID |
+|---|---|---|---|---|
+| L4-01 | Ansible version and collection list | `vpnz-mon01` | `ansible --version` and `ansible-galaxy collection list` output, showing `ansible-core 2.18.x`, the community package version and `pywinrm 0.5.0` | TC-L4-02 |
+| L4-02 | Control-node reachability | `vpnz-mon01` | `ansible windows -m ansible.windows.win_ping` and `ansible linux -m ansible.builtin.ping` with all hosts `SUCCESS` | TC-L4-02 |
+| L4-03 | Inventory graph | `vpnz-mon01` | `ansible-inventory --graph` showing the windows/linux/web/edge/monitoring/cisco/mgmt hierarchy | TC-L4-02 |
+| L4-04 | `ansible.cfg` in Git | `vpnz-mon01` | The committed `ansible.cfg`, with the `host_key_checking = False` line visible and the declared lab simplification shown in the caption | TC-L4-02 |
+| L4-05 | Vault usage, secrets redacted | `vpnz-mon01` | `ansible-vault view inventory/group_vars/all/vault.yml` **with every secret value replaced by `REDACTED` before the capture**, the caption stating that redaction was applied | TC-L4-04 |
+| L4-06 | Vault password file excluded | `vpnz-mon01` | `ls -l /home/adm-w4/.ansible/vault-pass-vp` showing `0600`, plus `git check-ignore -v` proving the login-free exclusion of the vault password pattern | TC-L4-04 |
+| L4-07 | Dry run with diffs | `vpnz-mon01` | `--check --diff` output for the firewall playbook, showing the `nftables.conf` diff | TC-L4-03 |
+| L4-08 | Canary run | `vpnz-mon01` | A `--limit vpnz-nft02` run showing the limited host list in the recap | TC-L4-03 |
+| L4-09 | Rollback timer armed and disarmed | `vpnz-nft02` | `ls -l /run/fyp-nft-rollback.armed` before the apply and the disarmed state after verification, plus the script itself | TC-L4-03 |
+| L4-10 | **Successful playbook recap** | `vpnz-mon01` | The first full run's `PLAY RECAP` with the changed counts | TC-L4-02 |
+| L4-11 | **Idempotence proof** | `vpnz-mon01` | The **second** run's `PLAY RECAP` showing `changed=0` on every host, with the log file path visible in the same capture | TC-L4-02 |
+| L4-12 | Idempotence log table | `vpnz-mon01` | `docs/05-idempotence-log.md` with all nine playbooks recorded | TC-L4-02 |
+| L4-13 | Running nftables ruleset | `vpnz-nft01` | `nft list ruleset` showing `table inet fyp_filter`, `policy drop` on input and forward, the log prefix and the NAT block | TC-L2-03 |
+| L4-14 | Drift detection output | `vpnz-nft01` | The drift task's `DRIFT`/`NO-DRIFT` line and, if drift was found, the diff | TC-L4-03 |
+| L4-15 | VRRP state and VIP | `vpnz-dmzrev01` | `ip -br addr` showing the VIP, plus `journalctl -u keepalived` showing the state transition | TC-L2-02 |
+| L4-16 | Audit JSON | `vpnz-mon01` | The `audit-*.json` file rendered, showing a host entry with its checks | TC-L4-05 |
+| L4-17 | **PowerShell script output** | `vpnz-dc01` | `Invoke-NewStarterOnboarding.ps1` `-WhatIf` output, then the real run's object table | TC-L4-01 |
+| L4-18 | PowerShell idempotence evidence | `vpnz-dc01` | The second run's object table with `Created=False` for every row, and the log showing no `Created` lines on the second pass | TC-L4-01 |
+| L4-19 | Firewall and service audit CSV | `vpnz-fs01` | `Import-Csv` of the audit CSV showing at least one `FAIL` and its resolution | TC-L4-01 |
+| L4-20 | Backup and verification | `vpnz-fs01` | The four phase objects in a table, with `Verify` = `PASS` and the component count | TC-L1-06 |
+| L4-21 | WinRM listener state | `vpnz-fs01` | `Get-ChildItem WSMan:\Localhost\Listener` showing one HTTPS listener and no HTTP listener, plus the scoped firewall rule's `RemoteAddress` | TB-07 |
+| L4-22 | **Bash script output** | `vpnz-dmzrev02` | `06-server-health-report.sh` output with the findings count, and the non-zero exit code shown with `echo $?` | TC-L4-03 |
+| L4-23 | Drop log analysis | `vpnz-nft01` | `07-nftables-log-summary.sh` output plus, in a second capture, the matching raw `NFT-DROP:` journal lines it summarised | TC-L4-03, TB-02 |
+| L4-24 | Certificate check | `vpnz-mon01` | `08-cert-expiry-check.sh` output, including the deliberate unreachable-endpoint finding | TC-PKI-01 |
+| L4-25 | `systemd` timer inventory | every Linux guest or `vpnz-mon01` | `systemctl list-timers 'fyp-*' --all` | TC-L4-03 |
+| L4-26 | **Git log and network graph** | `vpnz-mon01` | `git log --oneline --graph --decorate` covering the L4 commits, and `git tag -l` showing `v0.1` … `v1.0` | TC-L4-04 |
+| L4-27 | Peer review record | `vpnz-mon01` | The commit message showing `Reviewed-by:` plus the matching line in the meeting minutes | TC-L4-04 |
+| L4-28 | Secret sweep result | `vpnz-mon01` | The pre-tag sweep output (clean), plus the deliberate negative-test capture in which a fake key **was** caught | TC-L4-04 |
+| L4-29 | Packet Tracer configuration archive | `vpnz-mon01` | The dated archive directory listing and `MANIFEST.txt`, whose text states that no automated tool logged in to a Packet Tracer device | TC-L4-04, TC-L3-xx |
+| L4-30 | Run logs committed to Git | `vpnz-mon01` | `ls 04-automation/runs/` and the corresponding `git log` entry for the logs | TC-L4-02, TC-DOC-01 |

@@ -1,0 +1,9 @@
+| Object | Source of truth |
+|---|---|
+| Host identity, addresses, groups | `04-automation/ansible/inventory/hosts.yml` |
+| Per-group and per-host variables | `inventory/group_vars/`, `inventory/host_vars/` |
+| Secrets | Ansible-Vault-encrypted variable files, decrypted at run time only |
+| Configuration templates | `04-automation/ansible/templates/*.j2` |
+| Intended Packet Tracer device configurations | `03-build/packet-tracer/configs/*.txt` (Track A of §11.4) |
+| Test definitions and their expected results | `06-verification/` |
+| The design itself | `00-baseline/` — frozen, read-only after each freeze |

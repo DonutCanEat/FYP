@@ -1,0 +1,1 @@
+A `SKIP` on `OffHostCheck` is a legitimate result when the restic repository is not reachable, and the report must present it as an unverified cross-check rather than as a pass. That distinction is the difference between an honest report and one that has quietly turned an absence of evidence into a positive result.

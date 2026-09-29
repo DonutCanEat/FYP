@@ -1,0 +1,52 @@
+{
+  "_comment": "Chinese (zh-HK) production split plan for the Victor2 FYP proposal corpus in proposal\\i18n\\zh-HK. Mirrors split-plan.fyp.json exactly, with the i18n input paths and the -ZH output paths/titles. Run from this folder: node convert.js --config split-plan.fyp.zh.json . Relative paths resolve against this config file's directory, so outputs land in the workspace root D:\\File\\School\\FYP. The corpus has NO '# ' H1 headings; its top-level sections are '## N. Title'. convert.js derives the section boundary from the document's shallowest heading level, so the include rules below match the '## N.' keys directly. 'titlePage': true synthesises a real title page and a TOC field for a document that has no H1 to promote.",
+
+  "author": "Victor Li",
+  "titlePage": true,
+
+  "inputs": [
+    "..\\..\\i18n\\zh-HK\\01-introduction.md",
+    "..\\..\\i18n\\zh-HK\\02-architecture.md",
+    "..\\..\\i18n\\zh-HK\\03-microsoft.md",
+    "..\\..\\i18n\\zh-HK\\04-linux.md",
+    "..\\..\\i18n\\zh-HK\\05-cisco.md",
+    "..\\..\\i18n\\zh-HK\\06-automation.md",
+    "..\\..\\i18n\\zh-HK\\07-ai.md",
+    "..\\..\\i18n\\zh-HK\\08-project-management.md"
+  ],
+
+  "outputs": [
+    {
+      "path": "..\\..\\..\\FYP-Proposal-COMPLETE-ZH.docx",
+      "title": "Victor2 – Enterprise Network Infrastructure and Architect － 畢業專題計劃書（完整版）",
+      "titlePage": false,
+      "rules": null
+    },
+    {
+      "path": "..\\..\\..\\FYP-Proposal-Volume1-Plan-ZH.docx",
+      "title": "Victor2 – Enterprise Network Infrastructure and Architect － 卷一：計劃書與項目管理",
+      "subtitle": "前置部分、第 1–6 節及第 12–20 節",
+      "titlePage": true,
+      "inputs": [
+        "..\\..\\i18n\\zh-HK\\01-introduction.md",
+        "..\\..\\i18n\\zh-HK\\02-architecture.md",
+        "..\\..\\i18n\\zh-HK\\08-project-management.md"
+      ],
+      "rules": { "include": ["1-6", "12-20"], "exclude": [], "match": null, "frontMatter": true }
+    },
+    {
+      "path": "..\\..\\..\\FYP-Proposal-Volume2-Technical-ZH.docx",
+      "title": "Victor2 – Enterprise Network Infrastructure and Architect － 卷二：技術設計與建置手冊",
+      "subtitle": "第 7–11 節",
+      "titlePage": true,
+      "inputs": [
+        "..\\..\\i18n\\zh-HK\\03-microsoft.md",
+        "..\\..\\i18n\\zh-HK\\04-linux.md",
+        "..\\..\\i18n\\zh-HK\\05-cisco.md",
+        "..\\..\\i18n\\zh-HK\\06-automation.md",
+        "..\\..\\i18n\\zh-HK\\07-ai.md"
+      ],
+      "rules": { "include": ["7-11"], "exclude": [], "match": null, "frontMatter": false }
+    }
+  ]
+}

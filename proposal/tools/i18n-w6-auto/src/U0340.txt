@@ -1,0 +1,1 @@
+**Handlers:** `Reload nftables` (systemd reload), `Restart nftables`, `Reload rsyslog` (the logging fragment changes the syslog destination in some configurations).

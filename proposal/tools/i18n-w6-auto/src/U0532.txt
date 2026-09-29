@@ -1,0 +1,1 @@
+For **administrators working from a Windows machine**, the project uses `TrustedHosts` only in one place and only as a documented, dated experiment: demonstrating that a Windows administrator at `vpnz-jump01` can reach a DMZ web node that is workgroup-isolated. That demonstration is captured with the warning it deserves:

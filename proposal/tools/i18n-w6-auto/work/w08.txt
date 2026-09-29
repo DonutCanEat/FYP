@@ -1,0 +1,93 @@
+%%U0432%%
+#### 10.4.7 Testing and safety
+%%U0434%%
+##### 10.4.7.1 `--check` and `--diff`
+%%U0436%%
+`--check` runs the playbook without making changes, reporting what *would* change. `--diff` shows the file-level change, which is the part that makes a dry run actually useful: a firewall change is reviewed by reading the diff of `/etc/nftables.conf`, not by reading a task name.
+%%U0440%%
+Three honest caveats must appear in the report, because a dry run that is trusted too far is a hazard:
+%%U0442%%
+1. **`--check` cannot validate everything.** Modules that do not support check mode (`command`, `shell`, and some Windows modules) report as skipped rather than as "would change". The nftables playbook's most consequential tasks are `command` tasks, so `--check` alone does not prove the ruleset is safe — the `nft -c -f` validation task and the rollback timer are what prove that.
+2. **`--check` on a template change is reliable; `--check` on a service restart is not.** The playbook's handlers do not run in check mode, so the dry run never shows the restart consequence. The group therefore treats `--check` as a *file-level* review tool.
+3. **A clean `--check` is not permission to skip the canary.** The documented workflow is check → diff → canary → group, and the canary is mandatory for `edge`, `web` and anything touching tier 0.
+%%U0444%%
+##### 10.4.7.2 `--limit`
+%%U0446%%
+`--limit` is the single most effective safety flag available, because it converts a site-wide action into a single-host action without changing the code under test.
+%%U0450%%
+The group patterns above use only the group names and hostnames of the inventory of 10.4.2; the `!` exclusion syntax depends on the inventory containing the groups named. **Rule: a first-ever run of any playbook against a host is always `--limit <one-host>`.** This rule is written into the group's working agreement and appears in every runbook.
+%%U0452%%
+##### 10.4.7.3 `--syntax-check`, linting and tags
+%%U0456%%
+`ansible-lint` is a natural addition and is *not* claimed as part of this project unless the group installs and runs it: the report must not name a tool it did not use. Where `ansible-lint` is available in the Ubuntu archive or through `pip` in the virtual environment, using it is encouraged and its output is committed; where it is not, the group's fallback is the `--syntax-check` gate plus a peer review against the documented rules in `docs/04-variable-dictionary.md`. Either way, the report states which was actually done.
+%%U0458%%
+Tags are used to make a partial run expressible without editing the playbook. The tag vocabulary is fixed and small: `always`, `never`, `baseline`, `security`, `nginx`, `keepalived`, `nftables`, `wireguard`, `users`, `identity`, `validate`, `apply`, `verify`, `drift`, `rollback`, `evidence`, `failover`. Tags on the evidence and verification tasks exist so that a reviewer can re-run *just* the verification without touching the configuration — which is exactly what the audit playbook of 10.4.6.4 provides for the whole estate.
+%%U0460%%
+##### 10.4.7.4 How the team avoids breaking the live lab
+%%U0462%%
+The following is the group's written change procedure, and it is the answer to the due-diligence item that asks for reviewed, repeatable change rather than hand-typed configuration:
+%%U0464%%
+| Step | Action | Evidence produced |
+|---|---|---|
+| 1 | Write the change on a `task-*` branch; run `--syntax-check` | Commit |
+| 2 | Run `--check --diff` against the whole target group | Dry-run log in `runs/` |
+| 3 | Review the diff with a second member; record the review in the minutes | Meeting minute |
+| 4 | Snapshot the target VM in the hypervisor (except for tier 0, where the change is made during the change window only) | Snapshot name and timestamp |
+| 5 | Run against **one** host with `--limit`, during the change window | Canary run log |
+| 6 | Verify the service by hand (service answers, VIP correct, logs clean) | Transcript or screenshot |
+| 7 | Run against the remaining hosts of the group | Group run log |
+| 8 | Re-run the whole playbook; capture `changed=0` | Idempotence log in `runs/` |
+| 9 | Run `09-verify-services.yml` and diff the JSON audit report against the previous one | Two audit JSON files |
+| 10 | Merge to `main`, tag if it is a milestone | Annotated tag |
+| 11 | Remove the snapshot once the change is verified and documented | Decision-log entry |
+%%U0466%%
+The change window is Saturday 22:00 to Sunday 02:00, declared in `group_vars/all.yml` as `fyp_change_window`. Nothing that can interrupt a service is run outside it. The one exception, stated as such, is the week-10 to week-12 verification phase, when the group runs tests deliberately outside the window and records that it did so.
+%%U0468%%
+#### 10.4.8 Verification
+%%U0470%%
+##### 10.4.8.1 The exact commands
+%%U0474%%
+##### 10.4.8.2 The expected recap output — the idempotence proof
+%%U0476%%
+The output below is **illustrative** and shows the exact shape required. The values in a real run will differ in timing; the property that must hold is the `changed=0` counts on the second run.
+%%U0478%%
+**First run (canary, `vpnz-nft02`) — changes expected:**
+%%U0482%%
+**Second run, immediately afterwards — the idempotence proof:**
+%%U0486%%
+**How to read this as evidence, and what it does not prove.**
+%%U0488%%
+- `changed=0` on both pair members is the requirement. It is proof that the playbook is idempotent for this configuration on this estate.
+- `failed=0` and `unreachable=0` prove the change did not break the connection to either node. For an inline firewall, `unreachable=1` would be the exact signature of the lock-out failure mode, which is why the far-side verification task exists.
+- The `skipping` lines on the rollback tasks are *correct*: the timer is already armed and the `creates:` guard prevents a re-arm. An idempotence proof that shows zero skips on every task is suspicious rather than reassuring.
+- **What it does not prove.** `changed=0` does not prove that the *desired* state is correct — a playbook that does nothing idempotently is perfectly idempotent. The correctness claim comes from the audit playbook's assertions and from the scenario tests in the verification chapter, which are separate evidence. Both are needed; neither substitutes for the other.
+%%U0490%%
+The equivalent proof is captured for every playbook in the repository, and the collected results are recorded, with the log file path and the date, in `04-automation/ansible/docs/05-idempotence-log.md`:
+%%U0492%%
+| Playbook | Hosts | First run changed | Second run changed | Log file | Date |
+|---|---|---|---|---|---|
+| `01-baseline-windows.yml` | 9 Windows guests | *(record)* | **0** | `runs/…_01-baseline-windows.SECOND-RUN.log` | *(record)* |
+| `02-baseline-linux.yml` | 9 Linux guests | *(record)* | **0** | `runs/…_02-baseline-linux.SECOND-RUN.log` | *(record)* |
+| `03-nginx-reverseproxy.yml` | `vpnz-dmzrev01/02` | *(record)* | **0** | `runs/…_03-nginx.SECOND-RUN.log` | *(record)* |
+| `04-keepalived.yml` | `web`, `edge` | *(record)* | **0** | `runs/…_04-keepalived.SECOND-RUN.log` | *(record)* |
+| `05-nftables-egress.yml` | `vpnz-nft01/02` | *(record)* | **0** | `runs/…_05-nftables.SECOND-RUN.log` | *(record)* |
+| `06-wireguard.yml` | `edge` | *(record)* | **0** | `runs/…_06-wireguard.SECOND-RUN.log` | *(record)* |
+| `07-ad-users.yml` | `vpnz-dc01` | *(record)* | **0** | `runs/…_07-ad-users.SECOND-RUN.log` | *(record)* |
+| `08-collect-network-configs.yml` | all reachable + localhost | *(record)* | **0** | `runs/…_08-collect.SECOND-RUN.log` | *(record)* |
+| `09-verify-services.yml` | all | *(record)* | **0** (by construction) | `runs/audit/audit-*.json` | *(record)* |
+%%U0494%%
+A blank cell in this table at the end of week 12 is a missing deliverable, not an oversight to be explained in prose.
+%%U0496%%
+---
+%%U0498%%
+### 10.5 PowerShell
+%%U0500%%
+#### 10.5.1 Why PowerShell for the Windows estate
+%%U0502%%
+The official topic sheet names PowerShell explicitly as an example for this line, and the WSOS 2026 makes it citable in two places: `Setup and run routine infrastructure maintenance operations using various scripting\programming languages` with the nested example `PowerShell` (Domain 5 — Infrastructure Automation, 15 %), and `Install and manage backup systems` with the nested example `Script based backup, e.g. Bash, Batch or PowerShell` (Domain 4 — Network and System Operations, the line that also names `Windows Server Backup`). Domain 4's other lines — directory services, DNS, DHCP, time, remote access, PKI, sharing services, monitoring, backup, deployment — are all, in a Microsoft estate, things PowerShell is the first-class interface to. That is the standards argument, and it is a strong one for this line specifically.
+%%U0504%%
+The technical argument is three properties that Bash and Ansible do not have on Windows:
+%%U0506%%
+1. **The object pipeline.** PowerShell passes .NET objects between commands, not text. `Get-Service | Where-Object Status -eq 'Stopped' | Select-Object Name, DisplayName, StartType` produces structured records that can be filtered, formatted, exported or asserted against, with no parsing. The consequence for this project is that the audit and reporting scripts of 10.5.3 do not parse console output — they consume objects — which means a change in a service's display text does not silently break the check. Every script in this section therefore ends by emitting objects, and the object stream is what gets exported to CSV.
+2. **Remoting.** `Invoke-Command` runs a script block on a remote host, or on many hosts concurrently, and returns deserialised objects that behave like local ones. This lets one script audit the whole nine-host Windows estate without an agent, and it is the same transport (`WinRM` 5986 over HTTPS) that Ansible uses, so the two automation paths share one firewall rule, one certificate decision and one troubleshooting procedure.
+3. **Depth of coverage on the Microsoft roles.** DHCP, DNS, FSRM, iSCSI Target, AD CS and RRAS all expose `*-` cmdlets with `-WhatIf` support on the modifying ones. `-WhatIf` gives the Windows scripts something Ansible's `--check` gives Linux: a dry-run path that the group uses as a gate before any change.

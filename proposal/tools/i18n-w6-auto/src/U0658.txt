@@ -1,0 +1,80 @@
+```bash
+#!/usr/bin/env bash
+# 04-automation/bash/lib/common.sh
+# Shared library for the Vertex Peak FYP Bash scripts.
+# Source it, never execute it:   . "$(dirname "$0")/lib/common.sh"
+# Owner: W2 (Linux & Services). Reviewer: W4.  Test IDs: TC-L4-03
+#
+# Strict mode is deliberately set by the CALLER (set -euo pipefail) so that the
+# intent is visible at the top of each script and so that a future reader cannot
+# wonder whether the shell options were applied.
+
+FYP_LOG_DIR="${FYP_LOG_DIR:-/var/log/fyp}"
+FYP_SCRIPT_NAME="$(basename "${0%.sh}")"
+FYP_LOG_FILE="${FYP_LOG_FILE:-${FYP_LOG_DIR}/$(date +%F)_${FYP_SCRIPT_NAME}.log}"
+FYP_HOST="$(hostname -s 2>/dev/null || echo unknown)"
+FYP_EXIT_OK=0
+FYP_EXIT_FAIL=1
+FYP_EXIT_USAGE=2
+FYP_EXIT_DEPENDENCY=3
+
+# Colour only on a terminal; never in a captured log.
+if [ -t 1 ]; then
+  C_RED=$'\033[0;31m'; C_GRN=$'\033[0;32m'; C_YLW=$'\033[0;33m'; C_RST=$'\033[0m'
+else
+  C_RED=''; C_GRN=''; C_YLW=''; C_RST=''
+fi
+
+# log LEVEL MESSAGE...   -> file always; console for WARN and ERROR
+log() {
+  local level="${1:?log requires a level}"; shift
+  local ts; ts="$(date '+%Y-%m-%d %H:%M:%S')"
+  local line="${ts} [${level}] ${FYP_HOST} ${FYP_SCRIPT_NAME}: $*"
+  printf '%s\n' "${line}" >>"${FYP_LOG_FILE}" 2>/dev/null || true
+  case "${level}" in
+    ERROR) printf '%s%s%s\n' "${C_RED}" "${line}" "${C_RST}" >&2 ;;
+    WARN)  printf '%s%s%s\n' "${C_YLW}" "${line}" "${C_RST}" >&2 ;;
+    *)     printf '%s\n' "${line}" ;;
+  esac
+}
+
+die() {
+  log ERROR "$*"
+  exit "${FYP_EXIT_FAIL}"
+}
+
+require_cmd() {
+  local c
+  for c in "$@"; do
+    if ! command -v "${c}" >/dev/null 2>&1; then
+      log ERROR "required command not found: ${c}"
+      exit "${FYP_EXIT_DEPENDENCY}"
+    fi
+  done
+}
+
+# --- Cleanup registry ---------------------------------------------------------
+# Scripts call register_cleanup with a function name; the EXIT trap runs them all.
+cleanup_actions=()
+FYP_TMPFILE=""
+register_cleanup() { cleanup_actions+=("$1"); }
+
+run_cleanup() {
+  local rc=$?
+  local fn
+  for fn in ${cleanup_actions[@]+"${cleanup_actions[@]}"}; do
+    ${fn} || log WARN "cleanup action ${fn} returned non-zero"
+  done
+  if [ -n "${FYP_TMPFILE}" ] && [ -e "${FYP_TMPFILE}" ]; then
+    rm -f -- "${FYP_TMPFILE}"
+  fi
+  return ${rc}
+}
+trap run_cleanup EXIT
+trap 'log WARN "interrupted by signal"; exit 130' INT TERM HUP
+
+# Fail-closed on the log directory even if a caller forgot to create it.
+if [ ! -d "${FYP_LOG_DIR}" ]; then
+  mkdir -p "${FYP_LOG_DIR}" 2>/dev/null || true
+fi
+```

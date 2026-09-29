@@ -1,0 +1,9 @@
+```bash
+# 1) On each administrator's own machine (not on vpnz-mon01):
+ssh-keygen -t ed25519 -a 100 -C "adm-w1@vertexpeak.fyp.lab" -f ~/.ssh/id_ed25519_adm-w1
+# 2) The PUBLIC key is committed:
+#    files/ssh/authorized_keys/adm-w1.pub
+# 3) Distribute, then immediately verify password login is refused:
+ssh-copy-id -i ~/.ssh/id_ed25519_adm-w1.pub fypadmin@10.10.30.31
+ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no adm-w1@10.10.30.31   # must fail
+```

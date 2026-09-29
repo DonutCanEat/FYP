@@ -1,0 +1,1 @@
+`inventory/hosts.yml` is the authoritative inventory. Every hostname, address and VLAN below is taken verbatim from the canonical design; no host in this file may be re-addressed, re-capitalised or abbreviated locally.

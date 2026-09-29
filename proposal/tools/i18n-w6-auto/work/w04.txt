@@ -1,0 +1,77 @@
+%%U0254%%
+`roles/<role>/vars/main.yml` is used only for values that are *genuinely not tunable* — the internal constants of a role. Putting a variable there makes it effectively unchangeable, and that is occasionally the correct decision; it must never be used to "win" a precedence argument.
+%%U0260%%
+The `keepalived_interface` line is worth noting: the baseline forbids hard-coding `ens192`/`ens224` and requires resolving the actual interface name with `ip -br link` and documenting it. Using the Ansible fact instead of a literal is the technical enforcement of that rule.
+%%U0262%%
+##### 10.4.4.2 Ansible Vault
+%%U0264%%
+**Exact commands to create, edit and use an encrypted variable file.**
+%%U0268%%
+The content of the encrypted file is deliberately small and is *only* secrets:
+%%U0272%%
+**Where the vault password file lives, and why it must not be committed.** It lives at `/home/adm-w4/.ansible/vault-pass-vp` on `vpnz-mon01`, owned by the automation owner, mode `0600`, in a directory that is mode `0700`. It is excluded by `.gitignore` and by the pre-tag secret sweep. The reason is not ceremony: **an encrypted file plus a committed password file is a plaintext file.** The vault protects the repository at rest and in transit — on the Git server, in any clone, in any backup, in any screenshot of a `git diff` — and that protection is worth exactly nothing if the key to it travels in the same repository. Two consequences follow and are stated in the runbook:
+%%U0274%%
+1. The vault password is stored in the group's password manager, held by all four members, and rotated with `ansible-vault rekey` if a member leaves. Rotation is followed by a commit of the re-encrypted file.
+2. Any copy of `vault-pass-vp` outside `vpnz-mon01` is deleted; the file is never placed under `C:\FYP\`, never attached to a message, and never pasted into the proposal or the report — including in a screenshot. When the report needs to *show* vault usage, it shows `ansible-vault view` output with the secret values replaced by `REDACTED` before the capture, and it says so in the caption.
+%%U0276%%
+**What must not go into the vault.** Non-secret configuration belongs in plain variables, where a reviewer can read it. Vaulting a subnet, a hostname or a package list is a common mistake that makes the repository unreadable and creates a false impression of secrecy.
+%%U0278%%
+#### 10.4.5 Roles
+%%U0280%%
+Nine roles exist in the repository. Six are specified in full detail below; `wireguard`, `winrm` and `ad_users` are specified more briefly because they are covered by other chapters' detail (§12.2 for WireGuard, §9 for identity). Every role follows the same structure: `tasks/main.yml`, `handlers/main.yml`, `defaults/main.yml`, `templates/`, `files/`, `meta/main.yml`, plus a `README.md` with the idempotence note.
+%%U0282%%
+##### 10.4.5.1 `common` — Linux baseline role
+%%U0284%%
+**Purpose.** Establish the security and operational baseline that every Ubuntu 24.04.3 LTS guest in the estate must satisfy before any service role runs: packages, time, DNS resolution, sudo authority, SSH hardening, kernel parameters, logging, unattended upgrades and the monitoring agent. It implements the hardening rules that §12.2 and §8.7 fix, and it is the technical enforcement of the trust-boundary expectation that non-management zones cannot be administered.
+%%U0286%%
+**Tasks** (`roles/common/tasks/main.yml`, abbreviated to the real task list):
+%%U0288%%
+| # | Task | Module | Notes |
+|---|---|---|---|
+| 1 | Set the hostname and `/etc/hosts` entry | `ansible.builtin.hostname`, `ansible.builtin.lineinfile` | Hostname comes from `inventory_hostname`; the FQDN is `{{ inventory_hostname }}.{{ fyp_domain }}` |
+| 2 | Install the baseline package set | `ansible.builtin.apt` | `chrony`, `rsyslog`, `auditd`, `unattended-upgrades`, `nftables`, `curl`, `jq`, `ca-certificates`, `python3-apt` |
+| 3 | Remove the packages the design forbids | `ansible.builtin.apt` with `state: absent` | `telnet`, `rsh-client`, `tftp-hpa` (the TFTP *server* exists only on `vpnz-mon01`; a client on a server VM is an unnecessary path) |
+| 4 | Configure chrony to the domain time source | `ansible.builtin.template` → `/etc/chrony/chrony.conf` | `server 10.10.30.11 iburst`, then `10.10.30.12`. Time skew greater than five minutes breaks Kerberos, so this task protects authentication, not just convenience |
+| 5 | Configure DNS resolution | `ansible.builtin.template` → `/etc/resolv.conf` (managed via `systemd-resolved` drop-in) | `nameserver 10.10.30.11`, then `10.10.30.12`. **No public resolver may be configured on any Linux guest** |
+| 6 | Create the local `gg-infra-admins` group and the four administrator accounts | `ansible.builtin.group`, `ansible.builtin.user` | Members mirror `GG-Infra-Admins`; no shared accounts; `root` login is disabled |
+| 7 | Install the four Ed25519 public keys | `ansible.posix.authorized_key` | From `files/ssh/authorized_keys/`, one task per account via `loop` |
+| 8 | Install the sudoers drop-in | `ansible.builtin.template` + `ansible.builtin.validate` | `%gg-infra-admins ALL=(ALL:ALL) ALL`, validated with `visudo -cf %s` |
+| 9 | Deploy SSH hardening | `ansible.builtin.template` → `/etc/ssh/sshd_config.d/10-fyp-hardening.conf` | `PermitRootLogin no`, `PasswordAuthentication no`, `AllowGroups gg-infra-admins`, `KexAlgorithms`/`Ciphers` modern set |
+| 10 | Deploy sysctl hardening | `ansible.builtin.template` → `/etc/sysctl.d/99-fyp-hardening.conf` | `rp_filter`, SYN cookies, ICMP behaviour; `net.ipv4.ip_forward=1` **only** where `fyp_role` implies a router (the nftables pair) |
+| 11 | Configure unattended security upgrades | `ansible.builtin.template` → `/etc/apt/apt.conf.d/50unattended-upgrades` | Security-only; no automatic reboot; a reboot-required flag is reported by the health script rather than acted upon |
+| 12 | Configure rsyslog forwarding | `ansible.builtin.template` → `/etc/rsyslog.d/50-fyp-forward.conf` | Forward to `10.10.30.31:514` per §8.7. The DMZ hosts forward too, which is how DMZ events reach Loki under TB-13's constraint that DMZ may only initiate limited outbound traffic |
+| 13 | Install and configure `auditd` | `ansible.builtin.template`, `ansible.builtin.service` | Execve and identity-file watches |
+| 14 | Install `node_exporter` | `ansible.builtin.apt` + `ansible.builtin.service` | Port 9100, listening only where the monitoring host can reach it |
+| 15 | Install the internal CA certificate | `ansible.builtin.copy` → `/usr/local/share/ca-certificates/vp-root-ca.crt` + `command: update-ca-certificates` with `creates:` guard | This is what allows the same certificate conventions to work on Windows and Linux |
+| 16 | Apply the vendor-recommended MOTD banner | `ansible.builtin.copy` | Authorised-use notice; harmless and expected in an enterprise estate |
+%%U0290%%
+**Handlers:** `Restart sshd` (`ansible.builtin.service`), `Restart chrony`, `Restart rsyslog`, `Reload sysctl` (`ansible.builtin.command: sysctl --system`), `Restart auditd`, `Reload systemd-resolved`.
+%%U0292%%
+**Templates:** `chrony.conf.j2`, `resolv-conf.j2`, `sshd-hardening.conf.j2`, `sysctl-hardening.conf.j2`, `sudoers-gg-infra-admins.j2`, `rsyslog-50-fyp-forward.conf.j2`, `motd.j2`.
+%%U0294%%
+**Default variables:** `common_admin_group: gg-infra-admins`, `common_admins: [adm-w1, adm-w2, adm-w3, adm-w4]`, `common_time_servers: [10.10.30.11, 10.10.30.12]`, `common_allow_ip_forward: false`, `common_install_auditd: true`, `common_node_exporter_port: 9100`, `common_unattended_security_only: true`.
+%%U0296%%
+**Idempotence note.** Every task is a declarative module with a desired state, so a second run reports `changed=0`. The one risk is task 15's `update-ca-certificates`: it is guarded with `creates: /etc/ssl/certs/vp-root-ca.pem` and a `when:` on the certificate's checksum, because an unguarded `command` task re-runs the CA bundle rebuild on every execution and would report `changed=1` forever, breaking the idempotence proof for the whole role. This is the single most likely place for the group's `changed=0` evidence to fail, and it is called out in the runbook for that reason.
+%%U0298%%
+##### 10.4.5.2 `nginx` — reverse proxy and TLS termination role
+%%U0300%%
+**Purpose.** Configure the two reverse proxies `vpnz-dmzrev01` and `vpnz-dmzrev02` as a TLS-terminating reverse proxy pair in front of two upstream pools, with HSTS, TLS 1.2 minimum / 1.3 preferred, a `/healthz` endpoint that Keepalived tracks, and `stub_status` so that the monitoring stack can scrape it. The role must produce byte-identical configuration on both nodes, because a divergence between the pair is the failure that only appears during a failover.
+%%U0302%%
+**Tasks:**
+%%U0304%%
+| # | Task | Module | Notes |
+|---|---|---|---|
+| 1 | Install `nginx` and `openssl` | `ansible.builtin.apt` | Nginx 1.24.0 from the Ubuntu 24.04 archive — the distro-packaged version, stated as a deliberate choice |
+| 2 | Deploy the global configuration | `ansible.builtin.copy` from `files/dmzrev01/nginx.conf` | Global tuning: worker count, `worker_connections`, log format including `$upstream_addr` (essential for reading which node answered) |
+| 3 | Deploy the upstream pool definitions | `template` → `/etc/nginx/conf.d/00-upstreams.conf` | Rendered from `fyp_nginx_upstreams`: `upstream weba_pool { server 10.10.90.21:443; server 10.10.90.22:443; }` and `upstream wp_pool { … }`, with `least_conn` and `max_fails`/`fail_timeout` |
+| 4 | Deploy the portal vhost | `template` → `/etc/nginx/conf.d/10-portal.conf` | TLS termination for `portal.vertexpeak.example`, `proxy_pass https://weba_pool` (re-encrypt to the upstreams — TLS end to end), HSTS, security headers, HTTP→HTTPS redirect |
+| 5 | Deploy the blog vhost | `template` → `/etc/nginx/conf.d/20-blog.conf` | `blog.vertexpeak.example` → `wp_pool` |
+| 6 | Deploy the health endpoint | `template` → `/etc/nginx/conf.d/90-healthz.conf` | `/healthz` returns 200 with `upstream_ok` body only if both upstream pools answer; this is what `track_script` actually tests |
+| 7 | Deploy `stub_status` | `template` | Bound to `127.0.0.1:8080` only — never published |
+| 8 | Install TLS material | `ansible.builtin.copy` with `mode: '0600'` for the key | From the internal PKI; the private key is delivered from the vault-encrypted source or from a `files/` path that is `.gitignore`d. **No private key is ever committed** |
+| 9 | Remove the default site | `ansible.builtin.file` with `state: absent` | The Ubuntu default vhost must not answer for a real name |
+| 10 | Remove `sites-enabled/default` and assert `conf.d` is canonical | `ansible.builtin.file` + `assert` | §8.7 fixes `conf.d` as canonical; the `sites-available` layout is not used |
+| 11 | Validate the configuration | `ansible.builtin.command: nginx -t` with `changed_when: false` | Fails the role before any reload. `changed_when: false` is what keeps the validation out of the change count |
+| 12 | Ensure the service is enabled and started | `ansible.builtin.systemd_service` | |
+| 13 | Periodic TLS certificate expiry check | `ansible.builtin.cron` | Calls `05-cert-renew.sh --warn-days 30`, which is also the subject of section 10.6 |
+| 14 | Verify the published path from the control node | `ansible.builtin.uri` with `validate_certs: false` and `status_code: 200` | **[DECLARED]** the lab uses an internal CA plus a deliberately mismatched public name, so a name-mismatch warning is expected and must be shown in the report rather than suppressed |

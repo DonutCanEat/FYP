@@ -1,0 +1,4020 @@
+[
+  {
+    "docx": "D:\\File\\School\\FYP\\FYP-Proposal-COMPLETE.docx",
+    "mode": "complete",
+    "paragraphs": 28144,
+    "sources": [
+      {
+        "source": "01-introduction.md",
+        "proseParagraphs": 127,
+        "exact": 127,
+        "contiguous": 127,
+        "bounded": 127,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 6,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": [
+          {
+            "kind": "multiple-occurrences",
+            "line": 333,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 623,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 1057,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 1059,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 1061,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 1063,
+            "hits": 4
+          }
+        ]
+      },
+      {
+        "source": "02-architecture.md",
+        "proseParagraphs": 191,
+        "exact": 182,
+        "contiguous": 191,
+        "bounded": 191,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 0,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": [
+          {
+            "kind": "strict-form-differs",
+            "line": 29,
+            "para": 990,
+            "docLen": 1419,
+            "srcLen": 1417,
+            "lenDelta": 2,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 150,
+            "para": 1202,
+            "docLen": 1281,
+            "srcLen": 1277,
+            "lenDelta": 4,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 184,
+            "para": 1239,
+            "docLen": 601,
+            "srcLen": 605,
+            "lenDelta": 4,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 578,
+            "para": 1918,
+            "docLen": 515,
+            "srcLen": 513,
+            "lenDelta": 2,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 830,
+            "para": 2458,
+            "docLen": 815,
+            "srcLen": 812,
+            "lenDelta": 3,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 834,
+            "para": 2460,
+            "docLen": 1281,
+            "srcLen": 1278,
+            "lenDelta": 3,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 879,
+            "para": 2500,
+            "docLen": 125,
+            "srcLen": 124,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 899,
+            "para": 2535,
+            "docLen": 822,
+            "srcLen": 820,
+            "lenDelta": 2,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 909,
+            "para": 2541,
+            "docLen": 1615,
+            "srcLen": 1614,
+            "lenDelta": 1,
+            "how": "loose"
+          }
+        ]
+      },
+      {
+        "source": "03-microsoft.md",
+        "proseParagraphs": 486,
+        "exact": 476,
+        "contiguous": 486,
+        "bounded": 486,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 18,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": [
+          {
+            "kind": "strict-form-differs",
+            "line": 244,
+            "para": 3138,
+            "docLen": 496,
+            "srcLen": 491,
+            "lenDelta": 5,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 383,
+            "para": 3296,
+            "docLen": 476,
+            "srcLen": 475,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 526,
+            "para": 3437,
+            "docLen": 239,
+            "srcLen": 238,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 1608,
+            "para": 4678,
+            "docLen": 668,
+            "srcLen": 667,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 1659,
+            "para": 4718,
+            "docLen": 249,
+            "srcLen": 247,
+            "lenDelta": 2,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 1797,
+            "para": 4849,
+            "docLen": 696,
+            "srcLen": 694,
+            "lenDelta": 2,
+            "how": "loose"
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3134,
+            "hits": 3
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 3167,
+            "para": 6450,
+            "docLen": 96,
+            "srcLen": 95,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 3169,
+            "para": 6452,
+            "docLen": 168,
+            "srcLen": 167,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 3190,
+            "para": 6471,
+            "docLen": 49,
+            "srcLen": 48,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3262,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3282,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3315,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3340,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3385,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3410,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3434,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3454,
+            "hits": 16
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3460,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3480,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3494,
+            "hits": 16
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3499,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3522,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3537,
+            "hits": 16
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 3539,
+            "para": 6743,
+            "docLen": 249,
+            "srcLen": 248,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3543,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3556,
+            "hits": 16
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3562,
+            "hits": 27
+          }
+        ]
+      },
+      {
+        "source": "04-linux.md",
+        "proseParagraphs": 398,
+        "exact": 397,
+        "contiguous": 398,
+        "bounded": 398,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 12,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": [
+          {
+            "kind": "multiple-occurrences",
+            "line": 231,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 925,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 946,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 984,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 1031,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 1615,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 2328,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3015,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3383,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3435,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3465,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3936,
+            "hits": 24
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 4016,
+            "para": 10893,
+            "docLen": 612,
+            "srcLen": 611,
+            "lenDelta": 1,
+            "how": "loose"
+          }
+        ]
+      },
+      {
+        "source": "05-cisco.md",
+        "proseParagraphs": 116,
+        "exact": 116,
+        "contiguous": 116,
+        "bounded": 116,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 0,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": []
+      },
+      {
+        "source": "06-automation.md",
+        "proseParagraphs": 271,
+        "exact": 267,
+        "contiguous": 271,
+        "bounded": 271,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 5,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": [
+          {
+            "kind": "multiple-occurrences",
+            "line": 53,
+            "hits": 5
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 141,
+            "para": 14486,
+            "docLen": 88,
+            "srcLen": 82,
+            "lenDelta": 6,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 168,
+            "para": 14514,
+            "docLen": 189,
+            "srcLen": 188,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 962,
+            "para": 15320,
+            "docLen": 376,
+            "srcLen": 375,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 1007,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 1038,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 1065,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 1124,
+            "hits": 8
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 1159,
+            "para": 15711,
+            "docLen": 358,
+            "srcLen": 357,
+            "lenDelta": 1,
+            "how": "loose"
+          }
+        ]
+      },
+      {
+        "source": "07-ai.md",
+        "proseParagraphs": 204,
+        "exact": 203,
+        "contiguous": 204,
+        "bounded": 204,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 23,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": [
+          {
+            "kind": "multiple-occurrences",
+            "line": 350,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 360,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 386,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 394,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 414,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 430,
+            "hits": 6
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 487,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 497,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 519,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 526,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 548,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 591,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 601,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 621,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 628,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 651,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 657,
+            "hits": 6
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 691,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 702,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 717,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 724,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 744,
+            "hits": 8
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 833,
+            "para": 20202,
+            "docLen": 563,
+            "srcLen": 557,
+            "lenDelta": 6,
+            "how": "loose"
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 911,
+            "hits": 4
+          }
+        ]
+      },
+      {
+        "source": "08-project-management.md",
+        "proseParagraphs": 238,
+        "exact": 232,
+        "contiguous": 238,
+        "bounded": 238,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 0,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": [
+          {
+            "kind": "strict-form-differs",
+            "line": 5,
+            "para": 21006,
+            "docLen": 427,
+            "srcLen": 426,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 288,
+            "para": 21805,
+            "docLen": 270,
+            "srcLen": 268,
+            "lenDelta": 2,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 336,
+            "para": 21930,
+            "docLen": 782,
+            "srcLen": 779,
+            "lenDelta": 3,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 1015,
+            "para": 23864,
+            "docLen": 765,
+            "srcLen": 764,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 1017,
+            "para": 23865,
+            "docLen": 529,
+            "srcLen": 526,
+            "lenDelta": 3,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 1102,
+            "para": 23948,
+            "docLen": 675,
+            "srcLen": 674,
+            "lenDelta": 1,
+            "how": "loose"
+          }
+        ]
+      }
+    ],
+    "tables": {
+      "total": 312,
+      "rows": 3588,
+      "failedRows": 0,
+      "cellMismatches": 0,
+      "outOfOrderTables": 0,
+      "cellsNeedingLooseTier": 0,
+      "failures": []
+    },
+    "code": {
+      "blocks": 449,
+      "failedBlocks": 0,
+      "outOfOrderBlocks": 0,
+      "failures": []
+    },
+    "glueHits": [],
+    "totals": {
+      "sourceProseParagraphs": 2031,
+      "present": 2031,
+      "excludedByVolumeRules": 0,
+      "missing": 0,
+      "exact": 2000,
+      "contiguous": 2031,
+      "boundaryBounded": 2031,
+      "strictFormDiffers": 31,
+      "renderingDifferences": 0,
+      "notBounded": 0,
+      "largeStrictDiffs": 0,
+      "orderViolations": 0,
+      "mergedParagraphs": 0,
+      "mergedWithoutSeparator": 0,
+      "glueHits": 0,
+      "duplicateOccurrences": 64,
+      "contiguousPassRate": 1,
+      "exactPassRate": 0.984737,
+      "orderConsistent": true
+    },
+    "orderViolations": [],
+    "orderWeakWarnings": [
+      {
+        "source": "01-introduction.md",
+        "line": 623,
+        "prev": {
+          "source": "01-introduction.md",
+          "line": 619,
+          "para": 570,
+          "at": 0
+        },
+        "got": {
+          "para": 348,
+          "at": 0
+        },
+        "text": "You will study, build, configure, troubleshoot, and document complex enterprise networks using various telecom technolog"
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3282,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3280,
+          "para": 6544,
+          "at": 0
+        },
+        "got": {
+          "para": 6530,
+          "at": 0
+        },
+        "text": "Resolution."
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3315,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3313,
+          "para": 6567,
+          "at": 0
+        },
+        "got": {
+          "para": 6530,
+          "at": 0
+        },
+        "text": "Resolution."
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3340,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3338,
+          "para": 6587,
+          "at": 0
+        },
+        "got": {
+          "para": 6530,
+          "at": 0
+        },
+        "text": "Resolution."
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3385,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3383,
+          "para": 6622,
+          "at": 0
+        },
+        "got": {
+          "para": 6530,
+          "at": 0
+        },
+        "text": "Resolution."
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3410,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3408,
+          "para": 6642,
+          "at": 0
+        },
+        "got": {
+          "para": 6530,
+          "at": 0
+        },
+        "text": "Resolution."
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3434,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3432,
+          "para": 6661,
+          "at": 0
+        },
+        "got": {
+          "para": 6530,
+          "at": 0
+        },
+        "text": "Resolution."
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3460,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3458,
+          "para": 6682,
+          "at": 0
+        },
+        "got": {
+          "para": 6530,
+          "at": 0
+        },
+        "text": "Resolution."
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3480,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3478,
+          "para": 6697,
+          "at": 0
+        },
+        "got": {
+          "para": 6530,
+          "at": 0
+        },
+        "text": "Resolution."
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3494,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3492,
+          "para": 6707,
+          "at": 0
+        },
+        "got": {
+          "para": 6678,
+          "at": 0
+        },
+        "text": "Likely cause."
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3499,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3497,
+          "para": 6711,
+          "at": 0
+        },
+        "got": {
+          "para": 6530,
+          "at": 0
+        },
+        "text": "Resolution."
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3522,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3520,
+          "para": 6729,
+          "at": 0
+        },
+        "got": {
+          "para": 6530,
+          "at": 0
+        },
+        "text": "Resolution."
+      }
+    ],
+    "unordered": [],
+    "merged": [],
+    "mergedWithoutSeparator": [],
+    "largeStrictDiffs": []
+  },
+  {
+    "docx": "D:\\File\\School\\FYP\\FYP-Proposal-Volume1-Plan.docx",
+    "mode": "complete",
+    "paragraphs": 9986,
+    "sources": [
+      {
+        "source": "01-introduction.md",
+        "proseParagraphs": 127,
+        "exact": 127,
+        "contiguous": 127,
+        "bounded": 127,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 2,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": [
+          {
+            "kind": "multiple-occurrences",
+            "line": 333,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 623,
+            "hits": 4
+          }
+        ]
+      },
+      {
+        "source": "02-architecture.md",
+        "proseParagraphs": 191,
+        "exact": 182,
+        "contiguous": 191,
+        "bounded": 191,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 0,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": [
+          {
+            "kind": "strict-form-differs",
+            "line": 29,
+            "para": 994,
+            "docLen": 1419,
+            "srcLen": 1417,
+            "lenDelta": 2,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 150,
+            "para": 1206,
+            "docLen": 1281,
+            "srcLen": 1277,
+            "lenDelta": 4,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 184,
+            "para": 1243,
+            "docLen": 601,
+            "srcLen": 605,
+            "lenDelta": 4,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 578,
+            "para": 1922,
+            "docLen": 515,
+            "srcLen": 513,
+            "lenDelta": 2,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 830,
+            "para": 2462,
+            "docLen": 815,
+            "srcLen": 812,
+            "lenDelta": 3,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 834,
+            "para": 2464,
+            "docLen": 1281,
+            "srcLen": 1278,
+            "lenDelta": 3,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 879,
+            "para": 2504,
+            "docLen": 125,
+            "srcLen": 124,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 899,
+            "para": 2539,
+            "docLen": 822,
+            "srcLen": 820,
+            "lenDelta": 2,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 909,
+            "para": 2545,
+            "docLen": 1615,
+            "srcLen": 1614,
+            "lenDelta": 1,
+            "how": "loose"
+          }
+        ]
+      },
+      {
+        "source": "08-project-management.md",
+        "proseParagraphs": 238,
+        "exact": 232,
+        "contiguous": 238,
+        "bounded": 238,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 0,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": [
+          {
+            "kind": "strict-form-differs",
+            "line": 5,
+            "para": 2848,
+            "docLen": 427,
+            "srcLen": 426,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 288,
+            "para": 3647,
+            "docLen": 270,
+            "srcLen": 268,
+            "lenDelta": 2,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 336,
+            "para": 3772,
+            "docLen": 782,
+            "srcLen": 779,
+            "lenDelta": 3,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 1015,
+            "para": 5706,
+            "docLen": 765,
+            "srcLen": 764,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 1017,
+            "para": 5707,
+            "docLen": 529,
+            "srcLen": 526,
+            "lenDelta": 3,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 1102,
+            "para": 5790,
+            "docLen": 675,
+            "srcLen": 674,
+            "lenDelta": 1,
+            "how": "loose"
+          }
+        ]
+      }
+    ],
+    "tables": {
+      "total": 145,
+      "rows": 1979,
+      "failedRows": 0,
+      "cellMismatches": 0,
+      "outOfOrderTables": 0,
+      "cellsNeedingLooseTier": 0,
+      "failures": []
+    },
+    "code": {
+      "blocks": 14,
+      "failedBlocks": 0,
+      "outOfOrderBlocks": 0,
+      "failures": []
+    },
+    "glueHits": [],
+    "totals": {
+      "sourceProseParagraphs": 556,
+      "present": 556,
+      "excludedByVolumeRules": 0,
+      "missing": 0,
+      "exact": 541,
+      "contiguous": 556,
+      "boundaryBounded": 556,
+      "strictFormDiffers": 15,
+      "renderingDifferences": 0,
+      "notBounded": 0,
+      "largeStrictDiffs": 0,
+      "orderViolations": 0,
+      "mergedParagraphs": 0,
+      "mergedWithoutSeparator": 0,
+      "glueHits": 0,
+      "duplicateOccurrences": 2,
+      "contiguousPassRate": 1,
+      "exactPassRate": 0.973022,
+      "orderConsistent": true
+    },
+    "orderViolations": [],
+    "orderWeakWarnings": [
+      {
+        "source": "01-introduction.md",
+        "line": 623,
+        "prev": {
+          "source": "01-introduction.md",
+          "line": 619,
+          "para": 574,
+          "at": 0
+        },
+        "got": {
+          "para": 352,
+          "at": 0
+        },
+        "text": "You will study, build, configure, troubleshoot, and document complex enterprise networks using various telecom technolog"
+      }
+    ],
+    "unordered": [],
+    "merged": [],
+    "mergedWithoutSeparator": [],
+    "largeStrictDiffs": []
+  },
+  {
+    "docx": "D:\\File\\School\\FYP\\FYP-Proposal-Volume2-Technical.docx",
+    "mode": "complete",
+    "paragraphs": 18168,
+    "sources": [
+      {
+        "source": "03-microsoft.md",
+        "proseParagraphs": 486,
+        "exact": 476,
+        "contiguous": 486,
+        "bounded": 486,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 18,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": [
+          {
+            "kind": "strict-form-differs",
+            "line": 244,
+            "para": 303,
+            "docLen": 496,
+            "srcLen": 491,
+            "lenDelta": 5,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 383,
+            "para": 461,
+            "docLen": 476,
+            "srcLen": 475,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 526,
+            "para": 602,
+            "docLen": 239,
+            "srcLen": 238,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 1608,
+            "para": 1843,
+            "docLen": 668,
+            "srcLen": 667,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 1659,
+            "para": 1883,
+            "docLen": 249,
+            "srcLen": 247,
+            "lenDelta": 2,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 1797,
+            "para": 2014,
+            "docLen": 696,
+            "srcLen": 694,
+            "lenDelta": 2,
+            "how": "loose"
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3134,
+            "hits": 3
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 3167,
+            "para": 3615,
+            "docLen": 96,
+            "srcLen": 95,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 3169,
+            "para": 3617,
+            "docLen": 168,
+            "srcLen": 167,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 3190,
+            "para": 3636,
+            "docLen": 49,
+            "srcLen": 48,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3262,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3282,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3315,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3340,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3385,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3410,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3434,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3454,
+            "hits": 16
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3460,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3480,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3494,
+            "hits": 16
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3499,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3522,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3537,
+            "hits": 16
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 3539,
+            "para": 3909,
+            "docLen": 249,
+            "srcLen": 248,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3543,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3556,
+            "hits": 16
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3562,
+            "hits": 27
+          }
+        ]
+      },
+      {
+        "source": "04-linux.md",
+        "proseParagraphs": 398,
+        "exact": 397,
+        "contiguous": 398,
+        "bounded": 398,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 12,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": [
+          {
+            "kind": "multiple-occurrences",
+            "line": 231,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 925,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 946,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 984,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 1031,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 1615,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 2328,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3015,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3383,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3435,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3465,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3936,
+            "hits": 24
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 4016,
+            "para": 8057,
+            "docLen": 612,
+            "srcLen": 611,
+            "lenDelta": 1,
+            "how": "loose"
+          }
+        ]
+      },
+      {
+        "source": "05-cisco.md",
+        "proseParagraphs": 116,
+        "exact": 116,
+        "contiguous": 116,
+        "bounded": 116,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 0,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": []
+      },
+      {
+        "source": "06-automation.md",
+        "proseParagraphs": 271,
+        "exact": 267,
+        "contiguous": 271,
+        "bounded": 271,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 5,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": [
+          {
+            "kind": "multiple-occurrences",
+            "line": 53,
+            "hits": 3
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 141,
+            "para": 11651,
+            "docLen": 88,
+            "srcLen": 82,
+            "lenDelta": 6,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 168,
+            "para": 11679,
+            "docLen": 189,
+            "srcLen": 188,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 962,
+            "para": 12485,
+            "docLen": 376,
+            "srcLen": 375,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 1007,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 1038,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 1065,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 1124,
+            "hits": 8
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 1159,
+            "para": 12876,
+            "docLen": 358,
+            "srcLen": 357,
+            "lenDelta": 1,
+            "how": "loose"
+          }
+        ]
+      },
+      {
+        "source": "07-ai.md",
+        "proseParagraphs": 204,
+        "exact": 203,
+        "contiguous": 204,
+        "bounded": 204,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 23,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": [
+          {
+            "kind": "multiple-occurrences",
+            "line": 350,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 360,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 386,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 394,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 414,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 430,
+            "hits": 6
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 487,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 497,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 519,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 526,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 548,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 591,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 601,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 621,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 628,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 651,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 657,
+            "hits": 6
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 691,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 702,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 717,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 724,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 744,
+            "hits": 8
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 833,
+            "para": 17367,
+            "docLen": 563,
+            "srcLen": 557,
+            "lenDelta": 6,
+            "how": "loose"
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 911,
+            "hits": 4
+          }
+        ]
+      }
+    ],
+    "tables": {
+      "total": 167,
+      "rows": 1609,
+      "failedRows": 0,
+      "cellMismatches": 0,
+      "outOfOrderTables": 0,
+      "cellsNeedingLooseTier": 0,
+      "failures": []
+    },
+    "code": {
+      "blocks": 435,
+      "failedBlocks": 0,
+      "outOfOrderBlocks": 0,
+      "failures": []
+    },
+    "glueHits": [],
+    "totals": {
+      "sourceProseParagraphs": 1475,
+      "present": 1475,
+      "excludedByVolumeRules": 0,
+      "missing": 0,
+      "exact": 1459,
+      "contiguous": 1475,
+      "boundaryBounded": 1475,
+      "strictFormDiffers": 16,
+      "renderingDifferences": 0,
+      "notBounded": 0,
+      "largeStrictDiffs": 0,
+      "orderViolations": 0,
+      "mergedParagraphs": 0,
+      "mergedWithoutSeparator": 0,
+      "glueHits": 0,
+      "duplicateOccurrences": 58,
+      "contiguousPassRate": 1,
+      "exactPassRate": 0.989153,
+      "orderConsistent": true
+    },
+    "orderViolations": [],
+    "orderWeakWarnings": [
+      {
+        "source": "03-microsoft.md",
+        "line": 3282,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3280,
+          "para": 3709,
+          "at": 0
+        },
+        "got": {
+          "para": 3695,
+          "at": 0
+        },
+        "text": "Resolution."
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3315,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3313,
+          "para": 3732,
+          "at": 0
+        },
+        "got": {
+          "para": 3695,
+          "at": 0
+        },
+        "text": "Resolution."
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3340,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3338,
+          "para": 3752,
+          "at": 0
+        },
+        "got": {
+          "para": 3695,
+          "at": 0
+        },
+        "text": "Resolution."
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3385,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3383,
+          "para": 3787,
+          "at": 0
+        },
+        "got": {
+          "para": 3695,
+          "at": 0
+        },
+        "text": "Resolution."
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3410,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3408,
+          "para": 3807,
+          "at": 0
+        },
+        "got": {
+          "para": 3695,
+          "at": 0
+        },
+        "text": "Resolution."
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3434,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3432,
+          "para": 3826,
+          "at": 0
+        },
+        "got": {
+          "para": 3695,
+          "at": 0
+        },
+        "text": "Resolution."
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3460,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3458,
+          "para": 3847,
+          "at": 0
+        },
+        "got": {
+          "para": 3695,
+          "at": 0
+        },
+        "text": "Resolution."
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3480,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3478,
+          "para": 3863,
+          "at": 0
+        },
+        "got": {
+          "para": 3695,
+          "at": 0
+        },
+        "text": "Resolution."
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3494,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3492,
+          "para": 3873,
+          "at": 0
+        },
+        "got": {
+          "para": 3843,
+          "at": 0
+        },
+        "text": "Likely cause."
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3499,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3497,
+          "para": 3877,
+          "at": 0
+        },
+        "got": {
+          "para": 3695,
+          "at": 0
+        },
+        "text": "Resolution."
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3522,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3520,
+          "para": 3895,
+          "at": 0
+        },
+        "got": {
+          "para": 3695,
+          "at": 0
+        },
+        "text": "Resolution."
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3537,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3535,
+          "para": 3906,
+          "at": 0
+        },
+        "got": {
+          "para": 3843,
+          "at": 0
+        },
+        "text": "Likely cause."
+      }
+    ],
+    "unordered": [],
+    "merged": [],
+    "mergedWithoutSeparator": [],
+    "largeStrictDiffs": []
+  },
+  {
+    "docx": "D:\\File\\School\\FYP\\FYP-Proposal-COMPLETE-ZH.docx",
+    "mode": "complete",
+    "paragraphs": 28142,
+    "sources": [
+      {
+        "source": "01-introduction.md",
+        "proseParagraphs": 163,
+        "exact": 163,
+        "contiguous": 163,
+        "bounded": 163,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 24,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": [
+          {
+            "kind": "multiple-occurrences",
+            "line": 99,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 100,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 101,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 102,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 104,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 105,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 106,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 107,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 109,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 110,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 111,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 112,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 113,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 115,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 116,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 117,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 118,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 119,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 220,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 363,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 596,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 598,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 600,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 602,
+            "hits": 4
+          }
+        ]
+      },
+      {
+        "source": "02-architecture.md",
+        "proseParagraphs": 191,
+        "exact": 184,
+        "contiguous": 191,
+        "bounded": 191,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 0,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": [
+          {
+            "kind": "strict-form-differs",
+            "line": 29,
+            "para": 988,
+            "docLen": 606,
+            "srcLen": 604,
+            "lenDelta": 2,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 150,
+            "para": 1200,
+            "docLen": 535,
+            "srcLen": 531,
+            "lenDelta": 4,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 830,
+            "para": 2456,
+            "docLen": 402,
+            "srcLen": 399,
+            "lenDelta": 3,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 834,
+            "para": 2458,
+            "docLen": 754,
+            "srcLen": 751,
+            "lenDelta": 3,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 879,
+            "para": 2498,
+            "docLen": 71,
+            "srcLen": 70,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 899,
+            "para": 2533,
+            "docLen": 377,
+            "srcLen": 375,
+            "lenDelta": 2,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 909,
+            "para": 2538,
+            "docLen": 1078,
+            "srcLen": 1077,
+            "lenDelta": 1,
+            "how": "loose"
+          }
+        ]
+      },
+      {
+        "source": "03-microsoft.md",
+        "proseParagraphs": 486,
+        "exact": 475,
+        "contiguous": 486,
+        "bounded": 486,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 17,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": [
+          {
+            "kind": "strict-form-differs",
+            "line": 235,
+            "para": 3136,
+            "docLen": 303,
+            "srcLen": 298,
+            "lenDelta": 5,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 369,
+            "para": 3294,
+            "docLen": 202,
+            "srcLen": 201,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 505,
+            "para": 3435,
+            "docLen": 98,
+            "srcLen": 97,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 1549,
+            "para": 4676,
+            "docLen": 243,
+            "srcLen": 242,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 1598,
+            "para": 4716,
+            "docLen": 86,
+            "srcLen": 84,
+            "lenDelta": 2,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 1732,
+            "para": 4847,
+            "docLen": 289,
+            "srcLen": 287,
+            "lenDelta": 2,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 2631,
+            "para": 5833,
+            "docLen": 30,
+            "srcLen": 32,
+            "lenDelta": 2,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 3048,
+            "para": 6448,
+            "docLen": 78,
+            "srcLen": 77,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 3050,
+            "para": 6450,
+            "docLen": 86,
+            "srcLen": 85,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 3071,
+            "para": 6469,
+            "docLen": 26,
+            "srcLen": 25,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3143,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3163,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3196,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3221,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3266,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3291,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3315,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3335,
+            "hits": 16
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3341,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3361,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3375,
+            "hits": 16
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3380,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3403,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3418,
+            "hits": 16
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 3420,
+            "para": 6741,
+            "docLen": 87,
+            "srcLen": 86,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3424,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3437,
+            "hits": 16
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3443,
+            "hits": 27
+          }
+        ]
+      },
+      {
+        "source": "04-linux.md",
+        "proseParagraphs": 398,
+        "exact": 397,
+        "contiguous": 398,
+        "bounded": 398,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 12,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": [
+          {
+            "kind": "multiple-occurrences",
+            "line": 231,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 925,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 946,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 984,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 1031,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 1615,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 2328,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3015,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3383,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3435,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3465,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3936,
+            "hits": 24
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 4016,
+            "para": 10891,
+            "docLen": 339,
+            "srcLen": 338,
+            "lenDelta": 1,
+            "how": "loose"
+          }
+        ]
+      },
+      {
+        "source": "05-cisco.md",
+        "proseParagraphs": 116,
+        "exact": 116,
+        "contiguous": 116,
+        "bounded": 116,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 0,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": []
+      },
+      {
+        "source": "06-automation.md",
+        "proseParagraphs": 271,
+        "exact": 267,
+        "contiguous": 271,
+        "bounded": 271,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 6,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": [
+          {
+            "kind": "multiple-occurrences",
+            "line": 51,
+            "hits": 3
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 53,
+            "hits": 5
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 141,
+            "para": 14484,
+            "docLen": 74,
+            "srcLen": 68,
+            "lenDelta": 6,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 168,
+            "para": 14512,
+            "docLen": 82,
+            "srcLen": 81,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 962,
+            "para": 15318,
+            "docLen": 173,
+            "srcLen": 172,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 1007,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 1038,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 1065,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 1124,
+            "hits": 8
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 1159,
+            "para": 15709,
+            "docLen": 217,
+            "srcLen": 216,
+            "lenDelta": 1,
+            "how": "loose"
+          }
+        ]
+      },
+      {
+        "source": "07-ai.md",
+        "proseParagraphs": 204,
+        "exact": 203,
+        "contiguous": 204,
+        "bounded": 204,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 23,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": [
+          {
+            "kind": "multiple-occurrences",
+            "line": 350,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 360,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 386,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 394,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 414,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 430,
+            "hits": 6
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 487,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 497,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 519,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 526,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 548,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 590,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 600,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 620,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 627,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 650,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 656,
+            "hits": 6
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 690,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 701,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 716,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 723,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 743,
+            "hits": 8
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 832,
+            "para": 20200,
+            "docLen": 458,
+            "srcLen": 452,
+            "lenDelta": 6,
+            "how": "loose"
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 910,
+            "hits": 4
+          }
+        ]
+      },
+      {
+        "source": "08-project-management.md",
+        "proseParagraphs": 238,
+        "exact": 232,
+        "contiguous": 238,
+        "bounded": 238,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 0,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": [
+          {
+            "kind": "strict-form-differs",
+            "line": 5,
+            "para": 21004,
+            "docLen": 171,
+            "srcLen": 170,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 288,
+            "para": 21803,
+            "docLen": 97,
+            "srcLen": 95,
+            "lenDelta": 2,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 336,
+            "para": 21928,
+            "docLen": 311,
+            "srcLen": 308,
+            "lenDelta": 3,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 1015,
+            "para": 23862,
+            "docLen": 220,
+            "srcLen": 219,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 1017,
+            "para": 23863,
+            "docLen": 173,
+            "srcLen": 170,
+            "lenDelta": 3,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 1102,
+            "para": 23946,
+            "docLen": 208,
+            "srcLen": 207,
+            "lenDelta": 1,
+            "how": "loose"
+          }
+        ]
+      }
+    ],
+    "tables": {
+      "total": 312,
+      "rows": 3588,
+      "failedRows": 0,
+      "cellMismatches": 0,
+      "outOfOrderTables": 0,
+      "cellsNeedingLooseTier": 0,
+      "failures": []
+    },
+    "code": {
+      "blocks": 449,
+      "failedBlocks": 0,
+      "outOfOrderBlocks": 0,
+      "failures": []
+    },
+    "glueHits": [],
+    "totals": {
+      "sourceProseParagraphs": 2067,
+      "present": 2067,
+      "excludedByVolumeRules": 0,
+      "missing": 0,
+      "exact": 2037,
+      "contiguous": 2067,
+      "boundaryBounded": 2067,
+      "strictFormDiffers": 30,
+      "renderingDifferences": 0,
+      "notBounded": 0,
+      "largeStrictDiffs": 0,
+      "orderViolations": 0,
+      "mergedParagraphs": 0,
+      "mergedWithoutSeparator": 0,
+      "glueHits": 0,
+      "duplicateOccurrences": 82,
+      "contiguousPassRate": 1,
+      "exactPassRate": 0.985486,
+      "orderConsistent": true
+    },
+    "orderViolations": [],
+    "orderWeakWarnings": [
+      {
+        "source": "01-introduction.md",
+        "line": 363,
+        "prev": {
+          "source": "01-introduction.md",
+          "line": 360,
+          "para": 570,
+          "at": 0
+        },
+        "got": {
+          "para": 348,
+          "at": 0
+        },
+        "text": "You will study, build, configure, troubleshoot, and document complex enterprise networks using various telecom technolog"
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3163,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3161,
+          "para": 6542,
+          "at": 0
+        },
+        "got": {
+          "para": 6528,
+          "at": 0
+        },
+        "text": "解決方案。"
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3196,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3194,
+          "para": 6565,
+          "at": 0
+        },
+        "got": {
+          "para": 6528,
+          "at": 0
+        },
+        "text": "解決方案。"
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3221,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3219,
+          "para": 6585,
+          "at": 0
+        },
+        "got": {
+          "para": 6528,
+          "at": 0
+        },
+        "text": "解決方案。"
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3266,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3264,
+          "para": 6620,
+          "at": 0
+        },
+        "got": {
+          "para": 6528,
+          "at": 0
+        },
+        "text": "解決方案。"
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3291,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3289,
+          "para": 6640,
+          "at": 0
+        },
+        "got": {
+          "para": 6528,
+          "at": 0
+        },
+        "text": "解決方案。"
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3315,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3313,
+          "para": 6659,
+          "at": 0
+        },
+        "got": {
+          "para": 6528,
+          "at": 0
+        },
+        "text": "解決方案。"
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3341,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3339,
+          "para": 6680,
+          "at": 0
+        },
+        "got": {
+          "para": 6528,
+          "at": 0
+        },
+        "text": "解決方案。"
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3361,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3359,
+          "para": 6695,
+          "at": 0
+        },
+        "got": {
+          "para": 6528,
+          "at": 0
+        },
+        "text": "解決方案。"
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3375,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3373,
+          "para": 6705,
+          "at": 0
+        },
+        "got": {
+          "para": 6676,
+          "at": 0
+        },
+        "text": "可能成因。"
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3380,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3378,
+          "para": 6709,
+          "at": 0
+        },
+        "got": {
+          "para": 6528,
+          "at": 0
+        },
+        "text": "解決方案。"
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3403,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3401,
+          "para": 6727,
+          "at": 0
+        },
+        "got": {
+          "para": 6528,
+          "at": 0
+        },
+        "text": "解決方案。"
+      }
+    ],
+    "unordered": [],
+    "merged": [],
+    "mergedWithoutSeparator": [],
+    "largeStrictDiffs": []
+  },
+  {
+    "docx": "D:\\File\\School\\FYP\\FYP-Proposal-Volume1-Plan-ZH.docx",
+    "mode": "complete",
+    "paragraphs": 9984,
+    "sources": [
+      {
+        "source": "01-introduction.md",
+        "proseParagraphs": 163,
+        "exact": 163,
+        "contiguous": 163,
+        "bounded": 163,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 20,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": [
+          {
+            "kind": "multiple-occurrences",
+            "line": 99,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 100,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 101,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 102,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 104,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 105,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 106,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 107,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 109,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 110,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 111,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 112,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 113,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 115,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 116,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 117,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 118,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 119,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 220,
+            "hits": 4
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 363,
+            "hits": 4
+          }
+        ]
+      },
+      {
+        "source": "02-architecture.md",
+        "proseParagraphs": 191,
+        "exact": 184,
+        "contiguous": 191,
+        "bounded": 191,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 0,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": [
+          {
+            "kind": "strict-form-differs",
+            "line": 29,
+            "para": 992,
+            "docLen": 606,
+            "srcLen": 604,
+            "lenDelta": 2,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 150,
+            "para": 1204,
+            "docLen": 535,
+            "srcLen": 531,
+            "lenDelta": 4,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 830,
+            "para": 2460,
+            "docLen": 402,
+            "srcLen": 399,
+            "lenDelta": 3,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 834,
+            "para": 2462,
+            "docLen": 754,
+            "srcLen": 751,
+            "lenDelta": 3,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 879,
+            "para": 2502,
+            "docLen": 71,
+            "srcLen": 70,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 899,
+            "para": 2537,
+            "docLen": 377,
+            "srcLen": 375,
+            "lenDelta": 2,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 909,
+            "para": 2543,
+            "docLen": 1078,
+            "srcLen": 1077,
+            "lenDelta": 1,
+            "how": "loose"
+          }
+        ]
+      },
+      {
+        "source": "08-project-management.md",
+        "proseParagraphs": 238,
+        "exact": 232,
+        "contiguous": 238,
+        "bounded": 238,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 0,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": [
+          {
+            "kind": "strict-form-differs",
+            "line": 5,
+            "para": 2846,
+            "docLen": 171,
+            "srcLen": 170,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 288,
+            "para": 3645,
+            "docLen": 97,
+            "srcLen": 95,
+            "lenDelta": 2,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 336,
+            "para": 3770,
+            "docLen": 311,
+            "srcLen": 308,
+            "lenDelta": 3,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 1015,
+            "para": 5704,
+            "docLen": 220,
+            "srcLen": 219,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 1017,
+            "para": 5705,
+            "docLen": 173,
+            "srcLen": 170,
+            "lenDelta": 3,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 1102,
+            "para": 5788,
+            "docLen": 208,
+            "srcLen": 207,
+            "lenDelta": 1,
+            "how": "loose"
+          }
+        ]
+      }
+    ],
+    "tables": {
+      "total": 145,
+      "rows": 1979,
+      "failedRows": 0,
+      "cellMismatches": 0,
+      "outOfOrderTables": 0,
+      "cellsNeedingLooseTier": 0,
+      "failures": []
+    },
+    "code": {
+      "blocks": 14,
+      "failedBlocks": 0,
+      "outOfOrderBlocks": 0,
+      "failures": []
+    },
+    "glueHits": [],
+    "totals": {
+      "sourceProseParagraphs": 592,
+      "present": 592,
+      "excludedByVolumeRules": 0,
+      "missing": 0,
+      "exact": 579,
+      "contiguous": 592,
+      "boundaryBounded": 592,
+      "strictFormDiffers": 13,
+      "renderingDifferences": 0,
+      "notBounded": 0,
+      "largeStrictDiffs": 0,
+      "orderViolations": 0,
+      "mergedParagraphs": 0,
+      "mergedWithoutSeparator": 0,
+      "glueHits": 0,
+      "duplicateOccurrences": 20,
+      "contiguousPassRate": 1,
+      "exactPassRate": 0.978041,
+      "orderConsistent": true
+    },
+    "orderViolations": [],
+    "orderWeakWarnings": [
+      {
+        "source": "01-introduction.md",
+        "line": 363,
+        "prev": {
+          "source": "01-introduction.md",
+          "line": 360,
+          "para": 574,
+          "at": 0
+        },
+        "got": {
+          "para": 352,
+          "at": 0
+        },
+        "text": "You will study, build, configure, troubleshoot, and document complex enterprise networks using various telecom technolog"
+      }
+    ],
+    "unordered": [],
+    "merged": [],
+    "mergedWithoutSeparator": [],
+    "largeStrictDiffs": []
+  },
+  {
+    "docx": "D:\\File\\School\\FYP\\FYP-Proposal-Volume2-Technical-ZH.docx",
+    "mode": "complete",
+    "paragraphs": 18168,
+    "sources": [
+      {
+        "source": "03-microsoft.md",
+        "proseParagraphs": 486,
+        "exact": 475,
+        "contiguous": 486,
+        "bounded": 486,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 17,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": [
+          {
+            "kind": "strict-form-differs",
+            "line": 235,
+            "para": 303,
+            "docLen": 303,
+            "srcLen": 298,
+            "lenDelta": 5,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 369,
+            "para": 461,
+            "docLen": 202,
+            "srcLen": 201,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 505,
+            "para": 602,
+            "docLen": 98,
+            "srcLen": 97,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 1549,
+            "para": 1843,
+            "docLen": 243,
+            "srcLen": 242,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 1598,
+            "para": 1883,
+            "docLen": 86,
+            "srcLen": 84,
+            "lenDelta": 2,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 1732,
+            "para": 2014,
+            "docLen": 289,
+            "srcLen": 287,
+            "lenDelta": 2,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 2631,
+            "para": 3000,
+            "docLen": 30,
+            "srcLen": 32,
+            "lenDelta": 2,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 3048,
+            "para": 3615,
+            "docLen": 78,
+            "srcLen": 77,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 3050,
+            "para": 3617,
+            "docLen": 86,
+            "srcLen": 85,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 3071,
+            "para": 3636,
+            "docLen": 26,
+            "srcLen": 25,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3143,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3163,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3196,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3221,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3266,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3291,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3315,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3335,
+            "hits": 16
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3341,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3361,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3375,
+            "hits": 16
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3380,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3403,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3418,
+            "hits": 16
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 3420,
+            "para": 3909,
+            "docLen": 87,
+            "srcLen": 86,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3424,
+            "hits": 27
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3437,
+            "hits": 16
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3443,
+            "hits": 27
+          }
+        ]
+      },
+      {
+        "source": "04-linux.md",
+        "proseParagraphs": 398,
+        "exact": 397,
+        "contiguous": 398,
+        "bounded": 398,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 12,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": [
+          {
+            "kind": "multiple-occurrences",
+            "line": 231,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 925,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 946,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 984,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 1031,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 1615,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 2328,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3015,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3383,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3435,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3465,
+            "hits": 24
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 3936,
+            "hits": 24
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 4016,
+            "para": 8057,
+            "docLen": 339,
+            "srcLen": 338,
+            "lenDelta": 1,
+            "how": "loose"
+          }
+        ]
+      },
+      {
+        "source": "05-cisco.md",
+        "proseParagraphs": 116,
+        "exact": 116,
+        "contiguous": 116,
+        "bounded": 116,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 0,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": []
+      },
+      {
+        "source": "06-automation.md",
+        "proseParagraphs": 271,
+        "exact": 267,
+        "contiguous": 271,
+        "bounded": 271,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 6,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": [
+          {
+            "kind": "multiple-occurrences",
+            "line": 51,
+            "hits": 3
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 53,
+            "hits": 3
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 141,
+            "para": 11651,
+            "docLen": 74,
+            "srcLen": 68,
+            "lenDelta": 6,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 168,
+            "para": 11679,
+            "docLen": 82,
+            "srcLen": 81,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 962,
+            "para": 12485,
+            "docLen": 173,
+            "srcLen": 172,
+            "lenDelta": 1,
+            "how": "loose"
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 1007,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 1038,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 1065,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 1124,
+            "hits": 8
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 1159,
+            "para": 12876,
+            "docLen": 217,
+            "srcLen": 216,
+            "lenDelta": 1,
+            "how": "loose"
+          }
+        ]
+      },
+      {
+        "source": "07-ai.md",
+        "proseParagraphs": 204,
+        "exact": 203,
+        "contiguous": 204,
+        "bounded": 204,
+        "excluded": 0,
+        "missing": 0,
+        "duplicateOccurrences": 23,
+        "renderingDifferences": 0,
+        "failures": [],
+        "observations": [
+          {
+            "kind": "multiple-occurrences",
+            "line": 350,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 360,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 386,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 394,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 414,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 430,
+            "hits": 6
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 487,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 497,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 519,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 526,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 548,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 590,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 600,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 620,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 627,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 650,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 656,
+            "hits": 6
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 690,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 701,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 716,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 723,
+            "hits": 8
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 743,
+            "hits": 8
+          },
+          {
+            "kind": "strict-form-differs",
+            "line": 832,
+            "para": 17367,
+            "docLen": 458,
+            "srcLen": 452,
+            "lenDelta": 6,
+            "how": "loose"
+          },
+          {
+            "kind": "multiple-occurrences",
+            "line": 910,
+            "hits": 4
+          }
+        ]
+      }
+    ],
+    "tables": {
+      "total": 167,
+      "rows": 1609,
+      "failedRows": 0,
+      "cellMismatches": 0,
+      "outOfOrderTables": 0,
+      "cellsNeedingLooseTier": 0,
+      "failures": []
+    },
+    "code": {
+      "blocks": 435,
+      "failedBlocks": 0,
+      "outOfOrderBlocks": 0,
+      "failures": []
+    },
+    "glueHits": [],
+    "totals": {
+      "sourceProseParagraphs": 1475,
+      "present": 1475,
+      "excludedByVolumeRules": 0,
+      "missing": 0,
+      "exact": 1458,
+      "contiguous": 1475,
+      "boundaryBounded": 1475,
+      "strictFormDiffers": 17,
+      "renderingDifferences": 0,
+      "notBounded": 0,
+      "largeStrictDiffs": 0,
+      "orderViolations": 0,
+      "mergedParagraphs": 0,
+      "mergedWithoutSeparator": 0,
+      "glueHits": 0,
+      "duplicateOccurrences": 58,
+      "contiguousPassRate": 1,
+      "exactPassRate": 0.988475,
+      "orderConsistent": true
+    },
+    "orderViolations": [],
+    "orderWeakWarnings": [
+      {
+        "source": "03-microsoft.md",
+        "line": 3163,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3161,
+          "para": 3709,
+          "at": 0
+        },
+        "got": {
+          "para": 3695,
+          "at": 0
+        },
+        "text": "解決方案。"
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3196,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3194,
+          "para": 3732,
+          "at": 0
+        },
+        "got": {
+          "para": 3695,
+          "at": 0
+        },
+        "text": "解決方案。"
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3221,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3219,
+          "para": 3752,
+          "at": 0
+        },
+        "got": {
+          "para": 3695,
+          "at": 0
+        },
+        "text": "解決方案。"
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3266,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3264,
+          "para": 3787,
+          "at": 0
+        },
+        "got": {
+          "para": 3695,
+          "at": 0
+        },
+        "text": "解決方案。"
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3291,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3289,
+          "para": 3807,
+          "at": 0
+        },
+        "got": {
+          "para": 3695,
+          "at": 0
+        },
+        "text": "解決方案。"
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3315,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3313,
+          "para": 3826,
+          "at": 0
+        },
+        "got": {
+          "para": 3695,
+          "at": 0
+        },
+        "text": "解決方案。"
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3341,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3339,
+          "para": 3847,
+          "at": 0
+        },
+        "got": {
+          "para": 3695,
+          "at": 0
+        },
+        "text": "解決方案。"
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3361,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3359,
+          "para": 3863,
+          "at": 0
+        },
+        "got": {
+          "para": 3695,
+          "at": 0
+        },
+        "text": "解決方案。"
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3375,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3373,
+          "para": 3873,
+          "at": 0
+        },
+        "got": {
+          "para": 3843,
+          "at": 0
+        },
+        "text": "可能成因。"
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3380,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3378,
+          "para": 3877,
+          "at": 0
+        },
+        "got": {
+          "para": 3695,
+          "at": 0
+        },
+        "text": "解決方案。"
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3403,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3401,
+          "para": 3895,
+          "at": 0
+        },
+        "got": {
+          "para": 3695,
+          "at": 0
+        },
+        "text": "解決方案。"
+      },
+      {
+        "source": "03-microsoft.md",
+        "line": 3418,
+        "prev": {
+          "source": "03-microsoft.md",
+          "line": 3416,
+          "para": 3906,
+          "at": 0
+        },
+        "got": {
+          "para": 3843,
+          "at": 0
+        },
+        "text": "可能成因。"
+      }
+    ],
+    "unordered": [],
+    "merged": [],
+    "mergedWithoutSeparator": [],
+    "largeStrictDiffs": []
+  }
+]

@@ -1,0 +1,1 @@
+The equivalent proof is captured for every playbook in the repository, and the collected results are recorded, with the log file path and the date, in `04-automation/ansible/docs/05-idempotence-log.md`:

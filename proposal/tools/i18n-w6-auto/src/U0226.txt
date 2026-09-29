@@ -1,0 +1,23 @@
+```yaml
+    cisco:
+      hosts:
+        VP-HQ-CORE-01:   { fyp_device_ip: 10.20.20.11, fyp_loopback: 10.255.0.11 }
+        VP-HQ-CORE-02:   { fyp_device_ip: 10.20.20.12, fyp_loopback: 10.255.0.12 }
+        VP-HQ-DSW-A01:   { fyp_device_ip: 10.20.20.21 }
+        VP-HQ-DSW-A02:   { fyp_device_ip: 10.20.20.22 }
+        VP-HQ-DSW-A03:   { fyp_device_ip: 10.20.20.23 }
+        VP-HQ-DSW-A04:   { fyp_device_ip: 10.20.20.24 }
+        VP-HQ-EDGE-01:   { fyp_device_ip: 10.20.20.31, fyp_loopback: 10.255.0.21 }
+        VP-HQ-FW-01:     { fyp_device_ip: 10.20.20.32 }
+        VP-BR-EDGE-01:   { fyp_device_ip: 10.10.113.1,  fyp_loopback: 10.255.0.31 }
+        VP-BR-DSW-A01:   { fyp_device_ip: 10.10.113.21 }
+        VP-MO-EDGE-01:   { fyp_device_ip: 10.10.120.1,  fyp_loopback: 10.255.0.41 }
+        VP-MO-DSW-A01:   { fyp_device_ip: 10.10.120.21 }
+        VP-WC-EDGE-01:   { fyp_device_ip: 10.10.130.1,  fyp_loopback: 10.255.0.51 }
+        VP-WC-DSW-A01:   { fyp_device_ip: 10.10.130.21 }
+        VP-ISP-EDGE-01:  { fyp_device_ip: 10.20.20.41,  fyp_loopback: 10.255.0.61 }
+        VP-HQ-VOICE-01:  { fyp_device_ip: 10.10.45.11 }
+      vars:
+        ansible_connection: local       # documentation-only group - no login is attempted
+        fyp_automation_reachable: false
+```

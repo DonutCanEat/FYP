@@ -1,0 +1,29 @@
+# Version-control policy for the FYP repository.
+#
+# TRACKED (deliberately): the two deliverables and their Markdown sources, the
+# user's own originals, proposal\sections\, proposal\i18n\zh-HK\, proposal\research\,
+# proposal\integration\ (history, including the backup-* folders), the toolchain in
+# proposal\tools\md2docx\, and the evidence\ tree.
+#
+# NOT TRACKED, and the reason for each.
+
+# The superseded ~286,932-word generation. agent.md §9: "Do not submit or present
+# as the project." Kept on disk as reference; excluded here so that no submission
+# bundle built from Git can contain it by accident.
+legacy/
+
+# Build products and scratch, per agent.md §9 ("Sources vs generated"). The sources
+# are proposal\i18n\zh-HK\*.md, which stay tracked; these outputs are regenerable.
+proposal/tools/i18n-w6-auto/out/
+proposal/tools/i18n-w6-auto/zh/
+proposal/tools/i18n-p08/out/
+proposal/tools/i18n-p08/zh/
+proposal/tools/md2docx/stress/
+
+# One-line scratch files; agent.md §9 says "Ignore".
+proposal/z-scratch-audit/
+
+# Editor and OS noise.
+Thumbs.db
+desktop.ini
+*.tmp

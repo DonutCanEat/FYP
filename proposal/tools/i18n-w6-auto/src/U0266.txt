@@ -1,0 +1,30 @@
+```bash
+# 0) Create the vault password file OUTSIDE the repository, readable only by its owner.
+install -m 0600 /dev/null /home/adm-w4/.ansible/vault-pass-vp
+printf '%s\n' "$(openssl rand -base64 32)" > /home/adm-w4/.ansible/vault-pass-vp
+chmod 0600 /home/adm-w4/.ansible/vault-pass-vp
+
+# 1) CREATE the encrypted variable file (prompts for the vault password once).
+cd /opt/ansible-venv/repo/04-automation/ansible
+ansible-vault create inventory/group_vars/all/vault.yml
+# ... paste content, save, exit the editor ...
+
+# 2) EDIT it later (decrypts to a temp file, re-encrypts on save).
+ansible-vault edit inventory/group_vars/all/vault.yml
+
+# 3) ENCRYPT an existing plaintext file in place (and remove the plaintext commit).
+ansible-vault encrypt inventory/group_vars/all/vault.yml
+
+# 4) VIEW without writing.
+ansible-vault view inventory/group_vars/all/vault.yml
+
+# 5) CHANGE the vault password (after a member leaves the group).
+ansible-vault rekey inventory/group_vars/all/vault.yml
+
+# 6) USE it in a run - ansible.cfg already points at the vault password file,
+#    so no flag is needed. For an ad-hoc run without the config:
+ansible-playbook playbooks/01-baseline-windows.yml --ask-vault-pass
+
+# 7) ENCRYPT a single value inline (for a one-off), never a whole file:
+ansible-vault encrypt_string --name 'vault_svc_ansible_password' 'REDACTED'
+```

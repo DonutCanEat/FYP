@@ -1,0 +1,1 @@
+**Handlers:** `Reload keepalived` (`systemd_service: state=reloaded`) and `Restart keepalived`. The reload path is preferred because a restart on the MASTER would momentarily remove the VIP; the role uses reload for configuration changes and reserves restart for the first install.

@@ -1,0 +1,6 @@
+```bash
+cd /opt/ansible-venv/repo/04-automation/ansible
+ansible windows -i inventory/hosts.yml -m ansible.windows.win_ping
+ansible linux -i inventory/hosts.yml -m ansible.builtin.ping
+ansible windows -i inventory/hosts.yml -m ansible.windows.win_shell -a 'whoami; $PSVersionTable.PSVersion'
+```

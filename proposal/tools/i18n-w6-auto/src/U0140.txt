@@ -1,0 +1,1 @@
+Commits are conventional-commit style with a scope that names the artefact, so that `git log` is readable evidence in its own right:

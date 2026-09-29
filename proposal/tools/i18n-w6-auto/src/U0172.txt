@@ -1,0 +1,1 @@
+Ansible reaches Windows guests through WinRM, and WinRM is **not** on by default in a way that supports this design. Three things must be true on every Windows managed node: a listener exists and is reachable, the authentication path is trusted, and the firewall permits the traffic from `vpnz-mon01` only.

@@ -1,0 +1,31 @@
+```bash
+# --- 0. Prepare: one timestamped log file per run -------------------------------
+export FYP_RUNLOG="/opt/ansible-venv/repo/04-automation/runs/$(date +%Y-%m-%d_%H%M)_05-nftables-egress.log"
+
+# --- 1. Gate: syntax ----------------------------------------------------------
+ansible-playbook playbooks/05-nftables-egress.yml --syntax-check
+
+# --- 2. Gate: dry run with diffs ----------------------------------------------
+ansible-playbook playbooks/05-nftables-egress.yml --check --diff 2>&1 | tee "${FYP_RUNLOG%.log}.check.log"
+
+# --- 3. Canary ----------------------------------------------------------------
+ansible-playbook playbooks/05-nftables-egress.yml --limit vpnz-nft02 2>&1 | tee "$FYP_RUNLOG"
+
+# --- 4. Full run (the FIRST run - changes are expected) -----------------------
+ansible-playbook playbooks/05-nftables-egress.yml 2>&1 | tee -a "$FYP_RUNLOG"
+
+# --- 5. IDEMPOTENCE PROOF: run it again immediately ---------------------------
+ansible-playbook playbooks/05-nftables-egress.yml 2>&1 | tee "/opt/ansible-venv/repo/04-automation/runs/$(date +%Y-%m-%d_%H%M)_05-nftables-egress.SECOND-RUN.log"
+
+# --- 6. Independent verification, not the playbook's own opinion --------------
+ansible edge -i inventory/hosts.yml -m ansible.builtin.shell -a 'nft list table inet fyp_filter | head -5'
+ansible edge -i inventory/hosts.yml -m ansible.builtin.shell -a 'systemctl is-active nftables keepalived'
+ansible edge -i inventory/hosts.yml -m ansible.builtin.shell -a 'ip -br addr show | grep 10.10.50.10 || echo "VIP not here"'
+
+# --- 7. Whole-estate audit ----------------------------------------------------
+ansible-playbook playbooks/09-verify-services.yml 2>&1 | tee "/opt/ansible-venv/repo/04-automation/runs/$(date +%Y-%m-%d_%H%M)_09-verify-services.log"
+
+# --- 8. Commit the evidence ---------------------------------------------------
+git add 04-automation/runs/
+git commit -m "evidence(l4): nftables egress deployment - first run, canary, idempotence proof"
+```

@@ -1,0 +1,77 @@
+%%U0206%%
+#### 10.4.2 Inventory design
+%%U0208%%
+##### 10.4.2.1 The complete inventory
+%%U0210%%
+`inventory/hosts.yml` is the authoritative inventory. Every hostname, address and VLAN below is taken verbatim from the canonical design; no host in this file may be re-addressed, re-capitalised or abbreviated locally.
+%%U0214%%
+##### 10.4.2.2 Groups, the group-of-groups pattern, and why the hierarchy is shaped this way
+%%U0216%%
+**The seven named groups.** `windows`, `linux`, `web`, `edge`, `monitoring`, `cisco` and `mgmt` are the groups the baseline fixes for the inventory. The design adds one refinement: the Windows and Linux groups are themselves **groups of groups**, containing `windows_servers` and `dmz_windows`; and `linux_servers`, `web` and `edge`.
+%%U0218%%
+The group-of-groups pattern exists because a *zone* and an *operating system family* are two different facts about a host, and a flat inventory cannot express both without duplication. `vpnz-dmzrev01` is a Linux host **and** a DMZ host **and** a web-tier host. With the hierarchy:
+%%U0220%%
+- `hosts: linux` matches all nine Linux guests — this is the group that carries the SSH connection variables.
+- `hosts: web` matches exactly the two reverse proxies — this is the group the `keepalived` and `nginx` roles are written against, and it is naturally `serial: 1`.
+- `hosts: windows` matches all nine Windows guests and carries the single set of WinRM connection variables, so a connection setting is stated once and cannot drift between the two Windows subgroups.
+- `hosts: edge` matches the two nftables nodes — the only hosts on which a firewall playbook may change the ruleset, and the only hosts where the lock-out timer logic of `02-nftables-apply.sh` matters.
+%%U0222%%
+**`vpnz-dc01` and `vpnz-dc02` are deliberately placed in `windows`, not in a "servers" group, and are further tagged with `fyp_tier: tier0`.** This lets a playbook exclude them by variable rather than by a remembered exclusion, and it lets the audit playbook target tier 0 separately. The tier tags mirror the two-of-four Tier-0 split recorded in §9.3.
+%%U0224%%
+**The `cisco` group.** Packet Tracer devices cannot be reached by Ansible at all (§11.4, PT-06). They therefore appear in the inventory as a **documentation group with `ansible_connection: local` and no connection attempt**, so that a single inventory file remains the complete picture of the estate and so that the configuration-collection playbook of 10.4.6.5 can correlate "a configuration exists for this device" without pretending to log in:
+%%U0228%%
+##### 10.4.2.3 Inventory consistency checks
+%%U0230%%
+Two baselines in one repository is one baseline too many, so a small consistency playbook asserts that every address in `hosts.yml` also appears in the frozen address table, and that `lab.ini` has not drifted from `hosts.yml`:
+%%U0234%%
+This is a small amount of code for a large amount of consistency, and it is the mechanism by which the interface-contract discipline of the design baseline is enforced technically rather than by good intentions.
+%%U0236%%
+#### 10.4.3 Configuration management: `ansible.cfg`
+%%U0240%%
+**Explanation of every setting, and why it is set that way here.**
+%%U0242%%
+| Setting | Value | Reason |
+|---|---|---|
+| `inventory` | `./inventory/hosts.yml` | A repository-relative path, so the repository is portable between the four students' machines and `vpnz-mon01`. Anyone who runs `ansible-playbook` from the repository root gets the right inventory with no flag |
+| `roles_path` | `./roles` | Roles are found relative to the repository, so a role's location is never a matter of the machine's Ansible defaults |
+| `collections_path` | the virtual-environment path | Makes the community package version in use explicit and prevents an accidental fallback to a system collection |
+| `library` | `./library` | Present so that a bespoke module, if one is ever written, has a defined home |
+| `filter_plugins` | `./filter_plugins` | The project's custom Jinja2 filters (for example the nftables-set renderer) must be found automatically |
+| `remote_user` | `adm-w4` | A named personal account, never `root`, never a shared account. Overridden per host where a different administrator owns a host |
+| `host_key_checking` | `False` | **[DECLARED LAB SIMPLIFICATION — not best practice]** The 19 VMs are rebuilt from templates repeatedly during the 12-week build, so their SSH host keys legitimately change and a strict check would block every automation run with a false alarm. The compensating controls are stated: the lab is entirely host-only with no bridging, no lab host is reachable from outside the hypervisor host, and the group additionally records the host keys of the steady-state estate in `docs/04-variable-dictionary.md` after week 9. The report must present this as a lab simplification with its justification — exactly as §12.2 requires for the Keepalived `PASS` authentication simplification |
+| `retry_files_enabled` / `retry_files_save_path` | `True`, `./logs/retry` | A failed run leaves a retry file, so recovery is a single command and the failed host list is preserved |
+| `gathering` / `fact_caching` | `smart` + `jsonfile` | Facts are gathered once and cached for 24 h. Without caching, a nine-host Windows gather dominates the runtime of every small playbook and tempts the team to disable fact gathering, which then breaks templates that depend on facts |
+| `stdout_callback` | `yaml` | The readable recap. A plain `default` callback makes a long diff unreadable in a log, and the log *is* the evidence |
+| `callbacks_enabled` | `profile_tasks, timer` | Records per-task duration, which is how slow roles get found and how the scheduling estimates in section 10.8 are justified |
+| `display_skipped_hosts` | `False` | Skipped tasks are noise in a log that must be read by a reviewer |
+| `log_path` | `./logs/ansible.log` | A persistent, committable log. `04-automation/runs/` additionally holds the timestamped per-run log written by the wrapper |
+| `interpreter_python` | `auto_silent` | Discovers the interpreter and suppresses the discovery warning that would otherwise pollute every single run's output. The Linux estate has one interpreter (`/usr/bin/python3` from Ubuntu 24.04.3 LTS); Windows uses PowerShell through `pywinrm`, where this setting does not apply |
+| `forks` | `10` | Ten parallel connections against a 19-VM estate on one hypervisor host is a deliberate ceiling: higher values exhaust the host's RAM before they save wall-clock time (§15.1) |
+| `timeout` | `30` | Connection timeout. Long enough for a loaded host-only segment, short enough that a dead host fails a rollout in half a minute |
+| `nocows` | `1` | ASCII art in a log is noise |
+| `vault_password_file` | `/home/adm-w4/.ansible/vault-pass-vp` | The vault password file lives **outside the repository**, in the administrator's home directory, mode 0600. See 10.4.4 |
+| `ask_vault_pass` | `False` | Because the file is used. The trade-off (the file is a secret on disk) is stated and compensated: the file is excluded by `.gitignore`, by the pre-tag secret sweep, and by file permissions, and scheduled runs use it through a `systemd` unit whose environment file is also 0600 root-owned |
+| `allow_world_readable_tmpfiles` | `False` | The safe default; enabling it would be a security regression for convenience |
+| `[privilege_escalation] become` | `True` | True globally, and then explicitly **overridden to `false` in `group_vars/windows.yml`**, because Windows targets have no `sudo`. Ansible's Windows modules are invoked in an already-elevated session |
+| `become_method` / `become_user` | `sudo` / `root` | The Linux estate's escalation path. The members of the local `gg-infra-admins` group are the only accounts permitted to escalate |
+| `become_flags` | `-H -S -n` | `-H` sets `$HOME` to root's home (avoids the classic `sudo: a password is required` / profile errors), `-S` reads the password from stdin, `-n` makes a non-interactive failure explicit rather than hanging |
+| `[inventory] unparsed_is_failed` | `True` | If an inventory file exists but fails to parse, the run stops. The default is to warn and continue with an empty inventory, which in a firewall playbook would mean "no hosts, all good" — the most dangerous possible outcome |
+| `[ssh_connection] pipelining` | `True` | A large speed-up, and safe here because `requiretty` is not set in the Ubuntu 24.04 sudoers configuration |
+| `ssh_args` | `ControlMaster=auto`, `ControlPersist=300s` | Reuses one SSH connection for the duration of a rollout |
+| `scp_if_ssh` | `smart` | Uses `scp` when the transfer is small and the target's SSH supports it; avoids the `sftp` failure mode on a minimal Ubuntu install |
+%%U0244%%
+Two anti-patterns are explicitly forbidden by the group's working agreement: passing `-e` with a secret on the command line (it lands in the shell history and in the process list), and overriding `ansible.cfg` values with flags on a run that produces evidence (the evidence then does not describe what the repository would do).
+%%U0246%%
+#### 10.4.4 Variables and secrets
+%%U0248%%
+##### 10.4.4.1 Variable precedence as the project uses it
+%%U0250%%
+Ansible's precedence order is long, and the project deliberately uses only five layers so that the origin of any value is obvious within seconds:
+%%U0252%%
+| Layer | File | Contents |
+|---|---|---|
+| 1 (lowest) | `roles/<role>/defaults/main.yml` | The role's tunable inputs with safe defaults. A default must be a value that is *correct for this project*, not a placeholder |
+| 2 | `inventory/group_vars/all.yml` | Values true everywhere: `fyp_domain`, `fyp_netbios`, NTP and DNS servers, administrator group names, package policy |
+| 3 | `inventory/group_vars/<group>.yml` | Tier values: connection settings, package lists, service enablement |
+| 4 | `inventory/host_vars/<host>.yml` | Genuine per-host facts: VRRP state and priority, the backup destination, the specific upstream the host serves |
+| 5 (highest, excluding runtime) | Vault-encrypted variables in `group_vars/all/vault.yml` | Secrets only. Nothing but secrets |

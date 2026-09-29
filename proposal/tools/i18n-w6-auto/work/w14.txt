@@ -1,0 +1,12 @@
+%%U0798%%
+### 10.11 Findings
+%%U0800%%
+A findings record is the mechanism by which this chapter reports what was **observed** rather than what was **intended**. Every test case in the verification chapter, every drift detection, every idempotence failure and every troubleshooting episode that took more than a few minutes produces one row. A findings subsection with no rows is a finding in itself: it means the estate was never exercised.
+%%U0802%%
+#### 10.11.1 Findings record template
+%%U0804%%
+Each finding is written in the following form. The template is fixed so that findings from four different group members can be read side by side.
+%%U0808%%
+#### 10.11.2 Worked example (illustrative)
+%%U0812%%
+This example is **illustrative** and demonstrates the level of specificity expected. A real findings record names the actual commit, the actual run log paths and the actual evidence file, and it must not be written from memory. The rule the group applies is simple: **a finding that cannot be traced to a command transcript, a log path or a screenshot is not yet a finding — it is a suspicion, and it belongs in the meeting minutes until it can be evidenced.**

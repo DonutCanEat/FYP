@@ -1,0 +1,5 @@
+| Automation output | How section 11 consumes it | Where it is defined |
+|---|---|---|
+| `inventory/hosts.yml` | The agent's address-plan and inventory questions are answered from this file, and its allow-list of hosts is derived from it. The agent reads the file; it never runs Ansible | 10.4.2, and the `inventory-query` Skill in 11.7 |
+| `runs/audit/audit-*.json` and the health-report JSON | The agent's "is anything wrong right now" Skill reads these structured reports rather than probing the estate itself, which keeps the agent's action surface small | 10.4.6.4, 10.6.2.1 |
+| The nftables drop summary JSON | The agent's log-correlation Skill consumes it directly as a tool result, which is why the script emits JSON as well as a table | 10.6.2.2 |

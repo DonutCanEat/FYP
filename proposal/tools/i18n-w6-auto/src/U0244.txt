@@ -1,0 +1,1 @@
+Two anti-patterns are explicitly forbidden by the group's working agreement: passing `-e` with a secret on the command line (it lands in the shell history and in the process list), and overriding `ansible.cfg` values with flags on a run that produces evidence (the evidence then does not describe what the repository would do).

@@ -1,0 +1,171 @@
+```bash
+#!/usr/bin/env bash
+# 04-automation/bash/07-nftables-log-summary.sh
+# Purpose : Summarise nftables drop events by source prefix over a chosen window.
+#           Output: human-readable table and/or JSON, suitable for the operations log
+#           and for consumption as a tool result by the AI operations layer (section 11).
+# Owner   : W2 (Linux & Services). Reviewer: W4.  Test IDs: TC-L4-03, TB-02, TB-03
+# Runtime : Ubuntu Server 24.04.3 LTS; journalctl, awk.
+# Safety  : READ-ONLY. journalctl is read with no state-changing option.
+# Exit    : 0 = summarised, 1 = no drop events found in the window (not an error state,
+#           but reported as a finding so that a silent firewall is noticed), 2 = usage.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/common.sh
+. "${SCRIPT_DIR}/lib/common.sh"
+
+WINDOW="last hour"          # any value accepted by journalctl --since
+PREFIX="NFT-DROP: "
+GROUP_BITS=24               # aggregate sources to /24 by default
+TOP_N=20
+FORMAT="text"
+OUT_FILE=""
+VERBOSE=0
+
+usage() {
+  cat <<'EOF'
+Usage: 07-nftables-log-summary.sh [OPTIONS]
+
+Summarises nftables drop events by source prefix.
+
+Options:
+  -s WINDOW   journalctl --since value            (default "last hour")
+  -p PREFIX   log prefix to match                 (default "NFT-DROP: ")
+  -b BITS     Prefix length to aggregate to       (default 24)
+  -n N        Show the top N prefixes             (default 20)
+  -f FMT      Output format: text or json         (default text)
+  -o FILE     Also write the report to FILE
+  -v          Verbose
+  -h          Show this help and exit 0
+
+Examples:
+  07-nftables-log-summary.sh
+  07-nftables-log-summary.sh -s "2026-11-09 20:00:00" -b 16 -n 10
+  07-nftables-log-summary.sh -f json -o /tmp/nft-drops.json
+EOF
+}
+
+while getopts ':s:p:b:n:f:o:vh' opt; do
+  case "${opt}" in
+    s) WINDOW="${OPTARG}" ;;
+    p) PREFIX="${OPTARG}" ;;
+    b) GROUP_BITS="${OPTARG}" ;;
+    n) TOP_N="${OPTARG}" ;;
+    f) FORMAT="${OPTARG}" ;;
+    o) OUT_FILE="${OPTARG}" ;;
+    v) VERBOSE=1 ;;
+    h) usage; exit "${FYP_EXIT_OK}" ;;
+    :) usage; die "option -${OPTARG} requires an argument" ;;
+    \?) usage; die "unknown option -${OPTARG}" ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+# --- Validate -----------------------------------------------------------------
+case "${GROUP_BITS}" in ''|*[!0-9]*) usage; die "-b must be an integer";; esac
+[ "${GROUP_BITS}" -ge 8 ] && [ "${GROUP_BITS}" -le 32 ] || { usage; die "-b must be between 8 and 32"; }
+case "${TOP_N}" in ''|*[!0-9]*) usage; die "-n must be an integer";; esac
+[ "${TOP_N}" -ge 1 ] || { usage; die "-n must be at least 1"; }
+case "${FORMAT}" in text|json) ;; *) usage; die "-f must be text or json" ;; esac
+# Guard against a prefix containing regex metacharacters being used unescaped.
+[ -n "${PREFIX}" ] || die "-p must not be empty"
+
+require_cmd journalctl awk sort date
+
+log INFO "summarising drops since '${WINDOW}' on ${FYP_HOST} (prefix '${PREFIX}', aggregate /${GROUP_BITS}, top ${TOP_N})"
+
+FYP_TMPFILE="$(mktemp)"
+register_cleanup 'cleanup_tmp'
+cleanup_tmp() { [ -e "${FYP_TMPFILE}" ] && rm -f -- "${FYP_TMPFILE}"; return 0; }
+
+# journalctl -o cat gives the message only, with no timestamp decoration, which keeps
+# the awk parsing simple and stable across journald versions.
+if ! journalctl -o cat --no-pager --since "${WINDOW}" 2>/dev/null |
+     awk -v prefix="${PREFIX}" -v bits="${GROUP_BITS}" '
+       index($0, prefix) == 0 { next }
+       {
+         src = ""
+         for (i = 1; i <= NF; i++) {
+           if ($i == "SRC=" && (i+1) <= NF) { src = $(i+1); break }
+           if ($i ~ /^SRC=/)                { src = substr($i, 5); break }
+         }
+         if (src == "" || src !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/) { next }
+         split(src, o, ".")
+         mask = 0
+         for (b = 0; b < bits; b++) {
+           oct = int(b / 8) + 1
+           bitpos = 7 - (b % 8)
+           if (and(o[oct] + 0, 2 ^ bitpos) != 0) { mask += 2 ^ (31 - b) }
+         }
+         a = int(mask / 16777216) % 256
+         b2 = int(mask / 65536) % 256
+         c = int(mask / 256) % 256
+         d = mask % 256
+         key = a "." b2 "." c "." d "/" bits
+         count[key]++
+         total++
+       }
+       END {
+         if (total == 0) { exit 1 }
+         for (k in count) { printf "%d %s\n", count[k], k }
+         print "TOTAL " total > "/dev/stderr"
+       }
+     ' > "${FYP_TMPFILE}"
+then
+  log WARN "no drop events matching prefix '${PREFIX}' were found since '${WINDOW}'"
+  log WARN "A silent firewall is worth checking: confirm the pair is receiving traffic and that logging is still enabled (nft list ruleset | grep -c NFT-DROP)"
+  if [ "${FORMAT}" = "json" ]; then
+    printf '{"host":"%s","since":"%s","prefix":"%s","group_bits":%d,"total_drops":0,"prefixes":[]}\n' \
+      "${FYP_HOST}" "${WINDOW}" "${PREFIX}" "${GROUP_BITS}" > "${OUT_FILE:-/dev/stdout}"
+  fi
+  exit 1
+fi
+
+total="$(awk '{s+=$1} END{printf "%d", s}' "${FYP_TMPFILE}")"
+rows="$(sort -k1,1nr "${FYP_TMPFILE}" | head -n "${TOP_N}")"
+
+if [ "${FORMAT}" = "json" ]; then
+  {
+    printf '{\n'
+    printf '  "host": "%s",\n' "${FYP_HOST}"
+    printf '  "since": "%s",\n' "${WINDOW}"
+    printf '  "generated": "%s",\n' "$(date -Is)"
+    printf '  "prefix": "%s",\n' "${PREFIX}"
+    printf '  "group_bits": %d,\n' "${GROUP_BITS}"
+    printf '  "total_drops": %s,\n' "${total}"
+    printf '  "prefixes": [\n'
+    first=1
+    while read -r cnt pfx; do
+      [ -n "${pfx:-}" ] || continue
+      [ "${first}" -eq 1 ] || printf ',\n'
+      first=0
+      printf '    {"prefix": "%s", "drops": %s}' "${pfx}" "${cnt}"
+    done <<<"${rows}"
+    printf '\n  ]\n}\n'
+  } > "${OUT_FILE:-/dev/stdout}"
+else
+  {
+    printf 'FYP nftables drop summary\n'
+    printf 'host        : %s\n' "${FYP_HOST}"
+    printf 'window      : since %s\n' "${WINDOW}"
+    printf 'generated   : %s\n' "$(date -Is)"
+    printf 'total drops : %s\n\n' "${total}"
+    printf '%-22s %10s\n' "SOURCE PREFIX" "DROPS"
+    printf '%-22s %10s\n' "----------------------" "----------"
+    while read -r cnt pfx; do
+      [ -n "${pfx:-}" ] || continue
+      printf '%-22s %10d\n' "${pfx}" "${cnt}"
+    done <<<"${rows}"
+    printf '\nInterpretation: a source inside 10.10.0.0/16 is an INTERNAL host whose traffic\n'
+    printf 'the policy correctly denied (see TB-02/TB-03/TB-09 - check the source VLAN).\n'
+    printf 'A source inside 10.70.0.0/24 is the deliberately isolated lab segment and any\n'
+    printf 'traffic from it at the egress pair is a policy finding, not routine noise (TB-09/TB-10).\n'
+  } | if [ -n "${OUT_FILE}" ]; then tee "${OUT_FILE}"; else cat; fi
+fi
+
+[ -n "${OUT_FILE}" ] && log INFO "report written to ${OUT_FILE}"
+log INFO "summarised ${total} drop event(s) across $(wc -l < "${FYP_TMPFILE}") prefix(es)"
+exit "${FYP_EXIT_OK}"
+```

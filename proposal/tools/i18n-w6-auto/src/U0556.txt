@@ -1,0 +1,285 @@
+```powershell
+<#
+.SYNOPSIS
+    Read-only audit of Windows service state, firewall configuration and WinRM listeners.
+
+.DESCRIPTION
+    Produces a structured, exportable record of the security-relevant state of one or
+    more Windows hosts and compares it against the expected state defined by the project
+    design. The script NEVER changes configuration: it is the Windows-side reference
+    implementation of "read-only by construction", and no state-changing cmdlet appears
+    anywhere in it.
+
+    Checks performed:
+      1. Expected service state (WinRM, W32Time, DNS, Netlogon, DHCPServer, W3SVC,
+         iSCSITarget, RemoteAccess) against an expected table, only where the role applies.
+      2. Firewall profile state: all three profiles enabled with default inbound Block.
+      3. Presence of the design's scoped inbound rules (WinRM 5986 and windows_exporter
+         9182, both limited to the control node 10.10.30.31).
+      4. WinRM listener state: exactly one HTTPS listener and no HTTP listener.
+      5. Listening TCP ports compared against the design's port matrix.
+      6. Local Administrators group membership, reported for review and never modified.
+
+    Verified on: Windows PowerShell 5.1 (Windows Server 2025, build 10.0.26100)
+                 and PowerShell 7.4 LTS on vpnz-jump01.
+    Test IDs   : TC-L4-01, TC-L4-05, TB-07, TB-08
+
+.PARAMETER ComputerName
+    One or more host names or addresses. Defaults to the local computer.
+
+.PARAMETER OutputPath
+    Directory for the CSV and the run log. Default C:\FYP\config.
+
+.PARAMETER Credential
+    Optional credential for a remote audit. Use an account that is a member of
+    GG-Server-Admins; never a Domain Admin for a routine audit.
+
+.EXAMPLE
+    .\Get-ServiceAndFirewallAudit.ps1 -OutputPath C:\FYP\config -Verbose
+
+    Audits the local host and writes ServiceFirewallAudit-<timestamp>.csv.
+
+.EXAMPLE
+    $cred = Get-Credential VERTEXPEAK\adm-w4
+    .\Get-ServiceAndFirewallAudit.ps1 -ComputerName vpnz-dc01,vpnz-dc02,vpnz-fs01 `
+        -Credential $cred -OutputPath C:\FYP\config
+
+    Audits three hosts over WinRM/HTTPS and writes one CSV containing every finding.
+
+.OUTPUTS
+    PSCustomObject per check with properties:
+    ComputerName, Check, Expected, Actual, Result (PASS/FAIL/INFO/UNREACHABLE), Detail
+
+.NOTES
+    Author : Vertex Peak FYP workstream W4
+    Reviewer: W1
+    Safety : READ-ONLY. No Set-, New-, Remove-, Start- or Stop- cmdlet is used.
+#>
+[CmdletBinding()]
+param(
+    [Parameter(ValueFromPipeline = $true)]
+    [string[]]$ComputerName = $env:COMPUTERNAME,
+
+    [ValidateNotNullOrEmpty()]
+    [string]$OutputPath = 'C:\FYP\config',
+
+    [System.Management.Automation.PSCredential]$Credential
+)
+
+begin {
+    Set-StrictMode -Version Latest
+    $ErrorActionPreference = 'Stop'
+
+    $ExpectedServices = @{
+        WinRM        = @{ Status = 'Running'; StartType = 'Automatic'; Roles = @('*') }
+        W32Time      = @{ Status = 'Running'; StartType = 'Automatic'; Roles = @('*') }
+        DNS          = @{ Status = 'Running'; StartType = 'Automatic'; Roles = @('dc','rodc') }
+        Netlogon     = @{ Status = 'Running'; StartType = 'Automatic'; Roles = @('dc','rodc') }
+        DHCPServer   = @{ Status = 'Running'; StartType = 'Automatic'; Roles = @('dc') }
+        W3SVC        = @{ Status = 'Running'; StartType = 'Automatic'; Roles = @('iis') }
+        iSCSITarget  = @{ Status = 'Running'; StartType = 'Automatic'; Roles = @('iscsi_target') }
+        RemoteAccess = @{ Status = 'Running'; StartType = 'Automatic'; Roles = @('vpn') }
+    }
+    $ExpectedRules = @(
+        @{ Name = 'FYP-Ansible-WinRM-5986'; Port = 5986; RemoteAddress = '10.10.30.31' }
+        @{ Name = 'FYP-Exporter-9182';      Port = 9182; RemoteAddress = '10.10.30.31' }
+    )
+    $AllowedListening = @(135,139,445,3389,5986,9182,53,88,389,636,3268,3269,464,123,80,443,6516)
+    $Findings = New-Object System.Collections.Generic.List[object]
+
+    if (-not (Test-Path -LiteralPath $OutputPath)) {
+        New-Item -ItemType Directory -Path $OutputPath -Force | Out-Null
+    }
+    $LogFile = Join-Path $OutputPath ("{0}_service-firewall-audit.log" -f (Get-Date -Format 'yyyy-MM-dd'))
+
+    function Write-AuditLog {
+        [CmdletBinding()]
+        param([Parameter(Mandatory)][string]$Message,
+              [ValidateSet('INFO','WARN','ERROR')][string]$Level = 'INFO')
+        Add-Content -LiteralPath $LogFile -Value ("{0} [{1}] {2}" -f (Get-Date -f 'yyyy-MM-dd HH:mm:ss'), $Level, $Message)
+        switch ($Level) {
+            'ERROR' { Write-Warning $Message }
+            'WARN'  { Write-Warning $Message }
+            default { Write-Verbose $Message }
+        }
+    }
+
+    function Add-Finding {
+        [CmdletBinding()]
+        param(
+            [Parameter(Mandatory)][string]$Computer,
+            [Parameter(Mandatory)][string]$Check,
+            [string]$Expected = '',
+            [string]$Actual = '',
+            [Parameter(Mandatory)][ValidateSet('PASS','FAIL','INFO','UNREACHABLE')][string]$Result,
+            [string]$Detail = ''
+        )
+        $Findings.Add([PSCustomObject]@{
+            ComputerName = $Computer
+            Check        = $Check
+            Expected     = $Expected
+            Actual       = $Actual
+            Result       = $Result
+            Detail       = $Detail
+        })
+    }
+}
+
+process {
+    foreach ($computer in $ComputerName) {
+        try {
+            if ($computer -eq $env:COMPUTERNAME -and -not $Credential) {
+                $remote = $false
+            }
+            else {
+                # Fail fast and report clearly if the transport is the problem.
+                if (-not (Test-WSMan -ComputerName $computer -UseSSL -Credential $Credential -ErrorAction Stop)) {
+                    throw "Test-WSMan returned nothing for $computer"
+                }
+                $remote = $true
+            }
+        }
+        catch {
+            Write-AuditLog "UNREACHABLE $computer : $($_.Exception.Message)" 'ERROR'
+            Add-Finding -Computer $computer -Check 'Connectivity' -Expected 'WinRM/HTTPS 5986 reachable' `
+                        -Actual 'unreachable' -Result 'UNREACHABLE' -Detail $_.Exception.Message
+            continue
+        }
+
+        try {
+            $scriptBlock = {
+                [PSCustomObject]@{
+                    Profiles = @(Get-NetFirewallProfile | Select-Object Name, Enabled, DefaultInboundAction)
+                    Rules    = @(Get-NetFirewallRule -ErrorAction SilentlyContinue |
+                                 Where-Object { $_.DisplayName -like 'FYP-*' } |
+                                 ForEach-Object {
+                                     [PSCustomObject]@{
+                                         DisplayName   = $_.DisplayName
+                                         Enabled       = [string]$_.Enabled
+                                         Direction     = [string]$_.Direction
+                                         Action        = [string]$_.Action
+                                         RemoteAddress = (($_ | Get-NetFirewallAddressFilter).RemoteAddress -join ',')
+                                         LocalPort     = (($_ | Get-NetFirewallPortFilter).LocalPort -join ',')
+                                     }
+                                 })
+                    Services  = @(Get-Service -ErrorAction SilentlyContinue | Select-Object Name, Status, StartType)
+                    Listeners = @(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue |
+                                  Select-Object LocalAddress, LocalPort, OwningProcess)
+                    Admins    = @(Get-LocalGroupMember -Group Administrators -ErrorAction SilentlyContinue |
+                                  Select-Object Name, ObjectClass)
+                    WinRM     = @(Get-ChildItem WSMan:\Localhost\Listener |
+                                  Select-Object Name, @{n='Keys';e={ ($_.Keys -join ';') }})
+                }
+            }
+
+            if ($remote) {
+                $data = Invoke-Command -ComputerName $computer -ScriptBlock $scriptBlock `
+                                       -Credential $Credential -ErrorAction Stop
+            }
+            else {
+                $data = & $scriptBlock
+            }
+
+            # --- 1. Services ------------------------------------------------
+            foreach ($svcName in $ExpectedServices.Keys) {
+                $svc = $data.Services | Where-Object { $_.Name -eq $svcName }
+                if (-not $svc) {
+                    $roles  = $ExpectedServices[$svcName].Roles
+                    $result = if ($roles -contains '*') { 'FAIL' } else { 'INFO' }
+                    Add-Finding -Computer $computer -Check "Service:$svcName" `
+                                -Expected $ExpectedServices[$svcName].Status -Actual 'not installed' `
+                                -Result $result -Detail "Roles for this service: $($roles -join ',')"
+                    continue
+                }
+                $ok = ($svc.Status -eq $ExpectedServices[$svcName].Status) -and
+                      ($svc.StartType -eq $ExpectedServices[$svcName].StartType)
+                Add-Finding -Computer $computer -Check "Service:$svcName" `
+                            -Expected "$($ExpectedServices[$svcName].Status)/$($ExpectedServices[$svcName].StartType)" `
+                            -Actual   "$($svc.Status)/$($svc.StartType)" `
+                            -Result   $(if ($ok) { 'PASS' } else { 'FAIL' })
+            }
+
+            # --- 2. Firewall profiles ---------------------------------------
+            foreach ($profile in $data.Profiles) {
+                $ok = ($profile.Enabled -eq 'True') -and ($profile.DefaultInboundAction -eq 'Block')
+                Add-Finding -Computer $computer -Check "FirewallProfile:$($profile.Name)" `
+                            -Expected 'Enabled=True, DefaultInboundAction=Block' `
+                            -Actual "Enabled=$($profile.Enabled), DefaultInboundAction=$($profile.DefaultInboundAction)" `
+                            -Result $(if ($ok) { 'PASS' } else { 'FAIL' })
+            }
+
+            # --- 3. Scoped inbound rules ------------------------------------
+            foreach ($expectedRule in $ExpectedRules) {
+                $rule = $data.Rules | Where-Object { $_.DisplayName -eq $expectedRule.Name }
+                if (-not $rule) {
+                    Add-Finding -Computer $computer -Check "FirewallRule:$($expectedRule.Name)" `
+                                -Expected "inbound allow TCP $($expectedRule.Port) from $($expectedRule.RemoteAddress)" `
+                                -Actual 'absent' -Result 'FAIL' `
+                                -Detail 'Create it with the winrm / windows_baseline role.'
+                    continue
+                }
+                $ok = ($rule.Enabled -eq 'True') -and ($rule.Action -eq 'Allow') -and
+                      ($rule.RemoteAddress -eq $expectedRule.RemoteAddress)
+                Add-Finding -Computer $computer -Check "FirewallRule:$($expectedRule.Name)" `
+                            -Expected "Allow TCP $($expectedRule.Port) from $($expectedRule.RemoteAddress)" `
+                            -Actual "Enabled=$($rule.Enabled), Action=$($rule.Action), RemoteAddress=$($rule.RemoteAddress)" `
+                            -Result $(if ($ok) { 'PASS' } else { 'FAIL' }) `
+                            -Detail 'A rule scoped wider than the control node is a finding, not a pass.'
+            }
+
+            # --- 4. WinRM listeners -----------------------------------------
+            $https = @($data.WinRM | Where-Object { $_.Keys -like '*Transport=HTTPS*' }).Count
+            $http  = @($data.WinRM | Where-Object { $_.Keys -like '*Transport=HTTP*' }).Count
+            Add-Finding -Computer $computer -Check 'WinRMListeners' `
+                        -Expected 'https=1, http=0' -Actual "https=$https, http=$http" `
+                        -Result $(if (($https -eq 1) -and ($http -eq 0)) { 'PASS' } else { 'FAIL' }) `
+                        -Detail 'An HTTP listener means unencrypted WinRM is exposed.'
+
+            # --- 5. Listening TCP ports -------------------------------------
+            $unexpected = @($data.Listeners |
+                            Where-Object { $_.LocalAddress -notin @('127.0.0.1','::1') -and
+                                           $_.LocalPort -notin $AllowedListening })
+            foreach ($l in $unexpected) {
+                Add-Finding -Computer $computer -Check 'UnexpectedListeningPort' `
+                            -Expected 'port in the design port matrix' `
+                            -Actual "$($l.LocalAddress):$($l.LocalPort) (PID $($l.OwningProcess))" `
+                            -Result 'FAIL' -Detail 'Investigate before the port-matrix evidence is signed off.'
+            }
+            Add-Finding -Computer $computer -Check 'ListeningPortSummary' `
+                        -Expected "subset of $($AllowedListening -join ',')" `
+                        -Actual "$(@($data.Listeners).Count) listening socket(s)" `
+                        -Result $(if ($unexpected.Count -gt 0) { 'FAIL' } else { 'PASS' })
+
+            # --- 6. Local administrators (reported, never modified) ---------
+            Add-Finding -Computer $computer -Check 'LocalAdministrators' `
+                        -Expected 'members from GG-Server-Admins / GG-Tier0-Admins only' `
+                        -Actual (($data.Admins | ForEach-Object { $_.Name }) -join ';') `
+                        -Result 'INFO' `
+                        -Detail 'Reported for review against the design group model.'
+        }
+        catch {
+            Write-AuditLog "Audit failed on $computer : $($_.Exception.Message)" 'ERROR'
+            Add-Finding -Computer $computer -Check 'AuditExecution' -Expected 'complete' `
+                        -Actual 'error' -Result 'FAIL' -Detail $_.Exception.Message
+        }
+    }
+}
+
+end {
+    $stamp   = Get-Date -Format 'yyyy-MM-dd_HHmm'
+    $csvPath = Join-Path $OutputPath "ServiceFirewallAudit-$stamp.csv"
+    $Findings | Export-Csv -LiteralPath $csvPath -NoTypeInformation -Encoding UTF8
+
+    $failures = @($Findings | Where-Object Result -eq 'FAIL')
+    Write-AuditLog "Audit complete. Findings: $($Findings.Count). FAIL: $($failures.Count). CSV: $csvPath"
+
+    # Non-zero exit code on failure so that a scheduled task or a pipeline can act on it.
+    if ($failures.Count -gt 0) {
+        Write-Warning "$($failures.Count) audit finding(s) FAILED - see $csvPath"
+        $global:LASTEXITCODE = 2
+    }
+
+    $Findings
+    Write-Host "Audit CSV written to $csvPath"
+}
+```

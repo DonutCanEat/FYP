@@ -1,0 +1,1 @@
+The `keepalived_auth_type: PASS` default carries a mandatory annotation: **`PASS` authentication with a shared string is acceptable within a host-only lab segment and this is stated as a lab simplification, not as best practice.** The report must say so in the same paragraph that describes the setting.

@@ -1,0 +1,1 @@
+**The exact WinRM configuration PowerShell.** This block is executed once on each Windows managed node, either interactively during the build or, preferably, pushed by the `winrm` role:

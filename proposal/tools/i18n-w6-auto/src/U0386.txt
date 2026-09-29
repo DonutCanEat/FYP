@@ -1,0 +1,1 @@
+All nine roles declare `meta/main.yml` dependencies so that `common` is a dependency of `nginx`, `keepalived` and `nftables`, and `winrm` is a dependency of `windows_baseline`. This guarantees that a service role can never be applied to a host that has not received its baseline — a class of error that is otherwise discovered by a security test rather than by the playbook.

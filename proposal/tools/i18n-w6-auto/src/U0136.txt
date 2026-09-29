@@ -1,0 +1,1 @@
+Naming follows the baseline: `task-l1-…` for MS-SERVER, `task-l2-…` for LINUX-SERVER, `task-l3-…` for CISCO, `task-l4-…` for AUTOMATION, `task-l5-…` for AI-NETOPS.

@@ -1,0 +1,10 @@
+```bash
+# --- Health report: threshold breach and a dependency problem -----------------
+$ sudo ./06-server-health-report.sh -d 60 -c 120 -v
+ERROR: 2026-11-09 14:44:19 [ERROR] disk:/var FAIL 78% used on /dev/sda3 (912840 kB free) - warning threshold 60%
+ERROR: 2026-11-09 14:44:19 [ERROR] service:nftables FAIL not active: inactive
+ERROR: 2026-11-09 14:44:19 [ERROR] cert:/etc/nginx/ssl/portal.crt FAIL expires in 84 day(s) on 2027-02-01
+ERROR: 2026-11-09 14:44:19 [ERROR] health report completed with 3 finding(s); full log: /var/log/fyp/2026-11-09_06-server-health-report.log
+$ echo $?
+1
+```

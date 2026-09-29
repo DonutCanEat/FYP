@@ -1,0 +1,1 @@
+The `10.70.0.0/24` line is the interesting one in the output above: the isolated lab segment must not be able to reach the egress pair at all, and the summary surfaces that in a single line. This is exactly the output the section 11 agent is given as a tool result, which is why the script produces both a table and a JSON object.

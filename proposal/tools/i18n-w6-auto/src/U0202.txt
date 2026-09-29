@@ -1,0 +1,10 @@
+```text
+vpnz-dc01 | SUCCESS => {
+    "changed": false,
+    "ping": "pong"
+}
+vpnz-fs01 | SUCCESS => {
+    "changed": false,
+    "ping": "pong"
+}
+```

@@ -1,0 +1,305 @@
+```powershell
+<#
+.SYNOPSIS
+    Provisions Vertex Peak starters in AD DS from a reviewed CSV file.
+
+.DESCRIPTION
+    Creates user accounts in the OU tree of vertexpeak.fyp.lab, adds them to the
+    department and site security groups, creates the home directory, and applies a
+    per-user FSRM quota where the department has a quota template.
+
+    This script is CSV-driven by design: the CSV is the reviewed source of truth and
+    is committed to Git. The script makes no interactive prompts, so it can be run
+    from a verified scheduled task or from an Ansible playbook.
+
+    Verified on: Windows PowerShell 5.1 (Windows Server 2025 Standard, build 10.0.26100)
+    Requires  : ActiveDirectory, FileServerResourceManager modules (RSAT / role installed)
+    Test IDs  : TC-L4-01, TC-L1-01
+
+.PARAMETER CsvPath
+    Path to the reviewed CSV. Required columns:
+    SamAccountName, GivenName, Surname, Department, SiteCode, Title
+
+.PARAMETER DefaultPassword
+    Initial password. Must satisfy the domain complexity policy. The account is
+    flagged ChangePasswordAtLogon. The value is NEVER written to the log.
+
+.PARAMETER HomeRoot
+    UNC root for home directories. Default \\vpnz-fs01\Shares\Home.
+
+.PARAMETER QuotaTemplate
+    Name of the FSRM quota template applied to a user's home directory. Empty
+    string disables quota application (for example for the Sales read-only share).
+
+.PARAMETER LogPath
+    Directory for the run log. Default C:\FYP\logs.
+
+.EXAMPLE
+    .\Invoke-NewStarterOnboarding.ps1 -CsvPath .\data\newstarters.csv `
+        -DefaultPassword (Read-Host -AsSecureString) -WhatIf -Verbose
+
+    Previews every action for the reviewed CSV without creating anything.
+    This is the mandatory first invocation.
+
+.EXAMPLE
+    .\Invoke-NewStarterOnboarding.ps1 -CsvPath .\data\newstarters.csv `
+        -DefaultPassword $pw -QuotaTemplate 'Quota-20GB-Finance'
+
+    Runs the provisioning for real and returns one object per provisioned user.
+
+.OUTPUTS
+    PSCustomObject per input row, with properties:
+    SamAccountName, DistinguishedName, Created, GroupCount, HomeCreated, QuotaApplied, Status
+
+.NOTES
+    Author : Vertex Peak FYP workstream W4 (Automation, Monitoring & AI)
+    Reviewer: W1 (Identity & Windows)
+    Idempotence: re-running with the same CSV reports Created=$false and makes no change.
+                 A user whose OU or group membership has drifted IS corrected; that is
+                 intentional and is recorded in the output object's Status property.
+#>
+[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
+param(
+    [Parameter(Mandatory = $true)]
+    [ValidateScript({ Test-Path -LiteralPath $_ -PathType Leaf })]
+    [string]$CsvPath,
+
+    [Parameter(Mandatory = $true)]
+    [System.Security.SecureString]$DefaultPassword,
+
+    [ValidateNotNullOrEmpty()]
+    [string]$HomeRoot = '\\vpnz-fs01\Shares\Home',
+
+    [string]$QuotaTemplate = '',
+
+    [ValidateNotNullOrEmpty()]
+    [string]$LogPath = 'C:\FYP\logs'
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+# ---------------------------------------------------------------------------
+# Fixed design values - these come from the canonical design and are not tunable
+# ---------------------------------------------------------------------------
+$DomainDn     = 'DC=vertexpeak,DC=fyp,DC=lab'
+$UserRootOu   = "OU=Users,OU=VertexPeak,$DomainDn"
+$SiteOuMap    = @{
+    'HQ' = "OU=HQ-ShaTin,$UserRootOu"
+    'BR' = "OU=BR-KwunTong,$UserRootOu"
+    'WC' = "OU=WC-WanChai,$UserRootOu"
+    'MO' = "OU=MO-Macau,$UserRootOu"
+}
+$DepartmentMap = @{
+    'Engineering'     = @{ Ou = 'Engineering';      Groups = @('GG-Engineering-RW');             Quota = 'Quota-10GB-Engineering' }
+    'SalesOps'        = @{ Ou = 'SalesOps';         Groups = @('GG-Sales-RO');                   Quota = 'Quota-10GB-SalesRO' }
+    'Finance'         = @{ Ou = 'Finance';          Groups = @('GG-Finance-RW');                 Quota = 'Quota-20GB-Finance' }
+    'HumanResources'  = @{ Ou = 'HumanResources';   Groups = @();                                Quota = '' }
+    'IT'              = @{ Ou = 'IT';               Groups = @('GG-Server-Admins');              Quota = 'Quota-10GB-Engineering' }
+    'Support'         = @{ Ou = 'Support';          Groups = @('GG-Helpdesk');                   Quota = '' }
+}
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+if (-not (Test-Path -LiteralPath $LogPath)) {
+    New-Item -ItemType Directory -Path $LogPath -Force | Out-Null
+}
+$LogFile = Join-Path $LogPath ("{0}_Invoke-NewStarterOnboarding.log" -f (Get-Date -Format 'yyyy-MM-dd'))
+
+function Write-RunLog {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Message,
+        [ValidateSet('INFO', 'WARN', 'ERROR')][string]$Level = 'INFO'
+    )
+    $line = "{0} [{1}] {2}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $Level, $Message
+    Add-Content -LiteralPath $LogFile -Value $line
+    switch ($Level) {
+        'ERROR' { Write-Error $Message -ErrorAction Continue }
+        'WARN'  { Write-Warning $Message }
+        default { Write-Verbose $Message }
+    }
+}
+
+function ConvertTo-PlainText {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][System.Security.SecureString]$Secure)
+    $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Secure)
+    try   { [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr) }
+    finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) }
+}
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+$required = @('SamAccountName', 'GivenName', 'Surname', 'Department', 'SiteCode', 'Title')
+$results  = New-Object System.Collections.Generic.List[object]
+
+try {
+    Import-Module ActiveDirectory -ErrorAction Stop
+    Write-RunLog "Starting onboarding run from $CsvPath"
+
+    $rows = Import-Csv -LiteralPath $CsvPath
+    if (-not $rows) { throw "CSV '$CsvPath' contains no data rows." }
+
+    $missing = $required | Where-Object { $_ -notin $rows[0].PSObject.Properties.Name }
+    if ($missing) { throw "CSV is missing required column(s): $($missing -join ', ')" }
+
+    $plain = ConvertTo-PlainText -Secure $DefaultPassword
+
+    foreach ($row in $rows) {
+        $status     = 'OK'
+        $created    = $false
+        $homeMade   = $false
+        $quotaDone  = $false
+        $groupCount = 0
+
+        try {
+            if ($row.Department -notin $DepartmentMap.Keys) {
+                throw "Unknown department '$($row.Department)' for $($row.SamAccountName)."
+            }
+            if ($row.SiteCode -notin $SiteOuMap.Keys) {
+                throw "Unknown site code '$($row.SiteCode)' for $($row.SamAccountName)."
+            }
+            if ($row.SamAccountName -notmatch '^[a-z][a-z0-9]{2,14}$') {
+                throw "SamAccountName '$($row.SamAccountName)' violates the naming rule (lower-case, 3-15 chars)."
+            }
+
+            $dept     = $DepartmentMap[$row.Department]
+            $targetOu = "OU=$($dept.Ou),$($SiteOuMap[$row.SiteCode])"
+            $upn      = "$($row.SamAccountName)@vertexpeak.fyp.lab"
+
+            $existing = Get-ADUser -Filter "SamAccountName -eq '$($row.SamAccountName)'" `
+                                   -ErrorAction SilentlyContinue
+
+            if (-not $existing) {
+                if ($PSCmdlet.ShouldProcess($upn, 'Create AD user')) {
+                    $params = @{
+                        Name                  = "$($row.GivenName) $($row.Surname)"
+                        GivenName             = $row.GivenName
+                        Surname               = $row.Surname
+                        SamAccountName        = $row.SamAccountName
+                        UserPrincipalName     = $upn
+                        DisplayName           = "$($row.GivenName) $($row.Surname)"
+                        Title                 = $row.Title
+                        Department            = $row.Department
+                        Path                  = $targetOu
+                        AccountPassword       = (ConvertTo-SecureString -String $plain -AsPlainText -Force)
+                        Enabled               = $true
+                        ChangePasswordAtLogon = $true
+                        PasswordNeverExpires  = $false
+                    }
+                    New-ADUser @params
+                    $created = $true
+                    Write-RunLog "Created $upn in $targetOu"
+                }
+                else {
+                    $status = 'WhatIf'
+                    Write-RunLog "WhatIf: would create $upn in $targetOu"
+                }
+            }
+            else {
+                Write-RunLog "User $($row.SamAccountName) already exists - checking drift" 'WARN'
+                if ($existing.DistinguishedName -notlike "*$targetOu") {
+                    $status = 'Corrected-DN'
+                    if ($PSCmdlet.ShouldProcess($upn, 'Move to correct OU')) {
+                        Move-ADObject -Identity $existing.DistinguishedName -TargetPath $targetOu
+                        Write-RunLog "Moved $upn to $targetOu"
+                    }
+                }
+            }
+
+            foreach ($group in $dept.Groups) {
+                $isMember = Get-ADGroupMember -Identity $group -ErrorAction SilentlyContinue |
+                            Where-Object { $_.SamAccountName -eq $row.SamAccountName }
+                if (-not $isMember) {
+                    if ($PSCmdlet.ShouldProcess($upn, "Add to $group")) {
+                        Add-ADGroupMember -Identity $group -Members $row.SamAccountName
+                        Write-RunLog "Added $upn to $group"
+                    }
+                }
+                $groupCount++
+            }
+
+            # Home directory. The share is created once by the file-server role;
+            # this script only creates the per-user folder and sets its ACL.
+            if ($status -ne 'WhatIf') {
+                $home = Join-Path $HomeRoot $row.SamAccountName
+                if (-not (Test-Path -LiteralPath $home)) {
+                    if ($PSCmdlet.ShouldProcess($home, 'Create home directory')) {
+                        New-Item -ItemType Directory -Path $home -Force | Out-Null
+                        $acl = Get-Acl -LiteralPath $home
+                        $acl.SetAccessRuleProtection($true, $false)
+                        $rule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+                            "$($row.SamAccountName)", 'Modify', 'ContainerInherit,ObjectInherit', 'None', 'Allow')
+                        $acl.AddAccessRule($rule)
+                        Set-Acl -LiteralPath $home -AclObject $acl
+                        $homeMade = $true
+                        Write-RunLog "Created home directory $home (owner-only ACL)"
+                    }
+                }
+                if (-not $homeMade -and (Test-Path -LiteralPath $home)) {
+                    $homeMade = $true   # already compliant; not a change
+                }
+
+                $templateToUse = if ($QuotaTemplate) { $QuotaTemplate } else { $dept.Quota }
+                if ($templateToUse) {
+                    $existingQuota = Get-FsrmQuota -Path $home -ErrorAction SilentlyContinue
+                    if (-not $existingQuota) {
+                        if ($PSCmdlet.ShouldProcess($home, "Apply FSRM quota $templateToUse")) {
+                            New-FsrmQuota -Path $home -Template $templateToUse | Out-Null
+                            $quotaDone = $true
+                            Write-RunLog "Applied FSRM quota $templateToUse to $home"
+                        }
+                    }
+                    else { $quotaDone = $true }
+                }
+            }
+
+            $dn = (Get-ADUser -Identity $row.SamAccountName -Properties DistinguishedName).DistinguishedName
+            $results.Add([PSCustomObject]@{
+                SamAccountName    = $row.SamAccountName
+                DistinguishedName = $dn
+                Created           = $created
+                GroupCount        = $groupCount
+                HomeCreated       = $homeMade
+                QuotaApplied      = $quotaDone
+                Status            = $status
+            })
+        }
+        catch {
+            Write-RunLog "FAILED $($row.SamAccountName): $($_.Exception.Message)" 'ERROR'
+            $results.Add([PSCustomObject]@{
+                SamAccountName    = $row.SamAccountName
+                DistinguishedName = ''
+                Created           = $false
+                GroupCount        = 0
+                HomeCreated       = $false
+                QuotaApplied      = $false
+                Status            = "ERROR: $($_.Exception.Message)"
+            })
+            continue
+        }
+        finally {
+            if ($plain) { $plain = $null }
+        }
+    }
+
+    $failures = @($results | Where-Object { $_.Status -like 'ERROR*' }).Count
+    Write-RunLog ("Run complete: {0} row(s), {1} failure(s)" -f $results.Count, $failures)
+    if ($failures -gt 0) {
+        Write-RunLog "One or more rows failed; see the log for detail" 'WARN'
+    }
+}
+catch {
+    Write-RunLog "Aborted: $($_.Exception.Message)" 'ERROR'
+    throw
+}
+finally {
+    $plain = $null
+}
+
+# Emit objects, never formatted text - this is what allows export and assertion.
+$results
+```

@@ -1,0 +1,10 @@
+```text
+VERBOSE: 2026-11-09 14:05:40 [INFO] Created kwong.cy@vertexpeak.fyp.lab in OU=Engineering,OU=HQ-ShaTin,OU=Users,OU=VertexPeak,DC=vertexpeak,DC=fyp,DC=lab
+VERBOSE: 2026-11-09 14:05:41 [INFO] Added kwong.cy@vertexpeak.fyp.lab to GG-Engineering-RW
+VERBOSE: 2026-11-09 14:05:42 [INFO] Created home directory \\vpnz-fs01\Shares\Home\kwong.cy (owner-only ACL)
+
+SamAccountName DistinguishedName                                              Created GroupCount HomeCreated QuotaApplied Status
+-------------- -----------------                                              ------- ---------- ----------- ------------ ------
+kwong.cy       CN=Kwong Chun-Yu,OU=Engineering,OU=HQ-ShaTin,OU=Users,OU=Ve...     True          1        True         True OK
+tsang.mh       CN=Tsang Man-Ho,OU=Finance,OU=HQ-ShaTin,OU=Users,OU=VertexP...     True          1        True         True OK
+```

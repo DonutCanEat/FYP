@@ -1,0 +1,11 @@
+| Capability | Possible? | How it is done |
+|---|---|---|
+| Keeping the **intended** configuration of every device under version control | **Yes** | `03-build/packet-tracer/configs/*.txt` — one file per device — is the source of truth, committed to Git. Each file holds the exact intended running configuration as it should appear in the device |
+| Generating those configurations from templates | **Yes, on the host** | A template plus a per-device variable file (hostname, management address, loopback, VLAN list, peer list) rendered by the same Jinja2 machinery used for the Linux templates, with the output committed as the `.txt` file. This is genuine infrastructure-as-code applied to device configuration, even though the *delivery* is manual |
+| Detecting drift between the intended configuration and the device | **Partly** | The group can compare the device's `show running-config` output, pasted into a file, against the committed `.txt`. The comparison is a `diff`, and it is manual because nothing can read the device directly |
+| Comparing configurations between milestones | **Yes** | `git diff` between tags shows exactly what changed in the network configuration between week 4 and week 8 |
+| Archiving device configurations with a timestamp | **Yes, as files** | The archive playbook of 10.4.6.5 copies the committed `.txt` files into a dated archive directory and writes a manifest stating that no device was logged into |
+| Verifying that a configuration is *complete* | **Yes, partially** | A validator can check that every device file contains the required elements (hostname, management IP, VLAN definitions, trunk settings, routing block, banner, `no ip domain-lookup`), which catches an omitted section even without a device |
+| Executing a configuration on the device | **No** | Packet Tracer offers no scriptable interface that external tooling can reach. The configuration is applied through PT's own CLI, by hand, in the simulator |
+| Retrieving a live configuration from the device | **No** | Same reason |
+| Automated testing of the device's response | **No** | Verification is by PT's own `show` output and simulation mode, captured as screenshots |

@@ -1,0 +1,1 @@
+**Templates:** `nftables.conf.j2`, `nftables-10-sets.nft.j2`, `nftables-20-filter-input.nft.j2`, `nftables-30-filter-forward.nft.j2`, `nftables-40-nat.nft.j2`, `nftables-90-logging.nft.j2`.

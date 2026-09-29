@@ -1,0 +1,1 @@
+**Default variables:** `keepalived_enabled: true`, `keepalived_state: BACKUP`, `keepalived_priority: 100`, `keepalived_vrid: 61`, `keepalived_vip: 10.10.90.10`, `keepalived_auth_type: PASS`, `keepalived_preempt: true`, `keepalived_advert_int: 1`, `keepalived_track_interval: 5`, `keepalived_track_fall: 2`, `keepalived_track_rise: 2`.

@@ -1,0 +1,82 @@
+%%U0000%%
+## 10. Network Automation
+%%U0002%%
+### 10.1 Overview and Objectives
+%%U0004%%
+The official topic sheet names this technology line as **"Network Automation (e.g., PowerShell scripting, Ansible Playbook, Bash shell scripting, etc.)"**. It is line **L4 (AUTOMATION)** of the five lines of the project *Victor2 – Enterprise Network Infrastructure and Architect*, subtitled *Design, Build, Verify and Document a Virtualised Enterprise Network for a Hong Kong FinTech Firm*, an HDTN Final Year Project Topic (AY2026/27) delivered over 12 weeks by a group of four students.
+%%U0006%%
+For the client scenario, this line is not decorative. Vertex Peak's due-diligence questionnaire (item 5) demands *"evidence that network change is applied through reviewed, repeatable configuration rather than by hand"*, and the in-scenario IT team is only five people serving 160 staff across four locations. L4 exists to satisfy both pressures: change must be **reviewable before it happens** and **repeatable afterwards**, and the routine maintenance that a small team cannot perform manually must be performed by code.
+%%U0008%%
+#### 10.1.1 What this line delivers
+%%U0010%%
+| Deliverable | Form | Baseline reference |
+|---|---|---|
+| A single automation control node | `vpnz-mon01` (10.10.30.31), Ubuntu Server 24.04.3 LTS, 4 vCPU / 8 GB / 100 GB | §6 row 23, §12.4 |
+| Configuration management of both Linux and Windows estates from one control node | `ansible-core` 2.18.x with the `ansible` community package 11.x; Linux over SSH, Windows over WinRM | §7, §11.4, §12.4 |
+| An infrastructure-as-code repository | `C:\FYP\04-automation\` — `ansible/`, `powershell/`, `bash/`, `runs/` | §8.6 |
+| At least nine runnable playbooks and six roles | `playbooks/01-baseline-windows.yml` … `09-verify-services.yml`; `roles/common`, `nginx`, `keepalived`, `nftables`, `winrm`, `ad_users` | §8.6 |
+| At least five production-quality PowerShell scripts | `Invoke-NewStarterOnboarding.ps1`, `Get-ADHealthReport.ps1`, `Backup-NetworkDeviceConfig.ps1`, `Test-ServiceEndpoints.ps1`, `Export-GPOBackup.ps1` | §8.6, §11.4 |
+| At least five production-quality Bash scripts plus a shared library | `01-hardening-baseline.sh` … `05-cert-renew.sh`, `lib/common.sh` | §8.6, §11.4 |
+| Version control and peer review of every change | Bare Git repositories or Gitea on `vpnz-mon01`, branch-per-task, tagged releases `v0.1` … `v1.0` | §8.6, §11.4 |
+| Reproducible evidence | Timestamped run logs in `04-automation/runs/`, committed to Git | §12.4 |
+%%U0012%%
+Completion of this line is defined by the project's own success criteria: *"at least three idempotent PowerShell scripts and at least three Ansible playbooks in the repository layout of §8.7, re-runnable with unchanged output on second run."* This chapter deliberately over-delivers against that floor, for the reason given in §13.4 R-02 (L4 is on the **must** list of the priority order).
+%%U0014%%
+#### 10.1.2 The automation control node
+%%U0016%%
+**`vpnz-mon01` is the only automation control node [DECIDED].** Ansible never runs from a student laptop, so that the engine version is pinned, the working tree is single-sourced, and every run log in the evidence chapter can be reproduced by anybody holding the repository. `vpnz-mon01` already carries the roles that make this placement natural:
+%%U0018%%
+- Ansible control node and Git server (bare repositories over SSH, or Gitea).
+- Prometheus, Grafana and Loki — the telemetry source that section 11 consumes.
+- NTP for the Linux estate, and the TFTP/SCP configuration archive target at `/srv/tftp/`.
+%%U0020%%
+PowerShell scripts are **authored** on `vpnz-jump01` (PowerShell 7.4 LTS) but **executed** on the Windows guests as required, under Windows PowerShell 5.1 where 5.1 is what the guest runs. Bash scripts execute locally on the Linux guests or are invoked by Ansible on their behalf. This split matters for honesty in the report: the runtime actually used must be stated per script, and PowerShell 7.4 must never be claimed for a script that was only exercised on 5.1.
+%%U0022%%
+#### 10.1.3 Which WSOS 2026 domain this develops
+%%U0024%%
+This line develops **Domain 5 — Infrastructure Automation, 15 %** of the WorldSkills Occupational Standards 2026 for *IT Network Systems Administration* (Skill 2447, WorldSkills Shanghai 2026). The three citable "shall be able to" requirements, quoted verbatim from the local verified extraction of that page, are:
+%%U0026%%
+> `Setup and run routine infrastructure maintenance operations using various scripting\programming languages`
+> — nested technology examples: `Bash`, `PowerShell`
+%%U0028%%
+> `Use modern automation tools for systems deployment and configuration management`
+> — nested technology example: `Git`
+%%U0030%%
+> `Identify and implement infrastructure as code`
+> — nested technology example: `Ansible.`
+%%U0032%%
+It also develops three of the four Domain 5 "needs to know and understand" lines, quoted verbatim:
+%%U0034%%
+> `Continuous integration and continuous delivery\deployment pipelines concepts`
+%%U0036%%
+> `Capabilities of various automation tools`
+%%U0038%%
+> `Importance of code version control`
+%%U0040%%
+> `Behaviour of infrastructure automation tools.`
+%%U0042%%
+Domain 4 — Network and System Operations (25 %) is served as well, through `Install and manage backup systems` with its nested `Script based backup, e.g. Bash, Batch or PowerShell`, and Domain 1 (5 %) through `The importance of methodical working practices` and `The techniques of planning, scheduling, and prioritizing`.
+%%U0044%%
+**An explicit correction that this chapter must carry.** The 2026 edition of Domain 5 lists **only** `Bash`, `PowerShell`, `Git` and `Ansible` as nested technology examples. `Python`, `YANG`, `RESTCONF` and `NETCONF` were present in the 2024 (Lyon) edition of Domain 5 and were **removed for 2026**: their machine-verified occurrence counts move from 2, 1, 1 and 1 in 2024 to **0, 0, 0 and 0** in 2026. This proposal therefore does **not** claim that the WSOS 2026 requires network automation in Python, and does **not** claim YANG/RESTCONF/NETCONF model-driven automation as a standard requirement. Where Python is used at all in this project it is used as an implementation detail of the fallback agent loop in section 11 and as a delivery mechanism for Ansible itself — never as a cited standard requirement. Python, YANG, RESTCONF and NETCONF may appear in this report's future-work discussion only.
+%%U0046%%
+One further attribution rule applies throughout this chapter. The requirement to produce *"all findings, manuals, steps, screen captures, verifications, and references"* comes from the **HDTN topic sheet**, not from the WSOS. The WSOS 2026 contains **zero** occurrences of `screen`, `capture`, `screenshot` or `evidence`. Where this chapter asks for screen captures, it does so because the topic sheet requires them.
+%%U0048%%
+---
+%%U0050%%
+### 10.2 Automation Strategy and Principles
+%%U0052%%
+#### 10.2.1 Declarative versus imperative
+%%U0054%%
+The project uses both models, and the choice is deliberate rather than accidental.
+%%U0056%%
+**Imperative** code states the sequence of actions to take. The Bash scripts of section 10.6 are imperative: `05-cert-renew.sh` does not describe a desired end state, it describes a procedure — parse arguments, read a certificate, compare `notAfter` against a threshold, renew if needed, log, exit. A system that must *do something in an order* is imperative, and forcing it into a declarative tool produces a worse artefact.
+%%U0058%%
+**Declarative** code states the desired end state and lets the engine compute the difference. Ansible is declarative in intent: a task that says `state: present` on a package does not say "run `apt-get install`"; it says "nginx must be installed" and the module decides what, if anything, to do. This is the model required by `Identify and implement infrastructure as code`, because infrastructure as code only has value if the code *describes the infrastructure* rather than *describing a session*.
+%%U0060%%
+The practical rule adopted by the group: **any state that must be true after every run is expressed declaratively in Ansible; any procedure that has a start, a sequence and an end is expressed imperatively in Bash or PowerShell, and Ansible invokes it through `command` or a purpose-built module only when no declarative module exists.** Hand-typed CLI sessions are not a third category — they are a defect, because they leave no artefact to review.
+%%U0062%%
+#### 10.2.2 Idempotence
+%%U0064%%
+Idempotence means that applying the same code twice produces the same state and, on the second application, no change. The project treats idempotence as a **hard requirement** rather than a virtue: §12.4 states that each playbook is run twice and `changed=0` on the second run is captured as evidence.
+%%U0066%%
+Idempotence is what makes change safe. If a playbook is idempotent, re-running it to recover from a partially failed deployment is a legitimate repair action. If it is not, re-running it may compound the damage — appending a second copy of a firewall rule, duplicating a user, or recreating a certificate. Every role in section 10.4.5 therefore carries a written idempotence note, and the note states *what would break the property* (usually a `shell` or `command` task without a `creates:`, `changed_when:` or `when:` guard).

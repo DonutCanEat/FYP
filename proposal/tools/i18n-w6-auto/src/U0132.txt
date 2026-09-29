@@ -1,0 +1,1 @@
+A lightly-governed Git-flow variant, sized for four students and twelve weeks:

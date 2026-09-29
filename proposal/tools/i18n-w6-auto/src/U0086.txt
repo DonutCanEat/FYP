@@ -1,0 +1,1 @@
+For the Windows estate the canary is always a non-DC member server; for the DMZ the canary is the secondary node (`vpnz-dmzrev02`), never the node currently holding the VIP. This ordering is a design decision, not a habit.

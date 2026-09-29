@@ -1,0 +1,5 @@
+﻿--- L2620 (zh) ---
+| 2 | 2026-10-23 | PR-07 | 已結案 | 可能性 3、影響 3、High、Mitigated | 可能性 1、影響 2、Low、Closed | 可行性尖峰測試在其三日期限內結案並有已記錄的決定，結案了對應的待辦事項。殘餘不確定性由 PR-01 承接，PR-01 在同一次審查中被重新評分為 Critical。證據：決策日誌記錄及創新線目錄中的尖峰測試筆記 | Member D |
+
+--- L2620 (en) ---
+| 2 | 2026-10-23 | PR-07 | Closed | Likelihood 3, impact 3, High, Mitigated | Likelihood 1, impact 2, Low, Closed | The feasibility spike closed inside its three-day timebox with a recorded decision, closing the corresponding open item. The residual uncertainty is carried forward by PR-01, which was re-scored to Critical at the same review. Evidence: the decision-log entry and the spike notes in the innovation-line directory | Member D |

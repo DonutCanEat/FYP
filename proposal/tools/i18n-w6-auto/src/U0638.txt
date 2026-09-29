@@ -1,0 +1,14 @@
+```text
+VERBOSE: 2026-11-09 22:00:05 [INFO] Pre-flight OK: 34.2 GB free on D:
+VERBOSE: 2026-11-09 22:00:05 [INFO] Starting: wbadmin start backup -backupTarget:D: -allCritical -quiet -setDescription:BKP-FS01-DAILY
+VERBOSE: 2026-11-09 22:04:38 [INFO] Backup command completed with exit code 0
+VERBOSE: 2026-11-09 22:04:39 [INFO] Verification OK: version 11/09/2026-22:00, age 0.07 h, 7 component(s)
+VERBOSE: 2026-11-09 22:04:41 [INFO] CSV written to C:\FYP\config\BackupVerify-BKP-FS01-DAILY-20261109.csv
+
+Phase        JobName          Host      Started           DurationSeconds Target          Result Detail
+-----        -------          ----      -------           --------------- ------          ------ ------
+Preflight    BKP-FS01-DAILY   vpnz-fs01 2026-11-09T22:00:05             0.4 D:              PASS   34.2 GB free; no conflicting job; feature installed
+Backup       BKP-FS01-DAILY   vpnz-fs01 2026-11-09T22:00:05           273.1 D:              PASS   wbadmin completed in 273.1 s
+Verify       BKP-FS01-DAILY   vpnz-fs01 2026-11-09T22:04:38             1.2 D:              PASS   version=11/09/2026-22:00; ageHours=0.07; components=7
+OffHostCheck BKP-FS01-DAILY   vpnz-fs01 2026-11-09T22:04:39             2.4 vpnz-dmzjump01  PASS   newest off-host snapshot age 0.3 h (limit 26 h)
+```

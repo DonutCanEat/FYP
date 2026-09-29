@@ -1,0 +1,163 @@
+```yaml
+---
+# 05-nftables-egress.yml
+# Purpose : Converge the inline nftables egress pair: single inet table fyp_filter,
+#           drop policy, NAT/masquerade, logging before every drop, and drift detection.
+# Owner   : W2 + W4. Reviewer: W3 (who owns the ASA policy on the other side).
+# Test IDs: TC-L2-03, TC-L4-03, TB-02, TB-03, TB-06, TB-08.
+# Safety  : a rollback timer is armed BEFORE the ruleset is applied and disarmed only
+#           after verification succeeds. This is the documented lock-out mitigation.
+# Risk    : highest-consequence playbook in the repository. Never run without --check first.
+
+- name: Egress firewall - converge the nftables pair
+  hosts: edge
+  gather_facts: true
+  serial: 1                     # never change both halves of the pair simultaneously
+  max_fail_percentage: 0
+  any_errors_fatal: true
+  become: true
+
+  vars:
+    nft_candidate: /etc/nftables.conf
+    nft_revert_after_seconds: 600
+
+  pre_tasks:
+    - name: Assert that the two expected interfaces exist
+      ansible.builtin.assert:
+        that:
+          - ansible_facts['default_ipv4']['interface'] is defined
+          - (ansible_facts['interfaces'] | length) >= 2
+        fail_msg: >-
+          {{ inventory_hostname }} does not present two interfaces.
+          The egress pair must be inline with VNET-EGRESS + VNET-WAN.
+          Resolve with: ip -br link
+      tags: [always]
+
+    - name: Record the interface names (the baseline forbids hard-coded ens names)
+      ansible.builtin.set_fact:
+        nft_ingress_if: "{{ ansible_facts['default_ipv4']['interface'] }}"
+        nft_all_if: "{{ ansible_facts['interfaces'] }}"
+      tags: [always]
+
+    - name: Capture the pre-change ruleset as the rollback reference
+      ansible.builtin.command: nft list ruleset
+      register: nft_before
+      changed_when: false
+      tags: [evidence]
+
+    - name: Persist the rollback reference to the host
+      ansible.builtin.copy:
+        content: "{{ nft_before.stdout }}\n"
+        dest: /var/lib/fyp/nftables.pre-change
+        mode: "0644"
+      tags: [rollback]
+
+    - name: Arm the automatic rollback timer
+      ansible.builtin.command: /usr/local/sbin/fyp-nft-rollback-arm.sh {{ nft_revert_after_seconds }}
+      args:
+        creates: /run/fyp-nft-rollback.armed
+      tags: [rollback]
+
+  roles:
+    - role: common
+      tags: [common]
+    - role: nftables
+      tags: [nftables]
+    - role: keepalived
+      tags: [keepalived]
+
+  tasks:
+    - name: Validate the candidate ruleset without applying it
+      ansible.builtin.command: nft -c -f {{ nft_candidate }}
+      register: nft_syntax
+      changed_when: false
+      failed_when: nft_syntax.rc != 0
+      tags: [validate]
+
+    - name: Apply the ruleset
+      ansible.builtin.systemd_service:
+        name: nftables
+        state: restarted
+        enabled: true
+      tags: [apply]
+
+    - name: Wait for the ruleset to be loaded and policy to be drop
+      ansible.builtin.shell: |
+        set -o pipefail
+        for i in $(seq 1 10); do
+          if nft list table inet fyp_filter | grep -q 'policy drop'; then exit 0; fi
+          sleep 1
+        done
+        exit 1
+      changed_when: false
+      tags: [verify]
+
+    - name: Verify connectivity FROM THE FAR SIDE (the path the ruleset could break)
+      ansible.builtin.wait_for:
+        host: 10.10.50.10            # the pair's VIP, reached from the control node
+        port: 22
+        timeout: 20
+      delegate_to: localhost
+      become: false
+      register: nft_reachability
+      tags: [verify]
+
+    - name: Verify that a permitted egress flow still works (HTTPS to the simulated DMZ)
+      ansible.builtin.uri:
+        url: "https://blog.vertexpeak.example/"
+        validate_certs: false
+        status_code: [200, 301, 302]
+      register: egress_check
+      changed_when: false
+      ignore_errors: true
+      tags: [verify]
+
+    - name: Detect configuration drift between the running ruleset and the template
+      ansible.builtin.shell: |
+        set -o pipefail
+        nft list ruleset | sed 's/[[:space:]]*$//' > /tmp/running.nft
+        diff -u /tmp/running.nft /var/lib/fyp/nftables.rendered > /tmp/nft-drift.diff && echo "NO-DRIFT" || { echo "DRIFT"; cat /tmp/nft-drift.diff; }
+      register: nft_drift
+      changed_when: false
+      failed_when: false
+      tags: [drift]
+
+    - name: Report drift as a finding rather than failing the run
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }}: {{ 'NO DRIFT - running ruleset matches Git'
+             if 'NO-DRIFT' in nft_drift.stdout
+             else 'DRIFT DETECTED - a live firewall was changed outside Ansible. See the diff below.' }}
+      tags: [drift]
+
+    - name: Write the drift diff to the evidence directory
+      ansible.builtin.copy:
+        content: "{{ nft_drift.stdout }}\n"
+        dest: "{{ playbook_dir }}/../runs/{{ lookup('pipe', 'date +%Y-%m-%d_%H%M') }}_05-nftables-drift-{{ inventory_hostname }}.txt"
+        mode: "0644"
+      delegate_to: localhost
+      become: false
+      tags: [evidence, drift]
+
+  post_tasks:
+    - name: Disarm the rollback timer ONLY because verification passed
+      ansible.builtin.command: /usr/local/sbin/fyp-nft-rollback-disarm.sh
+      args:
+        removes: /run/fyp-nft-rollback.armed
+      tags: [rollback]
+
+    - name: Publish the active ruleset as evidence for TC-L2-03
+      ansible.builtin.command: nft list ruleset
+      register: nft_after
+      changed_when: false
+      tags: [evidence]
+
+    - name: Save the ruleset capture
+      ansible.builtin.copy:
+        content: "{{ nft_after.stdout }}\n"
+        dest: "{{ playbook_dir }}/../runs/{{ lookup('pipe', 'date +%Y-%m-%d_%H%M') }}_nft-ruleset-{{ inventory_hostname }}.txt"
+        mode: "0644"
+      delegate_to: localhost
+      become: false
+      tags: [evidence]
+```

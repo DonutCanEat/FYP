@@ -1,0 +1,17 @@
+| Path | Purpose and rules |
+|---|---|
+| `ansible/ansible.cfg` | The single configuration file, versioned. Every playbook run from the repository root picks it up automatically; nobody passes ad-hoc flags that change its behaviour, because a flag is invisible to the next reader (see 10.4.3) |
+| `inventory/hosts.yml` | The **authoritative** inventory: every host, its address, and its group membership. `lab.ini` is retained as the baseline's INI-format inventory and kept in sync by a consistency check, because the baseline names it; `hosts.yml` is what the playbooks actually consume |
+| `inventory/group_vars/` | Variables that apply to a group. `all.yml` holds the values true everywhere — domain name, NTP and DNS servers, admin groups, package update policy. Group files hold the tier-specific values |
+| `inventory/group_vars/all/vault.yml` | Vault-encrypted secrets (see 10.4.4). Committed **encrypted**; the plaintext never exists on disk in the repository |
+| `inventory/host_vars/` | Per-host overrides that genuinely differ, such as `keepalived_priority` and `keepalived_state` for the two VRRP pairs, or the backup destination for a specific host. Anything that could be a group variable belongs in a group variable — host_vars is for genuine per-host facts, not for convenience |
+| `playbooks/` | Entry points. A playbook describes *what deployment is being performed*; it contains as little logic as possible, delegating to roles. The numbered prefix is the recommended run order and is referenced by the schedule |
+| `roles/` | Reusable units. Each role contains `tasks/`, `handlers/`, `templates/`, `files/`, `defaults/`, `vars/` and `meta/` as needed, plus a `README.md` stating the role's purpose and its idempotence note |
+| `templates/` | Jinja2 templates only. A template rendered anywhere in the project lives here; a role's `templates/` directory is used only when the template is genuinely private to that role |
+| `files/` | Static, non-templated content: the hand-written `nginx.conf`, and the administrators' Ed25519 public keys under `files/ssh/authorized_keys/`. Public keys are committed; **private keys are never stored on `vpnz-mon01`** |
+| `filter_plugins/` | Custom Jinja2 filters used by the templates. The project needs only a small number — for example a filter that renders a list of prefixes into nftables set syntax, and a filter that derives the correct VLAN interface name from a host's role — and they are unit-tested by a small assertion playbook so that a broken filter fails loudly rather than rendering an empty firewall rule |
+| `docs/` | The human-readable operational documentation that belongs beside the code: the runbooks, the variable dictionary, and the idempotence log that records each `changed=0` proof |
+| `logs/ansible.log` | Ansible's own log file, as configured by `log_path` in `ansible.cfg`. It is a convenience for debugging, not the evidence |
+| `powershell/` | The Windows-side scripts, a shared module, input data and script logs. `modules/VPCommon/` holds functions reused by more than one script and is versioned so that a change to a shared function is visible in `git log` |
+| `bash/` | The Linux-side scripts plus `lib/common.sh`, which provides logging, error handling and the `set -euo pipefail` preamble so that every script behaves identically |
+| `runs/` | **Evidence.** Timestamped run logs named `YYYY-MM-DD_HHMM_playbook.log`, committed so that the verification chapter can cite them. A playbook run whose log is not committed did not provably happen |

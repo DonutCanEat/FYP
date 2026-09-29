@@ -1,0 +1,1 @@
+**Default variables:** `nginx_worker_processes: auto`, `nginx_worker_connections: 2048`, `nginx_tls_min: TLSv1.2`, `nginx_tls_preferred: TLSv1.3`, `nginx_hsts_max_age: 31536000`, `nginx_health_path: /healthz`, `nginx_client_max_body_size: 16m`, `nginx_upstream_max_fails: 3`, `nginx_upstream_fail_timeout: 10s`.

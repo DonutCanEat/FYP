@@ -1,0 +1,1 @@
+Blast radius is the set of systems that a single mistake can damage. It is controlled by four mechanisms:

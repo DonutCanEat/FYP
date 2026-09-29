@@ -1,0 +1,1 @@
+The direction of dependency is one-way and must stay that way: the automation layer does not call the AI layer, and no playbook's behaviour changes because an agent exists. Section 11.10 states this from the other side; the two subsections deliberately cross-reference rather than repeat.

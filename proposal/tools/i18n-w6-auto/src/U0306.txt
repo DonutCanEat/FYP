@@ -1,0 +1,1 @@
+**Handlers:** `Reload nginx` (`systemd_service` with `state: reloaded`) — a reload, not a restart, because two nodes behind a VIP must not both stop serving simultaneously. `Restart nginx` exists but is used only by the first-install path (`when: nginx_first_install | bool`).

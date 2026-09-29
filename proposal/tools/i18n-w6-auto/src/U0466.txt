@@ -1,0 +1,1 @@
+The change window is Saturday 22:00 to Sunday 02:00, declared in `group_vars/all.yml` as `fyp_change_window`. Nothing that can interrupt a service is run outside it. The one exception, stated as such, is the week-10 to week-12 verification phase, when the group runs tests deliberately outside the window and records that it did so.

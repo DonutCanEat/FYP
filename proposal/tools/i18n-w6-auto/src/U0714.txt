@@ -1,0 +1,1 @@
+Two findings in one run, and both are useful: one certificate is genuinely close to expiry, and one endpoint cannot complete a handshake at all. The second is the kind of finding that only a probe-based check produces — a file-based check would have reported the certificate as healthy while the service was unreachable.

@@ -1,0 +1,6 @@
+| Level | Mechanism | Latency | Evidence |
+|---|---|---|---|
+| Configuration drift on the egress pair | The `nftables` role's drift task (10.4.5.4) diffs the running ruleset against the rendered template and writes the diff into `runs/` | On each run | `runs/…_05-nftables-drift-*.txt` |
+| Service and security drift across the estate | `09-verify-services.yml` asserts the properties the design fixes (SSH hardening, exactly one WinRM HTTPS listener, `svc_aiagent` group membership, nftables table presence) | Daily, and on demand | `runs/audit/audit-*.json` |
+| Metrics drift | Prometheus alert rules held in files in Git (Grafana dashboards are provisioned from files for the same reason) fire when a value leaves its expected band | Minutes | Firing alerts and their resolution in Grafana; at least three alerts must be shown firing and resolving |
+| Log-based drift | rsyslog forwards every guest's syslog to `vpnz-mon01`, Loki ingests it, and the nftables drop summary surfaces policy-relevant denials | Hourly | `/var/log/remote/{host}.log`, the drop summary, and the `fyp-security` dashboard |

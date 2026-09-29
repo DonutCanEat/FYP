@@ -1,0 +1,4 @@
+- `hosts: linux` matches all nine Linux guests — this is the group that carries the SSH connection variables.
+- `hosts: web` matches exactly the two reverse proxies — this is the group the `keepalived` and `nginx` roles are written against, and it is naturally `serial: 1`.
+- `hosts: windows` matches all nine Windows guests and carries the single set of WinRM connection variables, so a connection setting is stated once and cannot drift between the two Windows subgroups.
+- `hosts: edge` matches the two nftables nodes — the only hosts on which a firewall playbook may change the ruleset, and the only hosts where the lock-out timer logic of `02-nftables-apply.sh` matters.

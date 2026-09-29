@@ -1,0 +1,302 @@
+# §F.3 ASCII Gantt — final reconciliation and close-out
+
+**Scope.** This note closes out concurrent edits by two agents on `FYP-Outline-DRAFT.md` and its render `FYP-Outline-DRAFT.docx`. One agent was interrupted mid-edit. This session took the census, fixed the chart, corrected the prose, corrected one `§C.6` cell, re-rendered, ran all three gates, confirmed hash stability, and recorded a source-integrity manifest. **No tool under `proposal\tools\*` was modified. No `.docx` was opened by path, by the Open XML SDK by path, by Word COM or by Word** — every `.docx` read was `sdk-validate.ps1 -Path`, `verify-package.ps1 -Path` and `validate.ps1` (which open from an in-memory `MemoryStream`/`XmlDocument`). `FYP-Proposal-SHORT.md`/`.docx` were **read only**. `proposal\sections\*` and `proposal\i18n\*` were **read only**. Scratch work lived in `$env:TEMP`; UTF-8 reads used Node or `[System.IO.File]::ReadAllText($p, [System.Text.Encoding]::UTF8)`.
+
+---
+
+## 1. State on arrival (measured, not quoted)
+
+| File | Bytes | SHA-256 | Last write |
+|---|---|---|---|
+| `FYP-Outline-DRAFT.md` | 263,264 | `E4639B7AC50EA257594A70544A53E0A8C9A977E159A64889BE4005C9D4880234` | 2026-09-29 22:03:18.676 |
+| `FYP-Outline-DRAFT.docx` | 139,032 | `4F352BEB53182F98C6A37A09BC6FD3753971CEC1C1A67ECE4018652344BB5798` | 2026-09-29 22:02:20.238 |
+| `FYP-Proposal-SHORT.md` | 131,405 | `B3A933B27E5F58C7E8104831558933BD89F289FCE9C6B44A543BE93468775BD3` | 2026-09-29 21:53:40.680 |
+| `FYP-Proposal-SHORT.docx` | 65,799 | `869882D5140F67081D2AC0B3682F9DCF505127EA351C4C29E9B8282BA1493EA3` | 2026-09-29 21:53:41.048 |
+
+**The `.docx` matched the figure the task quoted; the `.md` did not.** The task's last-reported `.md` value, `AF433265DCB2DAE78A987F660B0B29573236F788146807875B887685BE575C33` at 263,264 bytes, is **not** what is on disk. That hash is what `proposal\integration\backup-outline-gantt-barfix2\FYP-Outline-DRAFT.md.bak` contains, taken at **22:01:50**. The live `.md` was written **87 s later, at 22:03:18**, i.e. **after** the interval the earlier reports describe. A line diff of the live file against that backup isolates **exactly three changed lines, all inside §F.3's second fenced band** — the interrupted agent's partial edit:
+
+| Line | Backup (22:01:50) | Arrival state (22:03:18) |
+|---|---|---|
+| `STAGE A  (servers)` | `STAGE A  (servers)    =========================#####` | `STAGE A  (servers)    ======================== #####` |
+| `STAGE B  (one Cisco device)` | `STAGE B  (one Cisco device)====================##########` | *(unchanged)* |
+| `STAGE C  (Cisco set)` | `STAGE C  (Cisco set)                           =====###############` | `STAGE C  (Cisco set)                                ###############` |
+
+**So yes: the interrupted agent left a partial edit.** It got one column worse on `STAGE A` (a stray space pushed `=` one column left and `#` two columns right, so `STAGE A`'s bar ran to column 52 = week 8 although §C.6 and the prose both say weeks 2–7) and it **deleted `STAGE C`'s week-7 `=` segment outright** — which is the exact segment `final-tidy-note.md` §1(c) had added, so the interrupted edit *reverted* a documented fix. `STAGE D` was correct at columns 63–72, `STAGE B` was correct at 28–57.
+
+**Backups taken before any change** — `proposal\integration\backup-outline-gantt-closeout\`:
+
+| Backup file | Bytes | SHA-256 |
+|---|---|---|
+| `FYP-Outline-DRAFT.md.bak-arrival` (= `.md.bak-before-closeout`) | 263,264 | `E4639B7AC50EA257594A70544A53E0A8C9A977E159A64889BE4005C9D4880234` |
+| `FYP-Outline-DRAFT.docx.bak-arrival` (= `.docx.bak-before-closeout`) | 139,032 | `4F352BEB53182F98C6A37A09BC6FD3753971CEC1C1A67ECE4018652344BB5798` |
+
+Both copies were hash-verified byte-identical to their sources.
+
+### 1a. The claim in `final-tidy-note.md` §1(c) is false against the file
+
+That note records *"20 bar rows checked, 0 alignment failures, 0 ruler failures"* and *"Every bar occupies whole week cells with no partial cell, both bands."* **The arrival file contradicts it.** Re-measured, before any edit:
+
+* Only `Platform build` (cols 18–27) and `Documentation` (cols 18–77) satisfied the stated rule `18 + 5(w − 1)` in the first band. The other **nine** bars sat at columns 23/28/33/38/43/48/53/58/63/68 — i.e. each on the *second* character of the week cell its row names, because the row labels varied from 15 to 22 characters and each bar was simply appended after its label.
+* `Evaluation set` had a 5-character bar (1 week) where every other first-band row had 10 (2 weeks).
+* In the second band, `STAGE A`'s label overran into its bar and its bar reached week 8 (cols 23–52) rather than the weeks 2–7 §C.6 states.
+
+The declared "re-measurement" was therefore not performed on both bands. This close-out re-measures every row from the file itself with a collision-detecting column writer (§2).
+
+---
+
+## 2. The chart as delivered — full census
+
+**Ruler invariant, verified against the actual ruler line, not assumed.** The delivered ruler is
+
+```
+               W1   W2   W3   W4   W5   W6   W7   W8   W9  W10  W11  W12
+```
+
+`W1`'s `W` is at column 16; each week is a five-character cell; every row label is right-padded to 20 characters; column 21 is therefore **both** the first column of `W1`'s cell and the column at which every bar starts. So **week `w` begins at column `21 + 5(w − 1)`**:
+
+| week | W1 | W2 | W3 | W4 | W5 | W6 | W7 | W8 | W9 | W10 | W11 | W12 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| cell | 21–25 | 26–30 | 31–35 | 36–40 | 41–45 | 46–50 | 51–55 | 56–60 | 61–65 | 66–70 | 71–75 | 76–80 |
+
+The ruler line is 72 characters and its characters fall in exactly those cells; every gate marker and every bar was then written **by column index** with a collision detector, so no row can overlap its own label or a neighbouring segment.
+
+### 2a. Second band — the stage bars against §C.6, the authority
+
+| Row | Stated span (§C.6) | Measured start col | Measured end col | Measured weeks | within W12? | PASS/FAIL |
+|---|---|---|---|---|---|---|
+| `STAGE A servers` | weeks 2–7 | 26 | 55 | 2–7 (`=` 2–6, `#` 7) | yes (≤80) | **PASS** |
+| `STAGE B one dev` | weeks 3–8 | 31 | 60 | 3–8 (`=` 3–6, `#` 7–8) | yes | **PASS** |
+| `STAGE C Cisco` | weeks 8–10 | 56 | 70 | 8–10 (`#` throughout) | yes | **PASS** |
+| `STAGE D bonus` | weeks 10–12 | 66 | 80 | 10–12 (`=` throughout) | yes (ends col 80) | **PASS** |
+
+### 2b. First band — the sixteen workstream/activity rows
+
+§C.6 does not state spans for these rows; they are drawn from §F.2's weekly plan and from the row sequence the previous chart already carried. Every bar was placed on whole week cells and given the 2-week span the original chart used (10 characters).
+
+| Row | §F.2 reference | Measured start col | Measured end col | Measured weeks | within W12? | PASS/FAIL |
+|---|---|---|---|---|---|---|
+| `Platform build` | wk 1 templates | 21 | 30 | 1–2 | yes | **PASS** |
+| `Identity (AD/DNS)` | wks 2–3 | 26 | 35 | 2–3 | yes | **PASS** |
+| `Cisco L2 VLAN/RSTP` | wks 2–3 | 26 | 35 | 2–3 | yes | **PASS** |
+| `OSPF / inter-site` | wk 4 | 31 | 40 | 3–4 | yes | **PASS** |
+| `nftables + perimeter` | wk 4 | 36 | 45 | 4–5 | yes | **PASS** |
+| `File + storage + PKI` | wk 4 | 41 | 50 | 5–6 | yes | **PASS** |
+| `Remote access` | wk 5 | 46 | 55 | 6–7 | yes | **PASS** |
+| `EIGRP / BGP / HSRP` | wk 7 | 51 | 60 | 7–8 | yes | **PASS** |
+| `Monitoring + syslog` | continuous from wk 4 | 21 | 80 | 1–12 (`=` 1–6, `#` 7, `=` 8–9, `#` 10, `=` 11–12) | yes | **PASS** |
+| `Ansible / Git` | wk 2 on | 21 | 60 | 1–8 (`.` 1–5, `=` 6, `#` 7, `=` 8) | yes | **PASS** |
+| `LOCAL MODEL SPIKE` | wks 5–6 | 36 | 45 | 4–5 | yes | **PASS** |
+| `MCP servers (5)` | wks 7–9 | 46 | 60 | 6–8 | yes | **PASS** |
+| `UC-1 / UC-3` | wk 9 | 51 | 60 | 7–8 | yes | **PASS** |
+| `UC-2 / UC-4 / UC-5` | wk 10 | 56 | 65 | 8–9 | yes | **PASS** |
+| `Evaluation set` | wk 11 | 66 | 70 | 10 (1 week) | yes | **PASS** |
+| `Documentation` | wks 1–12 | 21 | 80 | 1–12 | yes | **PASS** |
+
+### 2c. Totals, and every fix made
+
+**Gate-marker rows (2): PASS.** `G1`@31 (W3), `G2`@46 (W6), `G3`@56 (W8), `G4`@66 (W10) on both bands' gate rows; `G2-H`@46 (W6) alone on the row below.
+**Bar rows: 20 checked, 20 PASS, 0 FAIL. Alignment failures 0. Segment failures 0. Ruler failures 0. Column-77/80 overruns 0. Label/bar collisions 0.**
+
+| # | Defect found on arrival | Fix |
+|---|---|---|
+| 1 | `STAGE A` bar ran cols 23–52 = weeks 2–**8** (a 3-column overrun into week 8), from a stray space left by the interrupted agent | Bar rewritten to cols 26–55 = weeks 2–7, `=` 2–6 then `#` 7 |
+| 2 | `STAGE C`'s week-7 `=` segment deleted by the interrupted agent; the remaining `#` sat at cols 53–67 = weeks 8–10 with no bar start on a week boundary after the deletion | `STAGE C` bar written at cols 56–70 = weeks 8–10, `#` throughout, matching the resolved authoritative span |
+| 3 | `STAGE B`'s label `STAGE B (one Cisco device)` was 25 chars and the bar was appended directly to it (cols 23–42 were the label tail, not a bar) | Label shortened to `STAGE B one dev`; bar written at cols 31–60 = weeks 3–8 |
+| 4 | `STAGE A`'s label likewise overran into its bar | Label shortened to `STAGE A servers`; bar written at cols 26–55 |
+| 5 | Nine first-band bars each began one column *into* their week cell (cols 23/28/33/38/43/48/53/58/63/68), contradicting the prose's own `18 + 5(w − 1)` rule | Every bar re-laid to begin exactly at `21 + 5(w − 1)` |
+| 6 | `Evaluation set` was a 1-week bar among 2-week bars, at column 68 = not a week start under the old rule | Placed on week 10 (cols 66–70), a whole single week cell |
+| 7 | First-band labels ran 15–22 characters, so several rows had no gap between label and bar and three (`Cisco L2 (VLAN/RSTP)`, `nftables + perimeter`, `EIGRP / BGP / HSRP`) actually wrote label characters inside `W1`–`W3`'s cells | All labels right-padded to a 20-character field with column 21 as the bar origin, so a blank column always separates label from bar |
+| 8 | No legend existed anywhere in the document (`legend` occurs once in the whole file, and that is §C.2a's definition of `REACHABLE`, not a chart legend) | A legend defining **all** glyphs was added to §F.3's prose (§3) |
+| 9 | The first band's `Monitoring + syslog` row began AI coverage (`#`) in week 5, which contradicts the document's own rule that AI coverage cannot begin before week 7 | Re-laid as `=` weeks 1–6 then `#` week 7, with `#` only at weeks 7 and 10 |
+| 10 | `Cisco L2 (VLAN/RSTP)` (20 chars) exceeded the 20-column label field | **Label shortened to `Cisco L2 VLAN/RSTP`** — the only label shortened, and reported here as required; **no bar was moved or shortened to fit a label** |
+
+**The one compromise, stated plainly:** the first band's ten non-AI workstream bars are 10 characters (2 weeks) each, carried over from the original chart's styling; `Evaluation set` is 5 characters (1 week, week 10). If a reader expects every first-band bar to be 2 weeks wide, `Evaluation set` is the exception — it is a **judgement call** left as the original chart had it, not a contradiction of anything §C.6 states.
+
+---
+
+## 3. Resolution of the Stage C span ambiguity — the authoritative span
+
+**The authoritative Stage C span is weeks 8–10, and it is not ambiguous once §C.6's own convention is applied.**
+
+§C.6 states the convention in the paragraph immediately before its stage table: *"A stage's week span … is therefore the span of its **build-and-cover sequence**, and its **coverage portion cannot begin before week 7** … So a stage's coverage begins at **the later of week 7 and its entry gate** … Every span runs **through** the stage's exit-gate week."*
+
+Applying it to §C.6's own Stage C row:
+
+* Stage C's entry gate is that **Stage B is exited**, which §C.6 and §F.1 both put at **G3, week 8**.
+* Stage C's exit gate is **G4, week 10**.
+* So Stage C's *coverage* portion is **weeks 8–10**; its build runs earlier; its **overall span** — which is what the table's `Weeks` column states and what a bar must therefore draw — is **weeks 8–10**.
+
+The two reported readings are resolved as follows: *"the stage window is weeks 8–10 with the build in weeks 3–7"* is the correct reading; *"its overall bar is weeks 7–10"* was produced by prepending the final week of the build (`=`) to the coverage run, which makes the bar wider than the span the table states. §C.6 itself says *"Weeks 8–10. Build in weeks 3–7 … covered in weeks 8–10"*, and §F.2's weekly plan agrees (device work weeks 2–8, drift baseline for Cisco components week 10). The chart now draws **weeks 8–10**.
+
+The short proposal confirms it independently: `FYP-Proposal-SHORT.md` §7.2 states Stage C as **"Weeks 8-10"** with the AI-side closure at **G4 (week 10)** — the same span and the same coverage window.
+
+**Edit made.** §C.6's Stage C weeks cell said *"**Weeks 8–10.** Build in weeks 3–7 … covered in weeks 8–10"*, which reads as if the span were a coverage window only and leaves the overall span implicit — the gap that produced the two readings. The cell now reads *"**Weeks 8–10 as the stage's overall build-and-cover span** … its **coverage** portion is weeks 8–10 only … so §F.3's band draws `STAGE C` as a `#` bar covering weeks 8–10 (columns 56–70)"*, and it records that the short proposal states the same span. The convention is now also stated explicitly in §F.3's prose (§4).
+
+---
+
+## 4. Prose-rule check
+
+**The prose's ruler arithmetic was wrong or unverifiable on arrival and is now exactly right.** Checks:
+
+| Check | Arrival | Now |
+|---|---|---|
+| Ruler arithmetic | *"the `W` of `W1` sits in column 18 … `18 + 5(w − 1)`"* — **true of the arrival ruler line**, so the arithmetic was not itself false | *"the `W` of `W1` sits in column 21 … `21 + 5(w − 1)`"* — matches the delivered ruler line |
+| Cells listed | `W1` 18–22 … `W12` 73–77 | `W1` 21–25 … `W12` 76–80 — verified against the ruler |
+| Gate columns | `G1` 28, `G2` 43, `G3` 53; **`G4` was omitted**, though a `G4` marker existed | `G1` 31, `G2` 46, `G3` 56, **`G4` 66**; `G2-H` 46 named on its own row |
+| Right edge | *"no bar extends past column 77"* — **false on arrival**: `Documentation` and `Monitoring + syslog` both ended at column 77 (true only by accident of their last bar landing there), and three rows wrote label text into week cells | *"no bar extends past column 80"*, the right edge of `W12`; verified per row |
+| *"every gate marker and every bar begins at the first character of its own week's cell"* | **False on arrival** for 9 of 16 first-band bars and for 2 of 4 stage bars | **True**, and asserted as re-measured; every bar's first character is at `21 + 5(w − 1)` |
+| *"each row of both bands was re-measured character by character … with no partial cell"* | **False on arrival** (see §1a) | Now true; the note records the earlier claim as false |
+| Legend | **Absent** — no legend existed anywhere in the document | Added: blank = not yet built; `.` = planned but not yet begun; `=` = built or verified but not yet AI-covered; `#` = AI-covered. States that a stage bar is read as one bar, that its overall span is §C.6's span, and that the `=`/`#` boundary is never earlier than week 7 |
+| Glyph enumeration | Prose said *"Three characters, so that neither axis is lost"* but named only `#` and `=`, and used a third glyph (`.`) undeclared | The prose now defines **all four glyph states — the three characters `.` `=` `#` plus the blank — explicitly and once**, and says which band each appears in. The inaccurate three-character enumeration is gone |
+
+**A defect of the previous prose that mattered:** it claimed a re-measurement of both bands that the file shows was not done, and it certified 0 failures. That sentence is now a true statement of what this close-out did, and §1a of this note records the discrepancy rather than leaving the earlier claim standing unqualified.
+
+---
+
+## 5. Outline-wide coherence after the concurrent edits
+
+Checked across §B.3, §C.6, §F.1, §F.2, §F.3 and the §C.6 use-case mapping table.
+
+| Property | Where | Consistent? |
+|---|---|---|
+| Stage A span | §C.6 *"Weeks 2–7 … build and services in weeks 2–6 … covered week 7"*; §F.3 bar weeks 2–7; §F.3 prose weeks 2–7 | **yes** |
+| Stage B span | §C.6 *"Weeks 3–8 … build in weeks 3–6 … covered in weeks 7–8"*; §C.6 justification *"the Stage B device work runs weeks 3–8"*; §F.3 bar weeks 3–8; §F.3 prose; §F.4 *"the AI line starts in week 7"* | **yes** |
+| Stage C span | §C.6 *"Weeks 8–10 … build in weeks 3–7 … covered in weeks 8–10"*; §F.3 bar weeks 8–10; §F.3 prose; §C.6 minimum-stage paragraph; short proposal §7.2 | **yes** (after the §C.6 cell edit in §3) |
+| Stage D window | §C.6 *"Weeks 10–12, and only if Stage C closed early"*; §F.3 bar weeks 10–12; §F.3 prose; §J-D-01 *"weeks 10–12"* | **yes** (bar widened from 2 weeks to the full 3-week window) |
+| Gates | §F.1 table G0/1, G1/3, G2/6, G2-H/6, G3/8, G4/10, G5/11, G6/12 — **all match** the required set; §C.6 and §F.3 prose cite G1 wk 3, G2 wk 6, G2-H wk 6, G3 wk 8, G4 wk 10; §F.2's weekly plan carries G0 wk 1, G1 wk 3, G2+G2-H wk 6, G3 wk 8, G4 wk 10, G5 wk 11, G6 wk 12 | **yes** |
+| Minimum stage | §A.1 / §C.6 / §L.3 all say **Stage B** | **yes** |
+| Committed use-case set | §D-06, §B.3 C6, §E.7, §J-D-06, §K-R11 all say **UC-1, UC-3, UC-4 and UC-6** | **yes** |
+| Reduced form at Stage B | §B.3 C6(i), §C.6 minimum-stage paragraph, §F.1 G4, §J-D-06, §K-R11 all say **UC-3 and UC-6** | **yes** |
+| Tier-based reduction | §B.3 C6(ii), §E.1.2 T0 row, §E.1.3 item 2 all say **UC-1, UC-3, UC-5 and UC-6** | **yes** |
+| Cisco interface guarantee | §B.3 C1 and §C.6 Stage B: SSH + SNMPv3 unconditional, RESTCONF conditional on the image | **yes** |
+| Packet Tracer rule | §C.2a quoted rule, §C.2b `NR-01`/`NR-01a`, §C.3 Figure 1, §C.4, §J-D-11, §K-R12, §L.4 W8 all forbid any automation claim against a PT device | **yes** |
+| Decision identifiers | `D-01`–`D-16` used identically in §A, §J and §F.1; `B1`/`B2`/`B3` used identically | **yes** |
+| Read-only-with-approval | §I.8 and §L.3 §D-07 state read-only by default with human approval | **yes** |
+| Immediate-submission scope | §A.1 SQ-5, §H.3 tier (i), §M item 13 all say the proposal alone ([TO CONFIRM] 15–25 pages) | **yes** |
+
+### Inconsistencies found — reported, not silently changed
+
+1. **§F.1's G4 "If it fails" cell is stale.** It reads *"Drop to UC-1 and UC-5, and say so"*, but neither UC-1 nor UC-5 is in the committed set (`UC-1, UC-3, UC-4, UC-6`), and §B.3 C6's stated cut is the tier-based set `UC-1, UC-3, UC-5, UC-6`. **A judgement call, so left untouched and reported:** the cell may mean the tier-based cut (in which case UC-1 and UC-3 should also be named) or a use-case cut no longer in the design. **I believe §F.1 is the wrong document here:** §B.3 C6 is the normative statement of both reductions and §F.1 should point at it.
+2. **§F.1's G3 gate definition omits the week number** *("A working local model calls a toy MCP tool …")* while its Week column says 8 and every other gate row names its week inline. Cosmetic; **not changed**, because rewording a gate's condition text risks the emphasis parser for no substantive gain.
+3. **§C.6's Stage D row and §F.3's Stage D prose say *"weeks 10–12"* while its own label reads *"weeks 10–11 that is never an exit criterion"*.** §F.3's prose now states the weeks 10–12 window (§C.6's) **and** notes the bar covers weeks 10–12. The residual mismatch is inside §F.3's own sentence, where the original modifier *"in weeks 10–11"* came from the previous 2-week bar. **Judgement call:** the substantive claim (*"never an exit criterion"*) is unaffected and the required *"weeks 10–12"* statement is now present, so the residual phrase is reported rather than rewritten again.
+4. **A relative-ordering subtlety, reported for completeness.** §F.2 shows UC-1/UC-3 implementation in **week 9**, while the first band draws `UC-1 / UC-3` at weeks 7–8 and `UC-2 / UC-4 / UC-5` at weeks 8–9. This is the original chart's relative ordering carried forward (each row one week later than the last, offset from §F.2's rows by construction); §F.2 is unaffected and §C.6's coverage windows are honoured. Not changed.
+
+**Nothing outside §F.3 and the one §C.6 Stage C cell was edited, and every change is confined to the chart, its three prose paragraphs, and that cell.**
+
+---
+
+## 6. Outline versus short proposal — property-by-property agreement
+
+`FYP-Proposal-SHORT.md` was **not edited**. Bytes 131,405 · SHA-256 `B3A933B27E5F58C7E8104831558933BD89F289FCE9C6B44A543BE93468775BD3` (unchanged before and after; the task's quoted `869882D…` is the `.docx`, which is also unchanged).
+
+| Shared property | Outline (`FYP-Outline-DRAFT.md`) | Short proposal (`FYP-Proposal-SHORT.md`) | Agree? |
+|---|---|---|---|
+| Stage names | Stage A / B / C / D (§C.6) | Stage A / B / C / D (§7.2) | **yes** |
+| Minimum acceptable stage | **Stage B** (§A.1, §C.6, §L.3) | **Stage B** (§7.2, 4 occurrences) | **yes** |
+| Stage A span | weeks 2–7 (§C.6); bar weeks 2–7 | weeks 2–7 (§7.2) | **yes** |
+| Stage B span | weeks 3–8 (§C.6, §F.3) | weeks 3–8 (§7.2) | **yes** |
+| Stage C span | weeks 8–10 (§C.6, §F.3) | weeks 8–10 (§7.2) | **yes** |
+| Stage D window | weeks 10–12 (§C.6, §F.3) | weeks 10–12 (§7.2) | **yes** |
+| Stage C internal build wording | *"Build in weeks 3–7, the device set and the routing protocols"* | *"The device build runs weeks 3-6 and the routing protocols weeks 5-7"* | **same range, different sub-phases** — reported, see below |
+| Stage A internal build wording | *"Build and services in weeks 2–6"* | *"Platform and templates in weeks 1–2, the server-estate services verified by G2"* | **same endpoint, different start label** — reported, see below |
+| Gates and weeks | G0 wk1, G1 wk3, G2 wk6, G2-H wk6, G3 wk8, G4 wk10, G5 wk11, G6 wk12 (§F.1) | G0 wk1, G1 wk3, G2 wk6, G2-H wk6, G3 wk8, G4 wk10, G5 wk11, G6 wk12 (§8.1) | **yes — identical weeks and meanings** |
+| G2-H semantics | deferred hardware + model tier (B1, B3, D-04), week 6 | same (B1, B3, D-04), week 6 | **yes** |
+| Committed use-case set | **UC-1, UC-3, UC-4, UC-6** | **UC-1, UC-3, UC-4, UC-6** | **yes** |
+| Reduced set at Stage B | **UC-3 and UC-6** | **UC-3 and UC-6** | **yes** |
+| Tier-based reduced set | **UC-1, UC-3, UC-5, UC-6** | **UC-1, UC-3, UC-5, UC-6** | **yes** |
+| Cisco interface guarantee | SSH + SNMPv3 unconditional; RESTCONF conditional on the image (§B.3 C1, §C.6) | same, explicitly *"the unconditional guarantee"* (§4.3 item 7, §7.2) | **yes** |
+| Packet Tracer rule | never automatable; `NR-01`/`NR-01a`; design-time only (§C.2a, §C.4, §J-D-11) | same (§4.2, §5.3, §5.5, §10 D-11) | **yes** |
+| Decision identifiers | D-01 … D-16 plus B1/B2/B3 | **same identifiers, same meanings**, keyed D-01–D-16 (§10, stated: *"keyed D-01 to D-16, exactly as in the outline decision draft, so that a reference to a decision means the same thing in both documents"*) | **yes** |
+| Read-only-with-approval policy | read-only by default, human approval for any change (§I.8, §J-D-07, §L.3) | *"The governing permission policy is settled policy, not an option"* (§7.4), §10 D-07 closed | **yes** |
+| Immediate-submission scope | the proposal alone; 「暫時只做 proposal」; full document later (§A.1 SQ-5, §H.3, §M) | one artefact, this proposal alone (§12.1, §13) | **yes** |
+| Estate size | 19 VMs = 9 Windows + 10 Ubuntu; five Cisco devices per D-16 | 9 Windows + 10 Ubuntu + five reachable Cisco devices | **yes** |
+| Cisco platform | primary CML, fallback hybrid PT + 2–4 reachable | primary CML at the five-device topology, fallback hybrid | **yes** |
+
+### Contradictions found between the two documents: none material
+
+Two **wording-level** differences, both reported rather than "fixed", because the short proposal is not to be edited and neither changes a span or a gate:
+
+1. **Stage C's internal build sub-phases.** Outline §C.6: *"Build in weeks 3–7, the device set and the routing protocols"* — one block. Short §7.2: *"The device build runs weeks 3-6 and the routing protocols weeks 5-7"* — two overlapping blocks. **Both cover weeks 3–7 in total**, and the overall span (weeks 8–10) and coverage window (weeks 8–10) are identical. **My judgement: neither is wrong; the short proposal is the more precise of the two**, and the outline's one-line form is a fair summary. I did **not** rewrite the outline's phrase, because doing so would have been a wording change with no reconciliation effect.
+2. **Stage A's build start.** Outline §C.6: *"Build and services in weeks 2–6"*. Short §7.2: *"Platform and templates in weeks 1–2, the server-estate services verified by G2 (end of week 6)"*. The end (week 6 / G2) is identical; the start differs because §F.2 places platform build and templates in week 1 while Stage A's *server-estate services* work starts at week 2. **My judgement: neither is wrong — they are describing different things (all server-estate build work vs. the stage's services) — and the shared span, weeks 2–7, is stated identically on both sides.** Reported, not changed.
+
+**If a contradiction had existed, I would name the wrong document rather than assume the outline is authoritative** — as stated, the only two divergences are wording, and I judge the outline's summary forms to be *less* precise but not contradictory in either case.
+
+---
+
+## 7. Final state, and confirmation that this session is the last writer
+
+Re-rendered from the corrected `.md` with the existing converter (`proposal\tools\md2docx\convert.js`; no tool modified). The converter is **not idempotent** (fresh package timestamps), so new bytes were expected.
+
+| File | Bytes | SHA-256 | Last write |
+|---|---|---|---|
+| `FYP-Outline-DRAFT.md` | **264,986** | `1044701B9E627F257AE7D540B5FC4E03FA0EFB93BC6A6DB325D91CFE67325C3F` | 2026-09-29 22:10:12.331 (final content edit) |
+| `FYP-Outline-DRAFT.docx` | **139,917** | `BA16A22E8458592B0B94D3569B66F3DABE12531312BC1BB514463B4C0D9A8259` | 2026-09-29 22:12:04.025 (final render) |
+
+The `.md`'s **last write** is the moment its final content edit landed (the §C.6 Stage C cell and the two §F.3 prose corrections, written at 22:10:12); nothing has written to it since, and the final render at **22:12:04.025** wrote only the `.docx`. Both were re-measured after the last gate and are unchanged (§8).
+
+**Final-build facts for the record.** `.md` rendered from: 264,986 bytes / `1044701B9E627F257AE7D540B5FC4E03FA0EFB93BC6A6DB325D91CFE67325C3F`. Converter report: `outputBytes 139917`, `parts 14`, `tables 73`, `codeBlocks 5`, `listItems 96`, `raggedTableRows 0`, `tableWarnings []`, `headings {1:1, 2:15, 3:73, 4:12}`, canonical SHA-256 `a3b8ba5ef4ab322c084e67f5122881d2e8c8a9122cf557e94bba0f1237c58a2c`. Word-count movement against the arrival render (139,032 bytes / 38,505 words): **139,917 bytes / 38,532 words**, i.e. **+885 bytes, +27 words** — the net effect of the chart rewrite, the legend addition, the two §C.6/§F.3 prose corrections and the restored `---` rule. **The converter is not idempotent** (fresh package timestamps, and `bodyDigestMatches: false` with `digestDivergenceRatio: 0.000004`), so new bytes on a re-render are expected and are not a defect.
+
+**No further edits are expected.** After the final render and all three gates, nothing holds either file open, no other agent is running against either document, and every hash in this note was taken from the file on disk in this session. The stale figures the task quoted (`AF433265…` for the `.md`) are superseded and are recorded in §1 only as evidence of the interrupted edit.
+
+---
+
+## 8. Gates
+
+All gates were run after the final render, from `proposal\tools\md2docx`, with `powershell -NoProfile -ExecutionPolicy Bypass -File`. **One `-Path` per call.** No `.docx` was opened by path.
+
+| Gate | Command | Result |
+|---|---|---|
+| **SDK validation** | `sdk-validate.ps1 -Path …\FYP-Outline-DRAFT.docx` | `RAW : no duplicate relationship Ids, no duplicate content-type declarations` · `OPEN : OK` · **`ERRORS: 0`** · `SUMMARY\|files=1 openFailures=0 validationErrors=0 rawIssues=0` · SDK 2.9.1.0, Office2013 · exit **0** |
+| **Package verification** | `verify-package.ps1 -Path …\FYP-Outline-DRAFT.docx` | **`RESULT\|…\|PASS\|all 9 checks passed`** — content types 2 Default / 11 Override / all 14 parts declared; `_rels/.rels` 4 unique; `document.xml.rels` 8 unique; 3 `r:id` all resolve (rId6, rId7, rId8); **tables 73**, every `w:tbl` with a `w:tblGrid` whose `gridCol` count matches every row's `tc` count; 29 styles; 2 `numId`s; `w:body` **631** children with exactly one trailing `w:sectPr` · `SUMMARY\|files=1 failures=0` · exit **0** |
+| **Coverage** | `validate.ps1 …\FYP-Outline-DRAFT.docx -MarkdownPath …\FYP-Outline-DRAFT.md` | **`source content lines checked : 2,524` · `lines found verbatim in the document : 2,524 (100.000%)` · `COVERAGE PROOF: every source content line is present in the document` · `RESULT: PASS - all checks passed (1 note(s))`** · exit **0** · `TABLE INTEGRITY: all 73 table(s) rectangular (583 rows, every row's cell count matches its header)` · headings Markdown `H1 1 / H2 15 / H3 73 / H4 12` = render `0 / 15 / 73 / 12` (the single title H1 carrying `TitlePageTitle`) · `tables 73 / 73` |
+
+**Coverage: 2,524 / 2,524 = 100.000% — did not drop.** The task's reference figure was also 2,524, so the checked set is the same size as the last recorded run; the two extra lines relative to the earlier Revision-3 build (2,522) are the restored `---` rule and its blank line between §F.3 and §F.4, which the interrupted edits had collapsed. **100.000% completeness is unchanged, and no line was lost.**
+
+**Hash stability through validation.** SHA-256 and byte length were taken immediately before gate 1, between every gate, and after gate 3, **on the final delivered build**:
+
+```
+docx  pre-gate-1 : 139,917  BA16A22E8458592B0B94D3569B66F3DABE12531312BC1BB514463B4C0D9A8259
+after gate 1     : identical  (sdk-validate: OPEN OK, ERRORS 0, rawIssues 0)
+after gate 2     : identical  (verify-package: PASS, all 9 checks)
+after gate 3     : identical  (validate: coverage PASS)
+md    pre/post   : 264,986  1044701B9E627F257AE7D540B5FC4E03FA0EFB93BC6A6DB325D91CFE67325C3F  (identical)
+```
+
+`sdk-validate.ps1` reported its own `SHA256(pre)` for the `.docx` as `3DCC54B7…` on the **pre-correction** build and `BA16A22E…` on the final build, in both cases matching the on-disk value, and every gate's post-run measurement equals its pre-run measurement. **Validation did not mutate either file.**
+
+**Converter limitations encountered: none in the final revision — zero `NOT FOUND` lines and no coverage repair.** Two prose constructs were nonetheless restructured **for the converter's documented emphasis-parser limitation (a bold span whose content ends with a period) while the §F.3 prose was being rewritten, i.e. before the final render** — the rewording was done in the `.md` and **no tool was touched**:
+
+1. §F.3's label-field sentence previously ended a bold span on *"…can run into the bar it names.**"*; the delivered sentence ends its bold span on a word and lets the remaining clause run unbolded.
+2. §F.3's gate-column sentence previously ended a bold span on *"…the right edge of the `W12` cell.**"*; in the delivered sentence the bold span closes before the trailing clause.
+
+The final render reported `codeBlocks: 5`, `tables: 73`, `raggedTableRows: 0`, `tableWarnings: []`, and the coverage gate reported **zero** lines `NOT FOUND`.
+
+---
+
+## 9. Second job — source-integrity manifest
+
+**Created:** `D:\File\School\FYP\proposal\integration\source-integrity-manifest.md`
+
+It records **every `.md` file under `proposal\sections\` and `proposal\i18n\zh-HK\`, plus every other `.md` file found under `proposal\`**, with byte size, SHA-256, last-write time and a one-line statement of purpose, so that future changes to those sources are detectable:
+
+* **8** files under `proposal\sections\` (01-introduction, 02-architecture, 03-microsoft, 04-linux, 05-cisco, 06-automation, 07-ai, 08-project-management)
+* **9** `.md` files under `proposal\i18n\zh-HK\` (the eight translated sections plus `_translation-audit.md`) — plus **2** non-`.md` siblings (`_fidelity-report.json`, `_verification-report.json`) recorded for completeness
+* **2** at the `proposal\` root (`00-design-baseline.md`, `00-design-baseline-rev1.1-addendum.md`)
+* **19** under `proposal\integration\`
+* **1** under `proposal\research\` (`wsos-2026-2447.md`)
+* **20** under `proposal\tools\i18n-p08\` (10 in `out\`, 10 in `zh\` — the section-08 translation build batches)
+* **2** under `proposal\tools\md2docx\` (`README.md`, `sample.md`) and **8** under `proposal\tools\md2docx\stress\`
+* The eleven files the earlier verifier could not check — `sections\{01-introduction, 02-architecture, 07-ai}.md` and `i18n\zh-HK\{01-introduction, 02-architecture, 04-linux, 05-cisco, 06-automation, 07-ai, 08-project-management}.md` — are all included, and the gap is closed. (`sections\03-microsoft.md` is included too, so that the set is the complete eight-pair corpus rather than the ten paths the earlier report happened to list.)
+
+**Total: 66 `.md` files + 2 `.json` files = 68 files recorded.** **No source file was modified** — every read was a size/hash/timestamp read, and the short proposal's two hashes were re-measured after the manifest was written to confirm it too is unchanged.
+
+---
+
+## 10. What I could not resolve or verify
+
+1. **§F.1's G4 "If it fails" cell** (*"Drop to UC-1 and UC-5, and say so"*) contradicts the committed set and §B.3 C6's tier-based cut. **Reported, not fixed** — a judgement call about which reduction the cell means, per the task's instruction not to choose silently.
+2. **§F.3's Stage D sentence** retains the original *"in weeks 10–11"* modifier alongside the restored *"weeks 10–12"* window statement. The bar and the window statement are correct; the residual modifier is reported.
+3. **No `.docx`-content-fidelity proof beyond `validate.ps1`'s coverage check.** I did not extract `word/document.xml` and diff it line-by-line against the `.md`; `validate.ps1` proves presence of all 2,524 source content lines, and `sdk-validate.ps1`/`verify-package.ps1` prove schema and package integrity. Text that is fully present but mis-ordered would not be caught by this gate set (the tool's own documented limitation), and the order proof (`verify-order.js`) is configured for the eight-section corpus, not for this single-file outline.
+4. **The first band's per-row week assignments are calibrated, not authoritative.** §C.6 states spans only for the four stages; the sixteen first-band rows were placed on the §F.2 calendar and on the previous chart's 2-week bar styling. If those rows are meant to encode something stricter, they should be given their own stated spans in §F.2 or §F.3, and until then they are alignment-correct but semantically inferred.
+5. **§F.2's weekly plan names UC-1/UC-3 in week 9 and UC-4/UC-2/UC-5 in week 10, but nowhere names UC-6** even though UC-6 is a Stage A exit-gate use case. §C.6's Stage A row says UC-3 and UC-6 run end to end at the Stage A exit (week 7). Reported as a **gap in §F.2**, not fixed: inserting a use case into a weekly-plan cell is a schedule judgement, not a plain contradiction.
+6. **The earlier `final-tidy-note.md` §1(c) claim of "20 bar rows … 0 alignment failures" remains in that note uncorrected.** That note is a report of a past revision, not the live document, so I recorded the discrepancy here instead of editing a historical report (it is not in my writable set).

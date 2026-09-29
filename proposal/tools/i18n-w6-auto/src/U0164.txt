@@ -1,0 +1,1 @@
+Administrators use Ed25519 keys. The keys are generated **once per administrator on that administrator's own machine**; only the public halves are committed, under `04-automation/ansible/files/ssh/authorized_keys/adm-w{n}.pub`. Private keys are never stored on `vpnz-mon01`, which is the rule that makes the control node a place a student can hand over.

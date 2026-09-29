@@ -1,0 +1,1 @@
+The `keepalived_interface` line is worth noting: the baseline forbids hard-coding `ens192`/`ens224` and requires resolving the actual interface name with `ip -br link` and documenting it. Using the Ansible fact instead of a literal is the technical enforcement of that rule.

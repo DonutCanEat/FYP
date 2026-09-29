@@ -1,0 +1,28 @@
+```bash
+#!/usr/bin/env bash
+# vpnz-mon01 — one-time control-node bootstrap (run as an administrator)
+set -euo pipefail
+
+sudo apt-get update
+sudo apt-get install -y python3-venv python3-pip sshpass git jq
+
+sudo mkdir -p /opt/ansible-venv
+sudo chown "$(id -un):$(id -gn)" /opt/ansible-venv
+python3 -m venv /opt/ansible-venv/venv
+
+# ansible-core 2.18.x + community package 11.x + pywinrm 0.5.0
+/opt/ansible-venv/venv/bin/pip install --upgrade pip
+/opt/ansible-venv/venv/bin/pip install \
+  'ansible-core~=2.18.0' \
+  'ansible~=11.0' \
+  'pywinrm==0.5.0' \
+  'jmespath' 'netaddr'
+
+# Record the ACTUAL versions as evidence (required by the version-pinning discipline)
+{
+  echo "=== captured $(date -Is) on $(hostname) ==="
+  /opt/ansible-venv/venv/bin/ansible --version
+  /opt/ansible-venv/venv/bin/ansible-galaxy collection list
+  /opt/ansible-venv/venv/bin/python3 -c 'import winrm, sys; print("pywinrm", winrm.__version__)'
+} | tee /srv/evidence/version-ansible-$(date +%Y%m%d).txt
+```

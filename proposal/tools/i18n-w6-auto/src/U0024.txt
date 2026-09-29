@@ -1,0 +1,1 @@
+This line develops **Domain 5 — Infrastructure Automation, 15 %** of the WorldSkills Occupational Standards 2026 for *IT Network Systems Administration* (Skill 2447, WorldSkills Shanghai 2026). The three citable "shall be able to" requirements, quoted verbatim from the local verified extraction of that page, are:

@@ -1,0 +1,1 @@
+`Use modern automation tools for systems deployment and configuration management` (nested `Git`) is satisfied by the repository, the branch strategy of section 10.3 and the tagged releases; `Setup and run routine infrastructure maintenance operations using various scripting\programming languages` (nested `Bash`, `PowerShell`) is satisfied by sections 10.5 and 10.6.

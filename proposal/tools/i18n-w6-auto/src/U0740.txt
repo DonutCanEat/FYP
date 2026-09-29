@@ -1,0 +1,23 @@
+```text
+C:\FYP\03-build\packet-tracer\configs\
+├── README.md                        (states plainly: extracted by hand from the PT CLI,
+│                                     never retrieved by any automated tool)
+├── VP-HQ-CORE-01.running-config.txt
+├── VP-HQ-CORE-02.running-config.txt
+├── VP-HQ-DSW-A01.running-config.txt
+├── VP-HQ-DSW-A02.running-config.txt
+├── VP-HQ-DSW-A03.running-config.txt
+├── VP-HQ-DSW-A04.running-config.txt
+├── VP-HQ-EDGE-01.running-config.txt
+├── VP-HQ-FW-01.running-config.txt    (ASA: show run)
+├── VP-HQ-VOICE-01.running-config.txt
+├── VP-BR-EDGE-01.running-config.txt
+├── VP-BR-DSW-A01.running-config.txt
+├── VP-MO-EDGE-01.running-config.txt
+├── VP-MO-DSW-A01.running-config.txt
+├── VP-WC-EDGE-01.running-config.txt
+├── VP-WC-DSW-A01.running-config.txt
+├── VP-ISP-EDGE-01.running-config.txt
+└── MANIFEST.md                      (device, PT file, date extracted, who extracted it,
+                                      and the show command used)
+```

@@ -1,0 +1,2 @@
+> `Setup and run routine infrastructure maintenance operations using various scripting\programming languages`
+> — nested technology examples: `Bash`, `PowerShell`

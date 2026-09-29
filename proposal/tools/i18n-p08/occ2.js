@@ -1,0 +1,12 @@
+﻿const fs=require('fs');
+const zh=fs.readFileSync('D:/File/School/FYP/proposal/i18n/zh-HK/08-project-management.md','utf8').replace(/\r\n/g,'\n').split('\n');
+const en=fs.readFileSync('D:/File/School/FYP/proposal/sections/08-project-management.md','utf8').replace(/\r\n/g,'\n').split('\n');
+console.log('PR-0 occurrences (both):');
+console.log('  EN lines:', en.map((l,i)=>l.includes('PR-0')?(i+1):0).filter(Boolean).join(','));
+console.log('  ZH lines:', zh.map((l,i)=>l.includes('PR-0')?(i+1):0).filter(Boolean).join(','));
+console.log('  EN "PR-01," count:', (fs.readFileSync('D:/File/School/FYP/proposal/sections/08-project-management.md','utf8').match(/PR-01,/g)||[]).length);
+console.log('  EN "PR-010" count:', (fs.readFileSync('D:/File/School/FYP/proposal/sections/08-project-management.md','utf8').match(/PR-010/g)||[]).length);
+console.log('  ZH "PR-010" count:', (fs.readFileSync('D:/File/School/FYP/proposal/i18n/zh-HK/08-project-management.md','utf8').match(/PR-010/g)||[]).length);
+console.log('');
+console.log('VLAN 999 context:');
+[31,46,608].forEach(n=>{ console.log(' EN L'+n+': '+en[n-1]); console.log(' ZH L'+n+': '+zh[n-1]); });

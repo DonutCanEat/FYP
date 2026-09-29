@@ -1,0 +1,22 @@
+```yaml
+# inventory/group_vars/all.yml
+fyp_domain: vertexpeak.fyp.lab
+fyp_netbios: VERTEXPEAK
+fyp_site: HQ-ShaTin
+fyp_dns_servers: [10.10.30.11, 10.10.30.12]
+fyp_ntp_windows_source: vpnz-dc01.vertexpeak.fyp.lab
+fyp_ntp_linux_source: 10.10.30.11
+fyp_infra_admins_unix_group: gg-infra-admins
+fyp_admins_group_windows: GG-Server-Admins
+fyp_tier0_group_windows: GG-Tier0-Admins
+fyp_monitoring_host: 10.10.30.31
+fyp_log_forward_target: 10.10.30.31
+fyp_log_forward_port: 514
+fyp_package_update_cron: "0 3 * * 0"       # Sun 03:00 - inside the change window
+fyp_change_window: "Sat 22:00 - Sun 02:00"
+fyp_nftables_table: inet fyp_filter
+fyp_nftables_log_prefix: "NFT-DROP: "
+fyp_nginx_upstreams:
+  weba_pool: ["10.10.90.21:443", "10.10.90.22:443"]
+  wp_pool:   ["10.10.90.25:443", "10.10.90.26:443"]
+```

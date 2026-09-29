@@ -1,0 +1,1 @@
+**The seven named groups.** `windows`, `linux`, `web`, `edge`, `monitoring`, `cisco` and `mgmt` are the groups the baseline fixes for the inventory. The design adds one refinement: the Windows and Linux groups are themselves **groups of groups**, containing `windows_servers` and `dmz_windows`; and `linux_servers`, `web` and `edge`.

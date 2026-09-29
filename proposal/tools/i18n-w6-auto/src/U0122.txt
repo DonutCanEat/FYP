@@ -1,0 +1,1 @@
+The automation repository is at `C:\FYP\04-automation\` on the working copies and is mirrored to Git on `vpnz-mon01`. All paths below are verbatim from the baseline and must not be re-arranged:

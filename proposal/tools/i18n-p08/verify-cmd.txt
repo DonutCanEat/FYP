@@ -1,0 +1,781 @@
+﻿{
+ "basics": {
+  "en_bytes": 429558,
+  "zh_bytes": 389644,
+  "en_bom": false,
+  "zh_bom": false,
+  "en_chars": 423016,
+  "zh_chars": 211859,
+  "en_lines": 2623,
+  "zh_lines": 2623
+ },
+ "h1_headings": {
+  "en": {
+   "h1": 0,
+   "h2": 9,
+   "h3": 61,
+   "h4": 32,
+   "h5": 0,
+   "h6": 0
+  },
+  "zh": {
+   "h1": 0,
+   "h2": 9,
+   "h3": 61,
+   "h4": 32,
+   "h5": 0,
+   "h6": 0
+  },
+  "match": true
+ },
+ "h1_h2_numbering": {
+  "match": true,
+  "en": [
+   "12",
+   "13",
+   "14",
+   "15",
+   "16",
+   "17",
+   "18",
+   "19",
+   "20"
+  ]
+ },
+ "h1_h3_numbering": {
+  "match": true,
+  "en_count": 61,
+  "zh_count": 61
+ },
+ "h1_h4_numbering": {
+  "match": true,
+  "en_count": 32,
+  "zh_count": 32
+ },
+ "t2_tables": {
+  "en_tables": 83,
+  "zh_tables": 83,
+  "en_rows": 1448,
+  "zh_rows": 1448,
+  "en_data_rows": 1365,
+  "zh_data_rows": 1365,
+  "en_sep_rows": 83,
+  "zh_sep_rows": 83,
+  "shape_sequence_match": true
+ },
+ "t2_shape_mismatches": [],
+ "t2_zh_ragged_rows": [],
+ "t3_fences": {
+  "en_blocks": 12,
+  "zh_blocks": 12,
+  "tags_match": true,
+  "openers_match": true,
+  "closers_match": true,
+  "tags": [
+   "text",
+   "text",
+   "text",
+   "text",
+   "text",
+   "text",
+   "text",
+   "text",
+   "text",
+   "text",
+   "text",
+   "text"
+  ]
+ },
+ "t4_code_fidelity": {
+  "blocks_compared": 12,
+  "blocks_byte_identical": 12,
+  "concat_chars_en": 27496,
+  "concat_chars_zh": 27496,
+  "concat_bytes_en": 30374,
+  "concat_bytes_zh": 30374,
+  "concat_byte_identical": true,
+  "per_block": [
+   {
+    "block": 1,
+    "chars_en": 1562,
+    "chars_zh": 1562,
+    "bytes_en": 2380,
+    "bytes_zh": 2380,
+    "identical": true
+   },
+   {
+    "block": 2,
+    "chars_en": 1222,
+    "chars_zh": 1222,
+    "bytes_en": 1900,
+    "bytes_zh": 1900,
+    "identical": true
+   },
+   {
+    "block": 3,
+    "chars_en": 2582,
+    "chars_zh": 2582,
+    "bytes_en": 3796,
+    "bytes_zh": 3796,
+    "identical": true
+   },
+   {
+    "block": 4,
+    "chars_en": 1522,
+    "chars_zh": 1522,
+    "bytes_en": 1644,
+    "bytes_zh": 1644,
+    "identical": true
+   },
+   {
+    "block": 5,
+    "chars_en": 228,
+    "chars_zh": 228,
+    "bytes_en": 228,
+    "bytes_zh": 228,
+    "identical": true
+   },
+   {
+    "block": 6,
+    "chars_en": 1066,
+    "chars_zh": 1066,
+    "bytes_en": 1066,
+    "bytes_zh": 1066,
+    "identical": true
+   },
+   {
+    "block": 7,
+    "chars_en": 1034,
+    "chars_zh": 1034,
+    "bytes_en": 1036,
+    "bytes_zh": 1036,
+    "identical": true
+   },
+   {
+    "block": 8,
+    "chars_en": 893,
+    "chars_zh": 893,
+    "bytes_en": 895,
+    "bytes_zh": 895,
+    "identical": true
+   },
+   {
+    "block": 9,
+    "chars_en": 14249,
+    "chars_zh": 14249,
+    "bytes_en": 14277,
+    "bytes_zh": 14277,
+    "identical": true
+   },
+   {
+    "block": 10,
+    "chars_en": 360,
+    "chars_zh": 360,
+    "bytes_en": 368,
+    "bytes_zh": 368,
+    "identical": true
+   },
+   {
+    "block": 11,
+    "chars_en": 2293,
+    "chars_zh": 2293,
+    "bytes_en": 2299,
+    "bytes_zh": 2299,
+    "identical": true
+   },
+   {
+    "block": 12,
+    "chars_en": 474,
+    "chars_zh": 474,
+    "bytes_en": 474,
+    "bytes_zh": 474,
+    "identical": true
+   }
+  ]
+ },
+ "t5_identifier_patterns": {
+  "test_ids": {
+   "distinct_en": 160,
+   "distinct_zh": 160,
+   "en_total": 405,
+   "zh_total": 405,
+   "differing": [],
+   "differing_count": 0
+  },
+  "risk_ids": {
+   "distinct_en": 24,
+   "distinct_zh": 24,
+   "en_total": 50,
+   "zh_total": 51,
+   "differing": [
+    {
+     "value": "PR-01",
+     "en": 4,
+     "zh": 5
+    }
+   ],
+   "differing_count": 1
+  },
+  "evidence_ids": {
+   "distinct_en": 23,
+   "distinct_zh": 23,
+   "en_total": 25,
+   "zh_total": 25,
+   "differing": [],
+   "differing_count": 0
+  },
+  "objectives": {
+   "distinct_en": 20,
+   "distinct_zh": 20,
+   "en_total": 40,
+   "zh_total": 40,
+   "differing": [],
+   "differing_count": 0
+  },
+  "work_packages": {
+   "distinct_en": 20,
+   "distinct_zh": 20,
+   "en_total": 63,
+   "zh_total": 63,
+   "differing": [],
+   "differing_count": 0
+  },
+  "trust_boundaries": {
+   "distinct_en": 16,
+   "distinct_zh": 16,
+   "en_total": 57,
+   "zh_total": 57,
+   "differing": [],
+   "differing_count": 0
+  },
+  "findings": {
+   "distinct_en": 1,
+   "distinct_zh": 1,
+   "en_total": 1,
+   "zh_total": 1,
+   "differing": [],
+   "differing_count": 0
+  },
+  "versions": {
+   "distinct_en": 2,
+   "distinct_zh": 2,
+   "en_total": 15,
+   "zh_total": 15,
+   "differing": [],
+   "differing_count": 0
+  },
+  "vrids": {
+   "distinct_en": 2,
+   "distinct_zh": 2,
+   "en_total": 7,
+   "zh_total": 7,
+   "differing": [],
+   "differing_count": 0
+  },
+  "as_numbers": {
+   "distinct_en": 3,
+   "distinct_zh": 3,
+   "en_total": 11,
+   "zh_total": 11,
+   "differing": [],
+   "differing_count": 0
+  },
+  "vlan_ids": {
+   "distinct_en": 18,
+   "distinct_zh": 18,
+   "en_total": 54,
+   "zh_total": 53,
+   "differing": [
+    {
+     "value": "VLAN 999",
+     "en": 14,
+     "zh": 13
+    }
+   ],
+   "differing_count": 1
+  },
+  "ipv4": {
+   "distinct_en": 223,
+   "distinct_zh": 223,
+   "en_total": 514,
+   "zh_total": 514,
+   "differing": [],
+   "differing_count": 0
+  },
+  "vpnz_hosts": {
+   "distinct_en": 22,
+   "distinct_zh": 22,
+   "en_total": 289,
+   "zh_total": 289,
+   "differing": [],
+   "differing_count": 0
+  },
+  "vp_devices": {
+   "distinct_en": 21,
+   "distinct_zh": 21,
+   "en_total": 177,
+   "zh_total": 177,
+   "differing": [],
+   "differing_count": 0
+  },
+  "gpo_names": {
+   "distinct_en": 11,
+   "distinct_zh": 11,
+   "en_total": 18,
+   "zh_total": 18,
+   "differing": [],
+   "differing_count": 0
+  },
+  "groups": {
+   "distinct_en": 17,
+   "distinct_zh": 17,
+   "en_total": 30,
+   "zh_total": 30,
+   "differing": [],
+   "differing_count": 0
+  },
+  "urls": {
+   "distinct_en": 12,
+   "distinct_zh": 12,
+   "en_total": 22,
+   "zh_total": 22,
+   "differing": [],
+   "differing_count": 0
+  },
+  "appendix_letters": {
+   "distinct_en": 12,
+   "distinct_zh": 12,
+   "en_total": 16,
+   "zh_total": 13,
+   "differing": [
+    {
+     "value": "Appendix A",
+     "en": 2,
+     "zh": 1
+    },
+    {
+     "value": "Appendix C",
+     "en": 2,
+     "zh": 1
+    },
+    {
+     "value": "Appendix F",
+     "en": 2,
+     "zh": 1
+    }
+   ],
+   "differing_count": 3
+  },
+  "section_numbers": {
+   "distinct_en": 9,
+   "distinct_zh": 9,
+   "en_total": 9,
+   "zh_total": 9,
+   "differing": [],
+   "differing_count": 0
+  }
+ },
+ "t5_total_problems": [
+  {
+   "name": "risk_ids",
+   "diffs": [
+    {
+     "value": "PR-01",
+     "en": 4,
+     "zh": 5
+    }
+   ]
+  },
+  {
+   "name": "vlan_ids",
+   "diffs": [
+    {
+     "value": "VLAN 999",
+     "en": 14,
+     "zh": 13
+    }
+   ]
+  },
+  {
+   "name": "appendix_letters",
+   "diffs": [
+    {
+     "value": "Appendix A",
+     "en": 2,
+     "zh": 1
+    },
+    {
+     "value": "Appendix C",
+     "en": 2,
+     "zh": 1
+    },
+    {
+     "value": "Appendix F",
+     "en": 2,
+     "zh": 1
+    }
+   ]
+  }
+ ],
+ "t5b_explicit_failures": 2,
+ "t5b_explicit": {
+  "TC-L1-01": {
+   "en": 6,
+   "zh": 6,
+   "match": true
+  },
+  "TC-SEC-07": {
+   "en": 2,
+   "zh": 2,
+   "match": true
+  },
+  "TC-FO-13": {
+   "en": 2,
+   "zh": 2,
+   "match": true
+  },
+  "TC-DOC-02": {
+   "en": 4,
+   "zh": 4,
+   "match": true
+  },
+  "TC-MON-03": {
+   "en": 2,
+   "zh": 2,
+   "match": true
+  },
+  "TC-PKI-01": {
+   "en": 2,
+   "zh": 2,
+   "match": true
+  },
+  "PR-01": {
+   "en": 4,
+   "zh": 5,
+   "match": false
+  },
+  "PR-24": {
+   "en": 1,
+   "zh": 1,
+   "match": true
+  },
+  "EV-0001": {
+   "en": 2,
+   "zh": 2,
+   "match": true
+  },
+  "EV-0020": {
+   "en": 1,
+   "zh": 1,
+   "match": true
+  },
+  "O-1": {
+   "en": 25,
+   "zh": 25,
+   "match": true
+  },
+  "O-14": {
+   "en": 3,
+   "zh": 3,
+   "match": true
+  },
+  "WP-01": {
+   "en": 5,
+   "zh": 5,
+   "match": true
+  },
+  "WP-20": {
+   "en": 1,
+   "zh": 1,
+   "match": true
+  },
+  "TB-01": {
+   "en": 7,
+   "zh": 7,
+   "match": true
+  },
+  "TB-16": {
+   "en": 5,
+   "zh": 5,
+   "match": true
+  },
+  "10.20.20.10": {
+   "en": 6,
+   "zh": 6,
+   "match": true
+  },
+  "10.10.30.254": {
+   "en": 6,
+   "zh": 6,
+   "match": true
+  },
+  "10.10.50.10": {
+   "en": 14,
+   "zh": 14,
+   "match": true
+  },
+  "10.10.90.0/24": {
+   "en": 3,
+   "zh": 3,
+   "match": true
+  },
+  "10.70.0.0/24": {
+   "en": 4,
+   "zh": 4,
+   "match": true
+  },
+  "vpnz-hvhost01": {
+   "en": 11,
+   "zh": 11,
+   "match": true
+  },
+  "vpnz-dc01": {
+   "en": 37,
+   "zh": 37,
+   "match": true
+  },
+  "vpnz-mon01": {
+   "en": 42,
+   "zh": 42,
+   "match": true
+  },
+  "VP-HQ-CORE-01": {
+   "en": 20,
+   "zh": 20,
+   "match": true
+  },
+  "VP-ISP-EDGE-01": {
+   "en": 4,
+   "zh": 4,
+   "match": true
+  },
+  "vertexpeak.fyp.lab": {
+   "en": 19,
+   "zh": 19,
+   "match": true
+  },
+  "AS 65000": {
+   "en": 5,
+   "zh": 5,
+   "match": true
+  },
+  "AS 65002": {
+   "en": 5,
+   "zh": 5,
+   "match": true
+  },
+  "vrid 51": {
+   "en": 4,
+   "zh": 4,
+   "match": true
+  },
+  "VLAN 999": {
+   "en": 14,
+   "zh": 13,
+   "match": false
+  },
+  "VLAN 131": {
+   "en": 1,
+   "zh": 1,
+   "match": true
+  },
+  "v00-baseline-v1.0": {
+   "en": 4,
+   "zh": 4,
+   "match": true
+  },
+  "WG-HQ-WC": {
+   "en": 3,
+   "zh": 3,
+   "match": true
+  },
+  "GG-AI-ReadOnly": {
+   "en": 5,
+   "zh": 5,
+   "match": true
+  },
+  "iqn.1991-05.com.microsoft:vpnz-san01-storage-lun01.target": {
+   "en": 2,
+   "zh": 2,
+   "match": true
+  },
+  "198.51.100.2": {
+   "en": 6,
+   "zh": 6,
+   "match": true
+  },
+  "203.0.113.5": {
+   "en": 4,
+   "zh": 4,
+   "match": true
+  }
+ },
+ "t6_code_spans": {
+  "en_total": 1273,
+  "zh_total": 1273,
+  "multiset_equal": true,
+  "missing": [],
+  "extra": [],
+  "count_diff": []
+ },
+ "t7_linecount": {
+  "en": 2623,
+  "zh": 2623,
+  "delta": 0
+ },
+ "t8_appendix_letters": [
+  {
+   "letter": "A",
+   "en": 2,
+   "zh": 1
+  },
+  {
+   "letter": "B",
+   "en": 1,
+   "zh": 1
+  },
+  {
+   "letter": "C",
+   "en": 2,
+   "zh": 1
+  },
+  {
+   "letter": "D",
+   "en": 1,
+   "zh": 1
+  },
+  {
+   "letter": "E",
+   "en": 1,
+   "zh": 1
+  },
+  {
+   "letter": "F",
+   "en": 2,
+   "zh": 1
+  },
+  {
+   "letter": "G",
+   "en": 2,
+   "zh": 2
+  },
+  {
+   "letter": "H",
+   "en": 1,
+   "zh": 1
+  },
+  {
+   "letter": "I",
+   "en": 1,
+   "zh": 1
+  },
+  {
+   "letter": "J",
+   "en": 1,
+   "zh": 1
+  },
+  {
+   "letter": "K",
+   "en": 1,
+   "zh": 1
+  },
+  {
+   "letter": "L",
+   "en": 1,
+   "zh": 1
+  }
+ ],
+ "t8_section_numbers": [
+  {
+   "n": 12,
+   "en": 1,
+   "zh": 1
+  },
+  {
+   "n": 13,
+   "en": 1,
+   "zh": 1
+  },
+  {
+   "n": 14,
+   "en": 1,
+   "zh": 1
+  },
+  {
+   "n": 15,
+   "en": 1,
+   "zh": 1
+  },
+  {
+   "n": 16,
+   "en": 1,
+   "zh": 1
+  },
+  {
+   "n": 17,
+   "en": 1,
+   "zh": 1
+  },
+  {
+   "n": 18,
+   "en": 1,
+   "zh": 1
+  },
+  {
+   "n": 19,
+   "en": 1,
+   "zh": 1
+  },
+  {
+   "n": 20,
+   "en": 1,
+   "zh": 1
+  }
+ ],
+ "t8_ok": true,
+ "t9_other": {
+  "blockquote_lines": {
+   "en": 4,
+   "zh": 4
+  },
+  "list_items": {
+   "en": 57,
+   "zh": 57
+  },
+  "checkbox_items": {
+   "en": 0,
+   "zh": 0
+  },
+  "images": {
+   "en": 0,
+   "zh": 0
+  },
+  "horizontal_rules": {
+   "en": 0,
+   "zh": 0
+  },
+  "escaped_pipes": {
+   "en": 0,
+   "zh": 0
+  },
+  "toc_tokens": {
+   "en": 0,
+   "zh": 0
+  },
+  "markers_assumption_marker": {
+   "en": 33,
+   "zh": 33
+  },
+  "markers_uncertain": {
+   "en": 6,
+   "zh": 6
+  }
+ },
+ "t10_prose_overlay": {
+  "non_code_lines_compared": 2179,
+  "translated_differ": 1697,
+  "structural_mismatches": 0,
+  "structural_mismatch_detail": []
+ },
+ "t11_untranslated_candidates_count": 4
+}

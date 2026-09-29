@@ -1,0 +1,1 @@
+Ansible's precedence order is long, and the project deliberately uses only five layers so that the origin of any value is obvious within seconds:

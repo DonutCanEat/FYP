@@ -1,0 +1,16 @@
+| # | Task | Module | Notes |
+|---|---|---|---|
+| 1 | Install `nginx` and `openssl` | `ansible.builtin.apt` | Nginx 1.24.0 from the Ubuntu 24.04 archive — the distro-packaged version, stated as a deliberate choice |
+| 2 | Deploy the global configuration | `ansible.builtin.copy` from `files/dmzrev01/nginx.conf` | Global tuning: worker count, `worker_connections`, log format including `$upstream_addr` (essential for reading which node answered) |
+| 3 | Deploy the upstream pool definitions | `template` → `/etc/nginx/conf.d/00-upstreams.conf` | Rendered from `fyp_nginx_upstreams`: `upstream weba_pool { server 10.10.90.21:443; server 10.10.90.22:443; }` and `upstream wp_pool { … }`, with `least_conn` and `max_fails`/`fail_timeout` |
+| 4 | Deploy the portal vhost | `template` → `/etc/nginx/conf.d/10-portal.conf` | TLS termination for `portal.vertexpeak.example`, `proxy_pass https://weba_pool` (re-encrypt to the upstreams — TLS end to end), HSTS, security headers, HTTP→HTTPS redirect |
+| 5 | Deploy the blog vhost | `template` → `/etc/nginx/conf.d/20-blog.conf` | `blog.vertexpeak.example` → `wp_pool` |
+| 6 | Deploy the health endpoint | `template` → `/etc/nginx/conf.d/90-healthz.conf` | `/healthz` returns 200 with `upstream_ok` body only if both upstream pools answer; this is what `track_script` actually tests |
+| 7 | Deploy `stub_status` | `template` | Bound to `127.0.0.1:8080` only — never published |
+| 8 | Install TLS material | `ansible.builtin.copy` with `mode: '0600'` for the key | From the internal PKI; the private key is delivered from the vault-encrypted source or from a `files/` path that is `.gitignore`d. **No private key is ever committed** |
+| 9 | Remove the default site | `ansible.builtin.file` with `state: absent` | The Ubuntu default vhost must not answer for a real name |
+| 10 | Remove `sites-enabled/default` and assert `conf.d` is canonical | `ansible.builtin.file` + `assert` | §8.7 fixes `conf.d` as canonical; the `sites-available` layout is not used |
+| 11 | Validate the configuration | `ansible.builtin.command: nginx -t` with `changed_when: false` | Fails the role before any reload. `changed_when: false` is what keeps the validation out of the change count |
+| 12 | Ensure the service is enabled and started | `ansible.builtin.systemd_service` | |
+| 13 | Periodic TLS certificate expiry check | `ansible.builtin.cron` | Calls `05-cert-renew.sh --warn-days 30`, which is also the subject of section 10.6 |
+| 14 | Verify the published path from the control node | `ansible.builtin.uri` with `validate_certs: false` and `status_code: 200` | **[DECLARED]** the lab uses an internal CA plus a deliberately mismatched public name, so a name-mismatch warning is expected and must be shown in the report rather than suppressed |

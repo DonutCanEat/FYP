@@ -1,0 +1,4 @@
+- **Groupings over wildcards.** No playbook targets `all` except the read-only audit playbook of section 10.4.6.4. Deployment playbooks target a named group with an explicit `hosts:` line.
+- **`serial` and `max_fail_percentage`.** Rolling deployment across a tier (`serial: 1` for the two-node pairs) so that a failure stops the rollout while a majority of the service is still healthy.
+- **`--limit` as the default discipline.** Every group member prefixes a first run with `--limit`.
+- **Tier separation of credentials.** The GitHub-style service account `svc_ansible` is a member of `GG-WINRM-Admins` **only**. It is not a Domain Admin. Administering `vpnz-dc01` and `vpnz-dc02` requires one of the four named `adm-{initials}` accounts, two of which are in `GG-Tier0-Admins`. A playbook aimed at the domain controllers therefore cannot be run by the automation account alone, which is itself a blast-radius control.

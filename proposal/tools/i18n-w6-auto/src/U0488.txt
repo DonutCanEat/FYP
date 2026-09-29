@@ -1,0 +1,4 @@
+- `changed=0` on both pair members is the requirement. It is proof that the playbook is idempotent for this configuration on this estate.
+- `failed=0` and `unreachable=0` prove the change did not break the connection to either node. For an inline firewall, `unreachable=1` would be the exact signature of the lock-out failure mode, which is why the far-side verification task exists.
+- The `skipping` lines on the rollback tasks are *correct*: the timer is already armed and the `creates:` guard prevents a re-arm. An idempotence proof that shows zero skips on every task is suspicious rather than reassuring.
+- **What it does not prove.** `changed=0` does not prove that the *desired* state is correct — a playbook that does nothing idempotently is perfectly idempotent. The correctness claim comes from the audit playbook's assertions and from the scenario tests in the verification chapter, which are separate evidence. Both are needed; neither substitutes for the other.

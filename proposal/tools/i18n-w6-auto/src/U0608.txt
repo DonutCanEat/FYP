@@ -1,0 +1,27 @@
+```powershell
+# --- Invoke-NewStarterOnboarding.ps1 -----------------------------------------
+# MANDATORY first invocation: preview against the reviewed CSV.
+$csv = 'C:\FYP\04-automation\powershell\data\newstarters.csv'
+$pw  = Read-Host -AsSecureString -Prompt 'Initial password'
+.\Invoke-NewStarterOnboarding.ps1 -CsvPath $csv -DefaultPassword $pw -WhatIf -Verbose
+
+# Then the real run, capturing the object stream and exporting it.
+$report = .\Invoke-NewStarterOnboarding.ps1 -CsvPath $csv -DefaultPassword $pw -Verbose
+$report | Export-Csv C:\FYP\config\onboarding-$(Get-Date -f yyyyMMdd).csv -NoTypeInformation
+$report | Format-Table SamAccountName, Created, GroupCount, HomeCreated, Status -AutoSize
+
+# And the idempotence run: the second pass must create nothing.
+$second = .\Invoke-NewStarterOnboarding.ps1 -CsvPath $csv -DefaultPassword $pw -Verbose
+$second | Format-Table SamAccountName, Created, HomeCreated, QuotaApplied, Status -AutoSize
+
+# --- Get-ServiceAndFirewallAudit.ps1 ----------------------------------------
+$cred = Get-Credential 'VERTEXPEAK\adm-w4'
+'vpnz-dc01','vpnz-dc02','vpnz-fs01' |
+    .\Get-ServiceAndFirewallAudit.ps1 -Credential $cred -OutputPath C:\FYP\config -Verbose |
+    Where-Object Result -eq 'FAIL'
+
+# --- Invoke-ScheduledBackupVerify.ps1 ---------------------------------------
+$bk = .\Invoke-ScheduledBackupVerify.ps1 -JobName BKP-FS01-DAILY -MinFreeSpaceGB 10 -Verbose
+$bk | Format-Table Phase, Result, DurationSeconds, Detail -AutoSize
+if ($bk.Result -contains 'FAIL') { 'BACKUP FAILURES PRESENT' }
+```

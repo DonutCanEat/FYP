@@ -1,0 +1,1 @@
+**Templates and files:** `w32tm-config.ps1.j2` (a template because the peer list is a variable), `auditpol-baseline.ps1.j2`, `winrm-enable.ps1.j2` (the block of 10.4.1.3), `powershell-logging.reg.j2`, `windows_exporter-0.29.x.msi` under `files/` (with its hash recorded in `docs/04-variable-dictionary.md`).

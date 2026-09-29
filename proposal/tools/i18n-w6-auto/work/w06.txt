@@ -1,0 +1,49 @@
+%%U0346%%
+**Idempotence note.** Ansible cannot natively diff an nftables ruleset, so the idempotence of this role rests on three deliberate choices. First, the ruleset is rendered from templates and compared as a **rendered file**, so a stable template produces a stable file and the module reports no change. Second, the `nft -c -f` validation uses `changed_when: false`. Third, and most importantly, the rollback timer scripts are guarded with `creates:`-style conditions on their systemd unit files so that arming and disarming are idempotent — an unguarded `command` here would report `changed=1` on every run *and* would re-arm a rollback timer on a healthy node, which is both a broken idempotence proof and a real operational hazard. The role's secondary idempotence property is that it must produce the **same ruleset on both pair members**, so the templates contain no host-specific literals; host-specific values are passed as variables that differ only in the addresses the design already distinguishes.
+%%U0348%%
+##### 10.4.5.5 `windows_baseline` — Windows security and service baseline role
+%%U0350%%
+**Purpose.** Bring every Windows Server 2025 guest to the same security baseline so that the differences between them are only the differences the design intends: WinRM over HTTPS enabled for the member servers, RDP restricted to the administrative groups, the advanced audit subcategory set of `GPO-Audit-Advanced` implemented locally on hosts outside a GPO's scope, the `windows_exporter` installed, time synchronised to the domain, SMB signing on, and the local administrators group populated from the design's identity groups rather than by hand.
+%%U0352%%
+**Tasks** (executed with `win_*` modules from the `ansible.windows` and `community.windows` collections):
+%%U0354%%
+| # | Task | Module | Notes |
+|---|---|---|---|
+| 1 | Assert the OS and build | `ansible.windows.win_shell: (Get-CimInstance Win32_OperatingSystem).Caption, BuildNumber` + `assert` | Expects Windows Server 2025 build `10.0.26100`; a Windows Server 2022 fallback (build 20348) is accepted only if `windows_baseline_allow_2022` is true, and the role then records the deviation |
+| 2 | Set the time zone and time source | `community.windows.win_timezone`, `ansible.windows.win_shell: w32tm /config` | `w32tm /config /manualpeerlist:vpnz-dc01.vertexpeak.fyp.lab /syncfromflags:manual /reliable:no /update`, then `w32tm /resync` |
+| 3 | Enable WinRM/HTTPS prerequisites | `ansible.windows.win_shell` running the block of 10.4.1.3 | Kept in the role so the configuration is repeatable rather than a one-off manual step |
+| 4 | Restrict RDP to the administrative groups | `ansible.windows.win_user_right` (`SeRemoteInteractiveLogonRight`) | `GG-Server-Admins` and, for the two platform VMs, `GG-VPN-ProfServices` per TB-11. Ordinary users must not hold this right |
+| 5 | Populate the local Administrators group | `ansible.windows.win_group_membership` | From `GG-Server-Admins` / `GG-Tier0-Admins`; **no individual account is added by name in the role**, which is what makes the group membership reviewable in AD rather than in Ansible |
+| 6 | Configure the advanced audit policy | `ansible.windows.win_shell: auditpol /set` per subcategory | 4624, 4625, 4740, 4720, 4728, 4732, 7045 — the same set the AI triage of section 11 reads |
+| 7 | Enable PowerShell script-block and transcription logging | `ansible.windows.win_shell: reg add` + directory creation | Target `\\vpnz-fs01\Logs` where reachable, local otherwise. This is the audit trail the due-diligence item requires |
+| 8 | Require SMB signing and disable LLMNR | `ansible.windows.win_regedit` | `RequireSecuritySignature=1`, `EnableMulticast=0` |
+| 9 | Install `windows_exporter` 0.29.x | `ansible.windows.win_package` (MSI) | Idempotent by product code; the firewall rule for 9182 is added scoped to `10.10.30.31` |
+| 10 | Configure the Windows firewall baseline | `community.windows.win_firewall_rule` | Explicit inbound rules for the port matrix rows that apply to the host's role, each scoped by remote address |
+| 11 | Remove the default SMB share exposure where not required | `ansible.windows.win_share` with `state: absent` | Administration shares are handled per role; `vpnz-fs01` is the exception and manages its FSRM shares |
+| 12 | Assert no plaintext credential file exists under `C:\FYP\config\` | `ansible.windows.win_shell: Get-ChildItem -Recurse` + `assert` | Exported service baselines must not contain secrets; this is a control, not a formality |
+| 13 | Export the effective firewall and service baseline | `ansible.windows.win_shell: netsh advfirewall export` → `C:\FYP\config\` | The artefact that makes the configuration reviewable outside PowerShell |
+%%U0356%%
+**Handlers:** `Restart WinRM` (`win_service`), `Restart windows_exporter`, `Reapply audit policy`. The WinRM restart is dangerous by construction — restarting the service that Ansible is connected *through* will drop the session — so the handler is written to schedule a restart with a delay and the playbook's final task waits for the port to answer again. This is documented because a reader will otherwise assume it is an oversight.
+%%U0358%%
+**Templates and files:** `w32tm-config.ps1.j2` (a template because the peer list is a variable), `auditpol-baseline.ps1.j2`, `winrm-enable.ps1.j2` (the block of 10.4.1.3), `powershell-logging.reg.j2`, `windows_exporter-0.29.x.msi` under `files/` (with its hash recorded in `docs/04-variable-dictionary.md`).
+%%U0360%%
+**Default variables:** `windows_baseline_allow_2022: false`, `windows_baseline_rdp_groups: [GG-Server-Admins]`, `windows_baseline_local_admin_groups: [GG-Server-Admins]`, `windows_baseline_exporter_port: 9182`, `windows_baseline_time_source: vpnz-dc01.vertexpeak.fyp.lab`, `windows_baseline_audit_subcategories: [Logon, Logoff, Account\ Lockout, User\ Account\ Management, Security\ Group\ Management, Process\ Creation, Other\ System\ Events]`.
+%%U0362%%
+**Idempotence note.** Idempotence here is harder than on Linux, for three reasons and three mitigations. First, `win_regedit` is idempotent by nature, but a `win_shell: reg add` is not, so the design prefers `win_regedit` everywhere a registry value is the goal and uses `win_shell` only where no module exists (task 6's `auditpol` and task 7's policy keys). Second, `auditpol /set` reports success on every invocation even when nothing changed, so task 6 is wrapped in a `win_shell` whose `changed_when` compares the post-state from `auditpol /get /category:*` against the desired set — the comparison, not the exit code, decides the change. Third, MSI installation reports a change only when it actually installs, which makes task 9 naturally idempotent. The role's `changed=0` evidence is therefore expected to be clean, and any non-zero change on a second run has a named cause in the runbook.
+%%U0364%%
+##### 10.4.5.6 `users` — identity and group convergence role
+%%U0366%%
+**Purpose.** Converge the operating-system-level accounts and group memberships that the design fixes, without turning Ansible into a second identity system. On Linux it creates the four administrator accounts and the local `gg-infra-admins` group; on Windows it creates or verifies the service accounts and their group memberships. It is deliberately **narrow**: it converges named accounts that the design specifies in writing, and it does not become a general user-lifecycle engine — the day-to-day user lifecycle in the Windows domain belongs to `Invoke-NewStarterOnboarding.ps1` (section 10.5.3), driven by a reviewed CSV, because AD objects need the directory-aware cmdlets and the review step that a CSV provides.
+%%U0368%%
+**Tasks:**
+%%U0370%%
+| # | Task | Module | Hosts | Notes |
+|---|---|---|---|---|
+| 1 | Create the Linux administrator accounts | `ansible.builtin.user` | `linux` | `adm-w1` … `adm-w4`, shell `/bin/bash`, `groups: gg-infra-admins`, no password (`password_lock: true` — key-only login) |
+| 2 | Assert no account has an empty password | `ansible.builtin.command: awk -F: '($2==""){print $1}' /etc/shadow` + `assert` | A fail-closed control |
+| 3 | Lock the template bootstrap account | `ansible.builtin.user` with `password_lock: true` and `shell: /usr/sbin/nologin` | `fypadmin` from `UBU2404-TEMPLATE-01` |
+| 4 | Create or verify the Windows service accounts | `microsoft.ad.user` / `ansible.windows.win_shell` with `Get-ADUser` | `windows` | `svc_ansible`, `svc_backup`, `svc_monitoring`, `svc_aiagent`, `svc_ldapbind`, `svc_git` — placed in `OU=ServiceAccounts,OU=VertexPeak,DC=vertexpeak,DC=fyp,DC=lab`, password from the vault, **"Password never expires" disabled**, "User cannot change password" enabled |
+| 5 | Converge service-account group membership | `microsoft.ad.group` / `win_shell` | `windows` | `svc_ansible` → `GG-WINRM-Admins` only; `svc_monitoring` → `GG-Monitoring-Readers`; `svc_aiagent` → `GG-AI-ReadOnly` only. The role **asserts** that `svc_aiagent` is a member of no other group, which is the identity-layer enforcement of section 11's read-only guarantee |
+| 6 | Converge the personal administrative accounts' group membership | `microsoft.ad.group` | `windows` | Two of four into `GG-Tier0-Admins`; all four into `GG-Server-Admins` |
+| 7 | Report accounts with non-expiring passwords | `win_shell: Search-ADAccount -PasswordNeverExpires` with `changed_when: false` | `windows` | Evidence for the audit playbook; the design's rule is that only the break-glass account may be non-expiring, and any other result is a finding |
+| 8 | Verify the break-glass account is untouched | `win_shell: Get-ADUser da-vertexpeak -Properties LastLogonDate` | `windows` | **Read-only.** A `LastLogonDate` newer than the project start is a finding requiring a written explanation, because §8.4 requires any use to be logged in the report |

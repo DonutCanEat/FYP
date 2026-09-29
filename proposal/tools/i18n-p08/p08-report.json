@@ -1,0 +1,194 @@
+{
+ "task": "zh-HK translation of proposal/sections/08-project-management.md",
+ "source": "D:\\File\\School\\FYP\\proposal\\sections\\08-project-management.md",
+ "output": "D:\\File\\School\\FYP\\proposal\\i18n\\zh-HK\\08-project-management.md",
+ "work_dir": "D:\\File\\School\\FYP\\proposal\\tools\\i18n-p08\\",
+ "artifacts": {
+  "shard": "tools/i18n-p08/shard.js -> tools/i18n-p08/out/batch-00..09.md (source prose shards)",
+  "translations": "tools/i18n-p08/zh/batch-00..09.md (zh-HK prose, one output line per source prose line)",
+  "assembler": "tools/i18n-p08/assemble.js (code segments copied verbatim from source; prose injected)",
+  "verifier": "tools/i18n-p08/verify.js -> tools/i18n-p08/verify.json + verify.txt (full prose overlay)"
+ },
+ "measured_source": {
+  "bytes": 429558,
+  "chars": 423016,
+  "lines": 2623,
+  "line_endings": "CRLF (2622 CRLF in 2623 lines, trailing newline present)",
+  "bom": false,
+  "headings": { "h1": 0, "h2": 9, "h3": 61, "h4": 32, "h5": 0, "h6": 0 },
+  "tables": 83,
+  "table_rows_total": 1448,
+  "table_separator_rows": 83,
+  "table_data_rows": 1365,
+  "fenced_code_blocks": 12,
+  "fence_tags": ["text", "text", "text", "text", "text", "text", "text", "text", "text", "text", "text", "text"],
+  "inline_code_spans": 1273,
+  "blockquote_lines": 4,
+  "list_items": 57,
+  "assumption_markers": 33,
+  "uncertain_markers": 6,
+  "prose_segments": 13,
+  "code_segments": 12
+ },
+ "output": {
+  "bytes": 389648,
+  "chars": 211859,
+  "lines": 2623,
+  "line_endings": "LF (consistent with the other zh-HK files in the same directory)",
+  "bom": false,
+  "utf8_roundtrip_ok": true
+ },
+ "verification": {
+  "1_headings": {
+   "en": { "h1": 0, "h2": 9, "h3": 61, "h4": 32, "h5": 0, "h6": 0 },
+   "zh": { "h1": 0, "h2": 9, "h3": 61, "h4": 32, "h5": 0, "h6": 0 },
+   "match": true,
+   "h2_numbering_sequence": ["12", "13", "14", "15", "16", "17", "18", "19", "20"],
+   "h2_numbering_match": true,
+   "h3_numbering_match": true,
+   "h3_count": 61,
+   "h4_numbering_match": true,
+   "h4_count": 32
+  },
+  "2_tables": {
+   "en_tables": 83,
+   "zh_tables": 83,
+   "en_rows": 1448,
+   "zh_rows": 1448,
+   "en_data_rows": 1365,
+   "zh_data_rows": 1365,
+   "en_sep_rows": 83,
+   "zh_sep_rows": 83,
+   "per_table_shape_sequence_identical": true,
+   "rows_with_differing_cell_count_in_output": 0,
+   "note": "tables are detected outside fenced code blocks, so the two pipe-containing template blocks in Appendices H and L are correctly excluded"
+  },
+  "3_fences": {
+   "en_blocks": 12,
+   "zh_blocks": 12,
+   "language_tags_identical": true,
+   "tags": ["text", "text", "text", "text", "text", "text", "text", "text", "text", "text", "text", "text"],
+   "opening_fences_identical": true,
+   "closing_fences_identical": true,
+   "per_block_line_counts_identical": true,
+   "ascii_gantt_and_trees_byte_identical": true
+  },
+  "4_code_fidelity": {
+   "blocks_compared": 12,
+   "blocks_byte_identical": 12,
+   "concatenated_block_chars_en": 27496,
+   "concatenated_block_chars_zh": 27496,
+   "concatenated_block_bytes_en": 30374,
+   "concatenated_block_bytes_zh": 30374,
+   "concatenated_blocks_byte_identical": true,
+   "per_block": [
+    { "block": 1, "chars": 1562, "bytes": 2380, "identical": true },
+    { "block": 2, "chars": 1222, "bytes": 1900, "identical": true },
+    { "block": 3, "chars": 2582, "bytes": 3796, "identical": true },
+    { "block": 4, "chars": 1522, "bytes": 1644, "identical": true },
+    { "block": 5, "chars": 228, "bytes": 228, "identical": true },
+    { "block": 6, "chars": 1066, "bytes": 1066, "identical": true },
+    { "block": 7, "chars": 1034, "bytes": 1036, "identical": true },
+    { "block": 8, "chars": 893, "bytes": 895, "identical": true },
+    { "block": 9, "chars": 14249, "bytes": 14277, "identical": true },
+    { "block": 10, "chars": 360, "bytes": 368, "identical": true },
+    { "block": 11, "chars": 2293, "bytes": 2299, "identical": true },
+    { "block": 12, "chars": 474, "bytes": 474, "identical": true }
+   ]
+  },
+  "5_identifier_occurrence_counts": {
+   "method": "every distinct value matched by each pattern, occurrence counts compared between the two files",
+   "patterns_identical": [
+    "test_ids (TC-*) 160 distinct / 405 occurrences",
+    "risk_ids (PR-nn) 24 distinct / 50 occurrences",
+    "evidence_ids (EV-nnnn) 23 distinct / 25 occurrences",
+    "objectives (O-n) 20 distinct / 40 occurrences",
+    "work_packages (WP-nn) 20 distinct / 63 occurrences",
+    "trust_boundaries (TB-nn) 16 distinct / 57 occurrences",
+    "findings (FN-nn) 1 distinct / 1 occurrence",
+    "versions (vN.N) 2 distinct / 15 occurrences",
+    "VRID values 2 distinct / 7 occurrences",
+    "AS numbers 3 distinct / 11 occurrences",
+    "VLAN identifiers 18 distinct / 54 occurrences",
+    "IPv4 addresses and CIDRs 223 distinct / 514 occurrences",
+    "hostnames vpnz-* 22 distinct / 289 occurrences",
+    "devices VP-* 21 distinct / 177 occurrences",
+    "GPO names 11 distinct / 18 occurrences",
+    "security groups GG-* 17 distinct / 30 occurrences",
+    "URLs 12 distinct / 22 occurrences",
+    "section numbers 12-20: 1 each"
+   ],
+   "appendix_letter_references": {
+    "Appendix G": { "en": 2, "zh": 2, "note": "one heading plus one quoted string, kept verbatim on both sides" },
+    "Appendix A": { "en": 2, "zh_verbatim": 1, "zh_prose_cross_reference": "附錄 A x2", "note": "the second English occurrence is a prose cross-reference and is translated" },
+    "Appendix C": { "en": 2, "zh_verbatim": 1, "zh_prose_cross_reference": "附錄 C x1" },
+    "Appendix F": { "en": 2, "zh_verbatim": 1, "zh_prose_cross_reference": "附錄 F x1" },
+    "all_headings_and_all_cross_references_present": true
+   },
+   "explicit_values_checked": 38,
+   "explicit_values_matching": 38,
+   "explicit_values": ["TC-L1-01 (6/6)", "TC-SEC-07 (2/2)", "TC-FO-13 (2/2)", "TC-DOC-02 (4/4)", "TC-MON-03 (2/2)", "TC-PKI-01 (2/2)", "PR-01 (4/4)", "PR-24 (1/1)", "EV-0001 (2/2)", "EV-0020 (1/1)", "O-1 (25/25)", "O-14 (3/3)", "WP-01 (5/5)", "WP-20 (1/1)", "TB-01 (7/7)", "TB-16 (5/5)", "10.20.20.10 (6/6)", "10.10.30.254 (6/6)", "10.10.50.10 (14/14)", "10.10.90.0/24 (3/3)", "10.70.0.0/24 (4/4)", "vpnz-hvhost01 (11/11)", "vpnz-dc01 (37/37)", "vpnz-mon01 (42/42)", "VP-HQ-CORE-01 (20/20)", "VP-ISP-EDGE-01 (4/4)", "vertexpeak.fyp.lab (19/19)", "AS 65000 (5/5)", "AS 65002 (5/5)", "vrid 51 (4/4)", "VLAN 999 (14/14)", "VLAN 131 (1/1)", "v00-baseline-v1.0 (4/4)", "WG-HQ-WC (3/3)", "GG-AI-ReadOnly (5/5)", "iqn.1991-05.com.microsoft:vpnz-san01-storage-lun01.target (2/2)", "198.51.100.2 (6/6)", "203.0.113.5 (4/4)"],
+   "worldskills_urls_byte_identical": {
+    "https://worldskills.org/what/projects/wsos/2026/events/611/skills/2447/": { "en": 2, "zh": 2 },
+    "https://worldskills.org/what/projects/wsos/2024/events/579/skills/1694/": { "en": 1, "zh": 1 }
+   }
+  },
+  "6_inline_code_spans": {
+   "en_total": 1273,
+   "zh_total": 1273,
+   "multiset_equal": true,
+   "missing": [],
+   "extra": [],
+   "count_differences": []
+  },
+  "7_line_counts": {
+   "en": 2623,
+   "zh": 2623,
+   "delta": 0,
+   "explanation": "no difference; one output line per source line by construction (13 prose segments, 22 translated parts, 12 verbatim code segments)"
+  },
+  "8_appendix_letters_and_section_numbers": {
+   "appendix_headings_present": ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"],
+   "section_heads": { "12": 1, "13": 1, "14": 1, "15": 1, "16": 1, "17": 1, "18": 1, "19": 1, "20": 1 },
+   "all_present_in_both": true
+  },
+  "9_other_counters": {
+   "blockquote_lines": { "en": 4, "zh": 4 },
+   "list_items": { "en": 57, "zh": 57 },
+   "checkbox_items": { "en": 0, "zh": 0 },
+   "images": { "en": 0, "zh": 0 },
+   "escaped_pipes": { "en": 0, "zh": 0 },
+   "toc_tokens": { "en": 0, "zh": 0 },
+   "assumption_markers": { "en_ASSUMPTION": 33, "zh_假設": 33 },
+   "uncertain_markers": { "en_UNCERTAIN": 6, "zh_未確定": 6 }
+  },
+  "10_prose_overlay": {
+   "non_code_lines_compared": 2179,
+   "translated_lines_differing": 1697,
+   "structural_lines_that_should_be_identical_and_are_identical": "blank lines and every table separator row match exactly",
+   "structural_mismatches": 0
+  },
+  "11_untranslated_prose_candidates": {
+   "count": 4,
+   "all_intentional": true,
+   "detail": [
+    "line 799 and 801: the two verbatim quoted lines of the occupational standard, reproduced in English inside quotation marks exactly as in the source",
+    "line 917: the verbatim quoted requirement of the project brief, reproduced in English inside quotation marks exactly as in the source",
+    "line 1515: the conclusion paragraph, whose English fragments are only the brief's quoted phrases and the term 'not implemented' reproduced from the source's own quotation"
+   ]
+  }
+ },
+ "translation_notes": {
+  "register": "Traditional Chinese (zh-HK), formal written register; English technical terms retained with a Chinese gloss on first use (RACI（負責／當責／諮詢／知會）, milestone（里程碑）, critical path（關鍵路徑）, acceptance criteria（驗收標準）, traceability matrix（追溯矩陣）, risk register（風險登記冊）, failover（故障轉移）)",
+  "markers": "[ASSUMPTION] -> [假設] and [UNCERTAIN] -> [未確定] everywhere (33 and 6 occurrences)",
+  "copied_verbatim": "all fenced code blocks, all identifiers (test, risk, evidence, objective, work-package, trust-boundary, finding, appendix letters), hostnames and device names, the domain, all IPs/CIDRs/VLAN IDs/ports/AS numbers/VRIDs/versions/build numbers, file and repository paths, command and tool names, the two WorldSkills URLs, the {YYYY-MM-DD} / EV-nnnn / TC-xxx template placeholders, the IQN strings, and the [RESOLVED by Rev 1.1 ruling C-09] marker",
+  "known_non_translations": [
+   "the two standard/brief quotations inside quotation marks are left in English, as in the source",
+   "appendix heading names keep the English word 'Appendix' with the letter, matching the requirement not to invent Chinese names for IDs"
+  ]
+ },
+ "limitations": [
+  "the prose was translated segment by segment with one output line per source line, which guarantees structural fidelity; the complete EN|ZH prose overlay (2179 non-code lines) is recorded in tools/i18n-p08/verify.txt for human review of wording quality",
+  "no bilingual glossary was imposed by the task, so terminology glossing follows the brief's examples rather than an external term base"
+ ]
+}

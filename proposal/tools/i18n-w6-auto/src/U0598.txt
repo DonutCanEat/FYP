@@ -1,0 +1,8 @@
+1. Does every function use a verb from `Get-Verb`?
+2. Does every script have comment-based help with an `.EXAMPLE` that can actually be run?
+3. Is there a `try`/`catch` around every external call (`wbadmin`, `netsh`, `dcdiag`, remote invocation)?
+4. Does any `catch` block swallow an error without logging it? (A silent `catch {}` is an automatic rejection.)
+5. Can any code path write a credential to a log, a console, a CSV or an exception message?
+6. Does the script emit objects rather than formatted text as its primary output?
+7. Is there any `Invoke-Expression`, string-concatenated command construction, or unvalidated path interpolation?
+8. Does the script behave correctly when its primary input is missing, empty, or malformed?

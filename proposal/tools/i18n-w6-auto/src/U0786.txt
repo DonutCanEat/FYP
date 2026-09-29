@@ -1,0 +1,1 @@
+All screenshots follow the baseline's naming convention `{date}_{host}_{what}.png` under `07-evidence/`, and all captions follow the template `Figure {n}: {what} — {host} — {command or action} — {date}`.

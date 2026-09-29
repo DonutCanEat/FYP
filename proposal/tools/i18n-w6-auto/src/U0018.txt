@@ -1,0 +1,3 @@
+- Ansible control node and Git server (bare repositories over SSH, or Gitea).
+- Prometheus, Grafana and Loki — the telemetry source that section 11 consumes.
+- NTP for the Linux estate, and the TFTP/SCP configuration archive target at `/srv/tftp/`.

@@ -1,0 +1,1496 @@
+[
+ {
+  "id": "P-001",
+  "file": "00-design-baseline.md",
+  "section": "§3.3 HQ physical/logical topology",
+  "find": "                            (transit 10.10.100.0/29)  eBGP AS 65001 <-> AS 65000",
+  "replace": "                            (primary transit 10.10.100.0/30)  eBGP AS 65001 <-> AS 65000\n                            (alternate peer  10.10.100.40/30)  eBGP AS 65001 <-> AS 65002",
+  "reason": "C-17: the drawing shows one eBGP session; §5.2, §5.5, §12.3 and the implementation all have two.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-002",
+  "file": "00-design-baseline.md",
+  "section": "§3.3 HQ physical/logical topology",
+  "find": "       [ VP-HQ-FW-01 ASA5506-X (PT) ]  --------- 10.10.50.0/29 transit ---------   [nftables HA pair",
+  "replace": "       [ VP-HQ-FW-01 ASA5506-X (PT) ]  --------- 10.10.50.0/28 transit ---------   [nftables HA pair",
+  "reason": "C-01: VLAN 50 mask widened from /29 to /28 so that .10/.11/.12 are inside the subnet.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-003",
+  "file": "00-design-baseline.md",
+  "section": "§3.3 HQ physical/logical topology",
+  "find": "              inside  .2",
+  "replace": "              inside  .2 (10.10.50.0/28)",
+  "reason": "C-01: the ASA inside mask must be visible in the drawing that labels it.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-004",
+  "file": "00-design-baseline.md",
+  "section": "§3.3 HQ physical/logical topology",
+  "find": "              (VLAN 90 DMZ 10.10.90.0/24)                             (VLAN 60 SERVER 10.10.60.0/24)",
+  "replace": "              (VLAN 90 DMZ-HQ 10.10.90.0/24)                          (VLAN 30 SRV-HQ-1 10.10.30.0/24)",
+  "reason": "C-05/C-18: the §4 VLAN table is normative; the server estate is VLAN 30 and VLAN 60 is reserved/undeployed.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-004b",
+  "file": "00-design-baseline.md",
+  "section": "§3.3 HQ physical/logical topology",
+  "find": " .21            .22            .25/.26                .11/.12            .21              .31",
+  "replace": "  .21            .22            .25/.26                .11/.12            .21              .31\n  (DMZ-HQ, VLAN 90)                                     (SRV-HQ-1, VLAN 30)",
+  "reason": "C-18: makes the per-column VLAN explicit so the drawing cannot be read as placing the server estate on VLAN 60 or on VLAN 90.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-005",
+  "file": "00-design-baseline.md",
+  "section": "§3.3 HQ physical/logical topology",
+  "find": " VP-HQ-WEB-01   VP-HQ-WEB-02   VP-HQ-WP-01/.02        VP-HQ-DC-01/.02   VP-HQ-FS-01      VP-HQ-MON-01",
+  "replace": " vpnz-dmzweba01 vpnz-dmzweba02 vpnz-dmzwp01/.02        vpnz-dc01/.02     vpnz-fs01        vpnz-mon01",
+  "reason": "C-18: virtual machines carry their canonical vpnz-* names; VP-HQ-* is reserved for Packet Tracer devices.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-006",
+  "file": "00-design-baseline.md",
+  "section": "§3.3 HQ physical/logical topology",
+  "find": " VP-HQ-JUMP-01 .27 (proxy jump for vendor access into DMZ only)",
+  "replace": " vpnz-dmzjump01 .27 (proxy jump for vendor access into the DMZ only)",
+  "reason": "C-18: canonical hostname for the DMZ jump host.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-007",
+  "file": "00-design-baseline.md",
+  "section": "§3.3 HQ physical/logical topology",
+  "find": "      ---------------------------- VLAN 10 HQ-CORE 10.10.10.0/24 ----------------------------",
+  "replace": "      -------------------------- VLAN 10 LAN-HQ-CORE 10.10.10.0/24 --------------------------",
+  "reason": "C-05: the label must be the §4 exact string LAN-HQ-CORE.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-008",
+  "file": "00-design-baseline.md",
+  "section": "§3.3 HQ physical/logical topology",
+  "find": "      VLAN 20  MGMT    10.20.20.0/24 : hypervisor host, switch mgmt, VP-HQ-JUMP-02",
+  "replace": "      VLAN 20  MGMT-OOB 10.20.20.0/24 : hypervisor host, switch management, vpnz-jump01",
+  "reason": "C-05: the §4 name is MGMT-OOB; the jump-box VM is vpnz-jump01.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-009",
+  "file": "00-design-baseline.md",
+  "section": "§3.3 HQ physical/logical topology",
+  "find": "      VLAN 70  STUDENT 10.70.0.0/24  : isolated lab, no route off-segment except the jump box",
+  "replace": "      VLAN 70  STUDENT-LAB 10.70.0.0/24 : isolated lab, no route off-segment except the lab console path",
+  "reason": "C-05: the §4 name is STUDENT-LAB; TB-09 permits only the lab console path on TCP 443.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-010",
+  "file": "00-design-baseline.md",
+  "section": "§3.3 HQ physical/logical topology",
+  "find": "      VLAN 80 STORAGE 10.10.80.0/24 : VP-HQ-SAN-01 .21 (iSCSI target)",
+  "replace": "      VLAN 80 STORAGE-HQ 10.10.80.0/24 : vpnz-san01 .21 (iSCSI target)",
+  "reason": "C-05/C-18: the §4 name is STORAGE-HQ and the host is the VM vpnz-san01.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-011",
+  "file": "00-design-baseline.md",
+  "section": "§3.4 Branch and small-office topology",
+  "find": "   |  OSPF area 0 area-range              |  BGP AS 65021 (small)          |  EIGRP AS 100",
+  "replace": "   |  OSPF area 0, single area, no      |  BGP AS 65021 (small)          |  EIGRP AS 100\n   |  area range, no ABR for Kwun       |                                |",
+  "reason": "C-13: area range is an ABR-only command and is inert in a single-area design; the phrase is struck and the single-area fact is stated.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-013",
+  "file": "00-design-baseline.md",
+  "section": "§3.4 Branch and small-office topology",
+  "find": " VP-BR-EDGE-01  AS 65011",
+  "replace": "  VP-BR-EDGE-01  AS 65001",
+  "reason": "C-17: AS 65001 is the fixed Vertex Peak domain AS; 65011 appears nowhere else and contradicts the section's own prose.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-014",
+  "file": "00-design-baseline.md",
+  "section": "§3.4 Route propagation",
+  "find": "Macau runs EIGRP AS 100 and its routes enter OSPF at `VP-HQ-CORE-01` through a single, explicitly numbered redistribution point,",
+  "replace": "Macau runs EIGRP AS 100 and its routes enter OSPF at `VP-HQ-EDGE-01` — the single, explicitly numbered redistribution point —",
+  "reason": "C-04: §16, §11.3, §12.3 and all three implementing sections place redistribution at VP-HQ-EDGE-01 only.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-015",
+  "file": "00-design-baseline.md",
+  "section": "§4 VLAN Plan, VLAN 20 row",
+  "find": "Access to `VP-HQ-DSW-A03`; no trunk to user access switches",
+  "replace": "Access to `VP-HQ-DSW-A03` (trunked to both cores per rule 4); VLAN 20 is not trunked to any user-facing access switch (A01/A02)",
+  "reason": "C-19: the old wording abolished the cores-to-access-switch trunk that rule 4 requires and that HSRP for VLAN 20 needs.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-016",
+  "file": "00-design-baseline.md",
+  "section": "§4.1 Gateway redundancy, HSRP bullet",
+  "find": "- **HSRP** is used for IPv4 gateway redundancy in the HQ access layer (it is what Packet Tracer supports reliably): `VP-HQ-CORE-01` active (priority 150, preempt), `VP-HQ-CORE-02` standby (priority 100), group 1, virtual MAC `0000.0c07.ac01`.",
+  "replace": "- **HSRP** is used for IPv4 gateway redundancy in the HQ access layer (it is what Packet Tracer supports reliably): `VP-HQ-CORE-01` active (priority 150, preempt), `VP-HQ-CORE-02` standby (priority 100), **one group per SVI** — group 1 on VLAN 30, group 2 on VLAN 40, group 3 on VLAN 70, group 4 on VLAN 80 — with virtual MACs `0000.0c07.ac01`, `0000.0c07.ac02`, `0000.0c07.ac03` and `0000.0c07.ac04` (HSRPv1 formula `0000.0c07.acXX`).",
+  "reason": "C-14: a single group cannot serve four SVIs; the four-group mapping is ratified.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-017",
+  "file": "00-design-baseline.md",
+  "section": "§5.2 Complete subnet table, VLAN 50 row",
+  "find": "| 10.10.50.0/29 | 50 | 10.10.50.1 | 10.10.50.1 | 10.10.50.6 | 10.10.50.7 | No | Egress transit (core ↔ nftables ↔ ASA) |",
+  "replace": "| 10.10.50.0/28 | 50 | 10.10.50.1 | 10.10.50.1 | 10.10.50.14 | 10.10.50.15 | No | Egress transit (core ↔ nftables ↔ ASA) |",
+  "reason": "C-01: the five addresses in use require a /28.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-018",
+  "file": "00-design-baseline.md",
+  "section": "§5.2 Complete subnet table, first LAN-ISP row",
+  "find": "| 10.10.100.0/30 | 100 | — | .1 / .2 | — | .3 | No | HQ edge ↔ ISP provider edge |",
+  "replace": "| 10.10.100.0/30 | 100 | — | .1 / .2 | — | .3 | No | HQ edge ↔ ISP provider edge (the name 10.10.100.0/29 is a container for this link plus 10.10.100.4/30) |",
+  "reason": "C-03: names the /29 as a two-link container so the /29 and /30 readings can coexist.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-019",
+  "file": "00-design-baseline.md",
+  "section": "§5.3 DHCP scope table, SCOPE-REMOTE-IKEV2 row",
+  "find": "| `SCOPE-REMOTE-IKEV2` | 172.16.0.0/24 | **Not allocated — do not create** | — | — | — | The RRAS IKEv2 pool uses its own range; see §5.4 |",
+  "replace": "| — | — | **There is no DHCP scope for the RRAS IKEv2 pool.** The pool is `10.10.201.0/24`, assigned statically by RRAS (§5.4) and never leased by DHCP | — | — | — | A remote-access pool is not a DHCP scope, and `172.16.0.0/16` is unallocated head-room (§5.1) |",
+  "reason": "C-21: the row used space §5.1 and the banned-string list forbid, and misdescribed the pool as a scope.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-020",
+  "file": "00-design-baseline.md",
+  "section": "§5.4 VPN and tunnel addressing, WG-HQ-WC row",
+  "find": "| `VP-WC-EDGE-01` outside `203.0.113.5` | A = `10.10.200.1/24` (floating with the VIP), B = `10.10.200.5/24` | Primary small-office tunnel; keys generated with `wg genkey`, private keys never committed to Git |",
+  "replace": "| `vpnz-wcwg01` inner address `10.10.200.5/24` (the Ubuntu guest that emulates the branch encrypting gateway; the site's public address `203.0.113.5` remains the IPsec peer) | A = `10.10.200.1/24` (floating with the VIP), B = `10.10.200.5/24` | Primary small-office tunnel; a Cisco device cannot terminate WireGuard (Rev 1.1 ruling OD-01); keys generated with `wg genkey`, private keys never committed to Git |",
+  "reason": "C-16/C-11: removes the claim that VP-WC-EDGE-01 terminates WireGuard.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-021",
+  "file": "00-design-baseline.md",
+  "section": "§5.5 Loopback and WAN link addressing, ASA row",
+  "find": "| `VP-HQ-FW-01` (ASA) | n/a (ASA has no loopback) | outside = 198.51.100.1/29; inside = 10.10.50.2/29; dmz = 10.10.90.1/24 | Edge router; DMZ switch |",
+  "replace": "| `VP-HQ-FW-01` (ASA) | n/a (ASA has no loopback) | outside = 198.51.100.1/29 (default next hop 198.51.100.6, the provider edge); inside = 10.10.50.2/28; dmz = 10.10.90.1/24 | Edge router; DMZ switch |",
+  "reason": "C-01 mask; C-15 fixes the ASA outside next hop.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-022",
+  "file": "00-design-baseline.md",
+  "section": "§5.5 Loopback and WAN link addressing, VP-ISP-EDGE-01 row",
+  "find": "| `VP-ISP-EDGE-01` | 10.255.0.61/32 | 192.0.2.1/30, 10.10.100.6/30, 10.10.100.42/30 | `VP-HQ-EDGE-01`, alternates |",
+  "replace": "| `VP-ISP-EDGE-01` | 10.255.0.61/32 | outside = 198.51.100.6/29; 192.0.2.1/30; 10.10.100.2/30; 10.10.100.42/30 | ASA outside (the default next hop); Internet core; HQ edge (both BGP sessions) |",
+  "reason": "C-15: gives the provider edge the on-segment address the ASA default route needs, and makes both BGP sessions explicit.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-023",
+  "file": "00-design-baseline.md",
+  "section": "§5.7 Static host address table, vpnz-san01 row",
+  "find": "| `vpnz-san01` | 10.10.80.21 | 80 | iSCSI target (`iqn.2026-01.lab.fyp.vertexpeak:storage-lun01/02/03`) |",
+  "replace": "| `vpnz-san01` | 10.10.80.21 | 80 | iSCSI target. Target IQNs are DERIVED by Microsoft's iSCSI Target Server and cannot be set: `iqn.1991-05.com.microsoft:vpnz-san01-storage-lun0N.target`. The canonical project string `iqn.2026-01.lab.fyp.vertexpeak:storage-lun0N` is the INITIATOR IQN on `vpnz-dmzweba01` |",
+  "reason": "C-06: the baseline string cannot be a target IQN; it is reassigned to the initiator endpoint.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-024",
+  "file": "00-design-baseline.md",
+  "section": "§5.7 Static host address table, vpnz-nft01 row",
+  "find": "| `vpnz-nft01` | 10.10.50.11 (VIP 10.10.50.10) | 50 | Ubuntu: nftables egress filter, NAT, first keepalived master |",
+  "replace": "| `vpnz-nft01` | 10.10.50.11 (VIP 10.10.50.10) on `VNET-EGRESS`; 10.10.200.2 on `VNET-WAN` | 50 | Ubuntu: nftables egress filter, NAT, first keepalived master |",
+  "reason": "C-07: the second NIC had no address anywhere in the design.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-025",
+  "file": "00-design-baseline.md",
+  "section": "§5.7 Static host address table, vpnz-nft02 row",
+  "find": "| `vpnz-nft02` | 10.10.50.12 (VIP 10.10.50.10) | 50 | Ubuntu: nftables pair backup |",
+  "replace": "| `vpnz-nft02` | 10.10.50.12 (VIP 10.10.50.10) on `VNET-EGRESS`; 10.10.200.3 on `VNET-WAN` | 50 | Ubuntu: nftables pair backup |",
+  "reason": "C-07: the second NIC had no address anywhere in the design.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-026",
+  "file": "00-design-baseline.md",
+  "section": "§5.7 Static host address table, vpnz-dmzrev01 row",
+  "find": "| `vpnz-dmzrev01` | 10.10.90.10 (VIP 10.10.90.10) | 90 | Ubuntu: Nginx reverse proxy, first keepalived master, TLS terminator |",
+  "replace": "| `vpnz-dmzrev01` | 10.10.90.28 (VIP 10.10.90.10) on `VNET-DMZ`; 10.10.10.28 on `VNET-CORE` (management reachability only) | 90 | Ubuntu: Nginx reverse proxy, first keepalived master, TLS terminator |",
+  "reason": "C-02: the node address collided with the VRRP VIP. C-07: the VNET-CORE NIC had no address.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-027",
+  "file": "00-design-baseline.md",
+  "section": "§5.7 Static host address table, vpnz-dmzrev02 row",
+  "find": "| `vpnz-dmzrev02` | 10.10.90.11 (VIP 10.10.90.10) | 90 | Ubuntu: Nginx reverse proxy, keepalived backup |",
+  "replace": "| `vpnz-dmzrev02` | 10.10.90.29 (VIP 10.10.90.10) on `VNET-DMZ`; 10.10.10.29 on `VNET-CORE` (management reachability only) | 90 | Ubuntu: Nginx reverse proxy, keepalived backup |",
+  "reason": "C-02: the pair now runs in ordinary non-owner VRRP mode. C-07: the VNET-CORE NIC had no address.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-028",
+  "file": "00-design-baseline.md",
+  "section": "§6.1 Device and VM Inventory, device row 1",
+  "find": "| 1 | `VP-HQ-CORE-01` | HQ core L3 switch, OSPF ABR/redistribution point, HSRP active, CUCM Express host device |",
+  "replace": "| 1 | `VP-HQ-CORE-01` | HQ core L3 switch, OSPF area-0 router (not an ABR), HSRP groups 1-4 active, CUCM Express host device |",
+  "reason": "C-04: the core is not a redistribution point. C-13: a single-area design has no ABR. C-14: four groups.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-029",
+  "file": "00-design-baseline.md",
+  "section": "§8.6 Repository layout at C:\\FYP",
+  "find": "│   ├── packet-tracer\\  (.pkt files: 01-l2l3-core, 02-wan-routing, 03-asa-perimeter, 04-voice, 05-full)",
+  "replace": "│   ├── packet-tracer\\  (01-l2l3-core.pkt, 02-wan-routing.pkt, 03-asa-perimeter.pkt, 04-voice.pkt, 05-full.pkt)",
+  "reason": "C-12: the repository tree listed the range without file extensions.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-030",
+  "file": "00-design-baseline.md",
+  "section": "§11.2 L2, WireGuard row",
+  "find": "**Resolution [DECIDED]:** the Wan Chai peer is represented by a *third Ubuntu VM* `vpnz-wcwg01`",
+  "replace": "**Resolution [DECIDED] — Rev 1.1 ruling OD-01 (Option A).** The Wan Chai peer is the *third Ubuntu VM* `vpnz-wcwg01`",
+  "reason": "C-16/C-11: converts a live option-pair into one decided branch.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-031",
+  "file": "00-design-baseline.md",
+  "section": "§11.2 L2, WireGuard row, closing sentence",
+  "find": "**The group must choose one and record it in the decision log; the design must not claim WireGuard on a Cisco device**",
+  "replace": "**`VP-WC-EDGE-01` terminates only the IPsec IKEv2 site-to-site tunnel; a Cisco device cannot terminate WireGuard, so the design does not claim it does.** Option B (remote-workers-only WireGuard with the branch on IPsec) remains available only by a formal revision, and the Rev 1.1 addendum records its impact",
+  "reason": "C-16/C-11: closes the choice while keeping the alternative documented.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-032",
+  "file": "00-design-baseline.md",
+  "section": "§11.3 L3, EIGRP row",
+  "find": "and mutual redistribution with OSPF at exactly one router (`VP-HQ-EDGE-01`)",
+  "replace": "and redistribution with OSPF at exactly one router (`VP-HQ-EDGE-01`), one direction per prefix set and never untagged in both directions",
+  "reason": "C-04: mutual contradicted the one-way-per-prefix-set rule and invited the exact loop the design forbids.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-033",
+  "file": "00-design-baseline.md",
+  "section": "§11.3 L3, OSPF row",
+  "find": "| OSPF | **COVERED** | Single area 0 at HQ + Kwun Tong;",
+  "replace": "| OSPF | **COVERED** | Single area 0 at HQ + Kwun Tong (no ABR, no `area range`, no inter-area summarisation);",
+  "reason": "C-13: makes the single-area decision explicit and forbids the inert command.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-034",
+  "file": "00-design-baseline.md",
+  "section": "§12.3 Cisco, Packet Tracer project files",
+  "find": "- Packet Tracer project files are saved incrementally: `01-l2l3-core.pkt`, `02-wan-routing.pkt`, `03-asa-perimeter.pkt`, `04-voice.pkt`, `05-full.pkt`.",
+  "replace": "- Packet Tracer project files are saved incrementally and there are **exactly five**: `01-l2l3-core.pkt`, `02-wan-routing.pkt`, `03-asa-perimeter.pkt`, `04-voice.pkt`, `05-full.pkt`.",
+  "reason": "C-12/C-22: one normative five-file list, stated once per section.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-035",
+  "file": "00-design-baseline.md",
+  "section": "§12.3 Cisco, routing bullet",
+  "find": "- Routing: OSPF area 0 (HQ ↔ Kwun Tong), EIGRP AS 100 (Macau and the legacy segment), redistribution only at `VP-HQ-EDGE-01` with tags.",
+  "replace": "- Routing: OSPF area 0 (HQ ↔ Kwun Tong) as a **single area** — no ABR, no `area range`, no inter-area summarisation — and EIGRP AS 100 (Macau and the legacy segment), redistribution only at `VP-HQ-EDGE-01` with tags, one direction per prefix set.",
+  "reason": "C-13 + C-04 at the decision-detail level.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-036",
+  "file": "00-design-baseline.md",
+  "section": "§12.3 Cisco, ASA bullet",
+  "find": "- ASA: security levels outside 0 / dmz 50 / inside 100; object groups",
+  "replace": "- ASA: security levels outside 0 / dmz 50 / inside 100; the outside default route is `route outside 0.0.0.0 0.0.0.0 198.51.100.6 1` (the provider edge on the ASA's own /29 — Rev 1.1 ruling C-15); object groups",
+  "reason": "C-15: the next hop is fixed at the decision-detail level.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-037",
+  "file": "00-design-baseline.md",
+  "section": "§14.1 Mandatory citations, S1 row",
+  "find": "and its 131 requirement lines were machine-extracted and re-verified verbatim against the raw HTML.",
+  "replace": "and the project's own research pack (`proposal\\research\\wsos-2026-2447.md`, Section 3.7 census and Appendix A audit row) machine-extracted its 131 requirement lines and re-verified them verbatim against the raw HTML with 0 mismatches. That pack also carries a corrections section (Section 7, items C1-C6) that supersedes the earlier review it examined — notably C1: Domain 5 lost Python, YANG, RESTCONF and NETCONF for the 2026 edition.",
+  "reason": "C-24: the census must be attributed to the pack's own census, and the pack's corrections must be carried.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-038",
+  "file": "00-design-baseline.md",
+  "section": "§16 KEY IP ADDRESSES, nginx HA VIP line",
+  "find": "nginx HA VIP                  10.10.90.10   (vpnz-dmzrev01 = 10.10.90.10 host addr 10.10.90.10/.11 pair per §5.7)",
+  "replace": "nginx HA VIP                  10.10.90.10   (VIP ONLY, owned by no node; vpnz-dmzrev01 = 10.10.90.28, vpnz-dmzrev02 = 10.10.90.29 per §5.7)",
+  "reason": "C-02: the VIP must not double as a node address.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-039",
+  "file": "00-design-baseline.md",
+  "section": "§16 KEY IP ADDRESSES, after the dmzjump line",
+  "find": "vpnz-dmzjump01                10.10.90.27",
+  "replace": "vpnz-dmzjump01                10.10.90.27\nvpnz-dmzrev01 / .02           10.10.90.28 / 10.10.90.29 (VNET-DMZ); 10.10.10.28 / 10.10.10.29 (VNET-CORE)\nvpnz-nft01 / .02 VNET-WAN     10.10.200.2 / 10.10.200.3",
+  "reason": "C-02 + C-07: the contract block must carry the newly allocated addresses.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-040",
+  "file": "00-design-baseline.md",
+  "section": "§16 KEY IP ADDRESSES, ASA line",
+  "find": "ASA VP-HQ-FW-01               outside 198.51.100.1 | inside 10.10.50.2 | dmz 10.10.90.1",
+  "replace": "ASA VP-HQ-FW-01               outside 198.51.100.1 (default next hop 198.51.100.6) | inside 10.10.50.2/28 | dmz 10.10.90.1",
+  "reason": "C-15 + C-01: the contract must state the next hop and the corrected mask.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-041",
+  "file": "00-design-baseline.md",
+  "section": "§16 KEY IP ADDRESSES, HQ edge WAN links",
+  "find": "HQ edge WAN links             gi0/0 10.10.100.1/30 <-> ISP 10.10.100.2/30",
+  "replace": "HQ edge WAN links             gi0/0 10.10.100.1/30 <-> ISP 10.10.100.2/30  (primary eBGP AS 65000)\n                              gi0/1 10.10.100.5/30 <-> ISP 10.10.100.6/30  (backup provider leg; the ASA outside segment)",
+  "reason": "C-03: the 10.10.100.4/30 link IS addressed. C-15 links it to the ASA.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-042",
+  "file": "00-design-baseline.md",
+  "section": "§16 KEY IP ADDRESSES, after the gi0/2 line",
+  "find": "                              gi0/2 10.10.100.33/30 <-> VP-BR-EDGE-01 10.10.100.34/30",
+  "replace": "                              gi0/2 10.10.100.33/30 <-> VP-BR-EDGE-01 10.10.100.34/30\n                              10.10.100.41/30 <-> ISP gi0/2 10.10.100.42/30  (alternate eBGP AS 65002)",
+  "reason": "C-17: the second eBGP session was missing from the contract.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-043",
+  "file": "00-design-baseline.md",
+  "section": "§16 VLANs, VLAN 50 line",
+  "find": "50   TRANSIT-EGRESS   10.10.50.0/29   gw 10.10.50.1 (nftables VIP 10.10.50.10)",
+  "replace": "50   TRANSIT-EGRESS   10.10.50.0/28   gw 10.10.50.1 (nftables VIP 10.10.50.10; usable .1-.14)",
+  "reason": "C-01: contract mask corrected.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-044",
+  "file": "00-design-baseline.md",
+  "section": "§16 VLANs, VLAN 100 line",
+  "find": "100  LAN-ISP          10.10.100.0/29  (transit block, + /30s at .4, .32, .36, .40)",
+  "replace": "100  LAN-ISP          per-link /30s: .0/30, .4/30, .32/30, .36/30, .40/30  (the name 10.10.100.0/29 covers only the first two)",
+  "reason": "C-03: the /29 label was read as containing all five links; it contains two.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-045",
+  "file": "00-design-baseline.md",
+  "section": "§16 ROUTING, redistribution line",
+  "find": "Redistribution                ONLY at VP-HQ-EDGE-01; route tags 100 (OSPF) and 200 (EIGRP); one direction per prefix set",
+  "replace": "Redistribution                ONLY at VP-HQ-EDGE-01; route tags 100 (OSPF) and 200 (EIGRP); one direction per prefix set. VP-HQ-CORE-01 is NOT a redistribution point and NOT an OSPF ABR (single area 0); no area range may appear in any config",
+  "reason": "C-04 + C-13: closes both attributions at the contract level.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-046",
+  "file": "00-design-baseline.md",
+  "section": "§16 ROUTING, first-hop redundancy line",
+  "find": "First-hop redundancy          HSRP (switch SVIs, group 1, active priority 150) | VRRP via Keepalived",
+  "replace": "First-hop redundancy          HSRP (switch SVIs, groups 1-4 one per SVI: g1 VLAN30 0000.0c07.ac01, g2 VLAN40 .ac02, g3 VLAN70 .ac03, g4 VLAN80 .ac04; active priority 150) | VRRP via Keepalived",
+  "reason": "C-14: the contract must carry the ratified four-group mapping.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-047",
+  "file": "00-design-baseline.md",
+  "section": "§16 ROUTING, VRRP line",
+  "find": "                              (vrid 51 = nftables pair 10.10.50.0/29, vrid 61 = nginx pair 10.10.90.0/24)",
+  "replace": "                              (vrid 51 = nftables pair 10.10.50.0/28, vrid 61 = nginx pair 10.10.90.0/24; both VIPs are owned by no node)",
+  "reason": "C-01 mask; C-02 VIP ownership.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-048",
+  "file": "00-design-baseline.md",
+  "section": "§16 NETWORK IDENTITY VALUES, nginx upstream names",
+  "find": "nginx upstream names          weba_pool (10.10.90.21:443, 10.10.90.22:443) | wp_pool (10.10.90.25:443, 10.10.90.26:443)",
+  "replace": "nginx upstream names          weba_pool (10.10.90.21:443, 10.10.90.22:443) | wp_pool (10.10.90.25:443, 10.10.90.26:443)\nnginx exporter listen port    9113/tcp",
+  "reason": "C-08: the exporter port becomes a baseline value instead of an assumption.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-049",
+  "file": "00-design-baseline.md",
+  "section": "§16 NETWORK IDENTITY VALUES, iSCSI IQN",
+  "find": "iSCSI IQN                     iqn.2026-01.lab.fyp.vertexpeak:storage-lun01 (and -lun02, -lun03)",
+  "replace": "iSCSI initiator IQN           iqn.2026-01.lab.fyp.vertexpeak:storage-lun0N  (N = 1, 2, 3; the INITIATOR endpoint on vpnz-dmzweba01)\niSCSI target IQN              DERIVED by Microsoft's iSCSI Target Server and not settable: iqn.1991-05.com.microsoft:vpnz-san01-storage-lun0N.target (confirm with Get-IscsiServerTarget)",
+  "reason": "C-06: the canonical string names the initiator; the target IQN is derived.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-050",
+  "file": "00-design-baseline.md",
+  "section": "§16 PATHS, packet tracer projects",
+  "find": "  packet tracer projects      C:\\FYP\\03-build\\packet-tracer\\   (01-l2l3-core.pkt ... 05-full.pkt)",
+  "replace": "  packet tracer projects      C:\\FYP\\03-build\\packet-tracer\\   (01-l2l3-core.pkt, 02-wan-routing.pkt, 03-asa-perimeter.pkt, 04-voice.pkt, 05-full.pkt; 05-full.pkt is the deliverable)",
+  "reason": "C-12/C-22: one normative file list, no range notation, extensions included.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-051",
+  "file": "00-design-baseline.md",
+  "section": "§19 Revision History and Change Control",
+  "find": "| 1.0 | Authored at project start (see the file's own timestamp on disk) | Baseline author (delegated worker), for the four-member group | Initial canonical baseline | All (§16 as issued) |",
+  "replace": "| 1.0 | Authored at project start (see the file's own timestamp on disk) | Baseline author (delegated worker), for the four-member group | Initial canonical baseline | All (§16 as issued) |\n| 1.1 | Consistency sweep after the eight section drafts | Design Authority (consistency-review worker) | Resolves 24 reported contradictions; see 00-design-baseline-rev1.1-addendum.md for the rulings and integration\\patch-list.md for the propagation edits. Supersedes §3.3 (drawing labels, eBGP sessions), §3.4 (redistribution point, AS typo, area range), §4 (VLAN 20 wording), §4.1 (HSRP groups), §5.2/§5.3/§5.4/§5.5/§5.7 (VLAN 50 mask, LAN-ISP reading, IKEv2 pool, ASA next hop, DMZ node addresses, second-NIC addresses), §8.6 and §12.3 (.pkt list), §11.2/§11.3 (WireGuard peer, redistribution wording), §14.1 (WSOS census attribution), §16 (all amended contract values) | §16 KEY IP ADDRESSES, §16 VLANs, §16 ROUTING, §16 NETWORK IDENTITY VALUES, §16 PATHS |",
+  "reason": "C-01..C-24: change control requires a revision row for every contract change.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-052",
+  "file": "00-design-baseline.md",
+  "section": "§19 Open items, O-04 row",
+  "find": "| O-04 | WireGuard site-to-site peer decision: `vpnz-wcwg01` Ubuntu peer, or remote-workers-only with IPsec on the ASA for the branch (§11.2) | end week 6 | W2 + W3 |",
+  "replace": "| O-04 | WireGuard site-to-site peer decision — **CLOSED by Rev 1.1 / OD-01: Option A, `vpnz-wcwg01`** (see the addendum). Reopening requires a change record | closed | W2 + W3 |",
+  "reason": "C-11/C-16: a decided open item must not read as still open.",
+  "status": "APPLIED by the Design Authority to 00-design-baseline.md on issue of Rev 1.1 (baseline was 2CCA3C15… at Rev 1.0). RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-053",
+  "file": "sections\\01-introduction.md",
+  "section": "§2.2 objective O-5",
+  "find": "| O-5 | **Build — Linux application delivery.** Deploy an Nginx reverse proxy pair that terminates TLS and re-encrypts to the application tier, publishes the customer-facing portal and blog names, and is made resilient by a Keepalived VRRP pair owning a floating virtual address;",
+  "replace": "| O-5 | **Build — Linux application delivery.** Deploy an Nginx reverse proxy pair that terminates TLS and re-encrypts to the application tier, publishes the customer-facing portal and blog names, and is made resilient by a Keepalived VRRP pair owning a floating virtual address that **no node also holds** (`vpnz-dmzrev01` = 10.10.90.28, `vpnz-dmzrev02` = 10.10.90.29, VIP = 10.10.90.10);",
+  "reason": "C-02: the objective must assert the reserved-VIP semantics it is tested against.",
+  "status": "APPLIED to sections\\01-introduction.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-054",
+  "file": "sections\\01-introduction.md",
+  "section": "§3.2 glossary, VIP row",
+  "find": "| VIP | Virtual IP address | The floating address owned by a first-hop redundancy pair: `10.10.50.10` (egress pair) and `10.10.90.10` (reverse-proxy pair). |",
+  "replace": "| VIP | Virtual IP address | The floating address owned by a first-hop redundancy pair and owned by no node: `10.10.50.10` (nftables egress pair, nodes `10.10.50.11`/`.12`) and `10.10.90.10` (nginx reverse-proxy pair, nodes `10.10.90.28`/`.29`). |",
+  "reason": "C-02: the glossary implied the VIP was a node address.",
+  "status": "APPLIED to sections\\01-introduction.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-055",
+  "file": "sections\\01-introduction.md",
+  "section": "§4.2 standards-alignment narrative",
+  "find": "and it contains 131 requirement lines across those six sections.",
+  "replace": "and the project's own research pack records 131 requirement lines across those six sections (census: `proposal\\research\\wsos-2026-2447.md` Section 3.7 and Appendix A).",
+  "reason": "C-24: attribute the count to the pack's own census rather than to the page.",
+  "status": "APPLIED to sections\\01-introduction.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-056",
+  "file": "sections\\01-introduction.md",
+  "section": "§4.2 mapping table, total row",
+  "find": "| | **Total** | **100** | **131** |",
+  "replace": "| | **Total** | **100** | **131** (census: `proposal\\research\\wsos-2026-2447.md` Section 3.7 and Appendix A) |",
+  "reason": "C-24: same attribution fix in the table.",
+  "status": "APPLIED to sections\\01-introduction.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-057",
+  "file": "sections\\01-introduction.md",
+  "section": "§4.3 standards-alignment restatement",
+  "find": "**131 requirement lines** across those six sections.",
+  "replace": "**131 requirement lines** across those six sections, per the project's research pack's own census (`proposal\\research\\wsos-2026-2447.md` Section 3.7 and Appendix A).",
+  "reason": "C-24: third occurrence of the same attribution fix.",
+  "status": "APPLIED to sections\\01-introduction.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-058",
+  "file": "sections\\02-architecture.md",
+  "section": "Chapter opening paragraph",
+  "find": "which machine-extracted 131 requirement lines from the published page and re-verified each one verbatim.",
+  "replace": "whose own census (Section 3.7) and audit row (Appendix A) record 131 requirement lines machine-extracted from the published page and re-verified verbatim with 0 mismatches. That pack also carries a corrections section (Section 7, items C1-C6) that supersedes the earlier review it examined — notably C1: Domain 5 lost Python, YANG, RESTCONF and NETCONF for the 2026 edition.",
+  "reason": "C-24: attribute to the pack's census and carry its corrections.",
+  "status": "APPLIED to sections\\02-architecture.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-059",
+  "file": "sections\\02-architecture.md",
+  "section": "§6.3 Keepalived selection paragraph",
+  "find": "Two independent instances exist — VRID 51 on the nftables pair (VIP 10.10.50.10 on 10.10.50.0/29) and VRID 61 on the Nginx pair (VIP 10.10.90.10 on 10.10.90.0/24) —",
+  "replace": "Two independent instances exist — VRID 51 on the nftables pair (VIP 10.10.50.10 on 10.10.50.0/28, nodes 10.10.50.11 and 10.10.50.12) and VRID 61 on the Nginx pair (VIP 10.10.90.10 on 10.10.90.0/24, nodes 10.10.90.28 and 10.10.90.29, so the VIP is owned by no node) —",
+  "reason": "C-01 mask; C-02 reserved VIP.",
+  "status": "APPLIED to sections\\02-architecture.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-060",
+  "file": "sections\\02-architecture.md",
+  "section": "Figure 6.2 virtual network map",
+  "find": "VNET-EGRESS 10.10.50.0/24",
+  "replace": "VNET-EGRESS 10.10.50.0/28",
+  "reason": "C-01: the host-only network carries the /28 and the diagram must match the table.",
+  "status": "APPLIED to sections\\02-architecture.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-061",
+  "file": "sections\\02-architecture.md",
+  "section": "§6.6.3 Complete subnet table, VLAN 50 row",
+  "find": "| 10.10.50.0/29 | 50 | 10.10.50.1 | .1 – .6 | No | Egress transit: core ↔ nftables ↔ ASA |",
+  "replace": "| 10.10.50.0/28 | 50 | 10.10.50.1 | .1 – .14 | No | Egress transit: core ↔ nftables ↔ ASA |",
+  "reason": "C-01: the five addresses in use require a /28.",
+  "status": "APPLIED to sections\\02-architecture.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-062",
+  "file": "sections\\02-architecture.md",
+  "section": "§6.6.3 discrepancy note",
+  "find": "Where the baseline's own VLAN summary prints the `LAN-ISP` block as `10.10.100.0/29`, the normative table above gives the individual `/30` link allocations that are actually configured; the discrepancy is recorded as a documentation correction rather than silently harmonised.",
+  "replace": "The baseline's `LAN-ISP` summary prints `10.10.100.0/29`; the normative table above gives the individual `/30` link allocations that are actually configured. The `/29` is not a subnet in use: it is the name of a container that holds exactly the first two of the five links (`10.10.100.0/30` and `10.10.100.4/30`). The remaining three links (`.32/30`, `.36/30`, `.40/30`) lie outside it. This is now fixed by Rev 1.1 ruling C-03 rather than recorded as an open discrepancy.",
+  "reason": "C-03: resolves the discrepancy the section flagged instead of leaving it open.",
+  "status": "APPLIED to sections\\02-architecture.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-063",
+  "file": "sections\\02-architecture.md",
+  "section": "§6.8.1 HSRP paragraph",
+  "find": "One group, group 1, spans the headquarters server, user, lab and storage segments, with `VP-HQ-CORE-01` active at priority 150 with preemption enabled and `VP-HQ-CORE-02` standby at priority 100.",
+  "replace": "Four groups run, one per switch virtual interface — group 1 on VLAN 30, group 2 on VLAN 40, group 3 on VLAN 70 and group 4 on VLAN 80 — with `VP-HQ-CORE-01` active at priority 150 with preemption enabled and `VP-HQ-CORE-02` standby at priority 100. A single group cannot serve four SVIs, because one virtual MAC cannot answer for four subnets.",
+  "reason": "C-14: the ratified four-group mapping.",
+  "status": "APPLIED to sections\\02-architecture.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-064",
+  "file": "sections\\02-architecture.md",
+  "section": "§6.8.1 HSRP paragraph, virtual MAC sentence",
+  "find": "The virtual MAC address is `0000.0c07.ac01`.",
+  "replace": "The virtual MAC addresses are `0000.0c07.ac01`, `0000.0c07.ac02`, `0000.0c07.ac03` and `0000.0c07.ac04`, from the HSRPv1 formula `0000.0c07.acXX` with XX the group number in hex.",
+  "reason": "C-14: completes the four-group statement.",
+  "status": "APPLIED to sections\\02-architecture.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-065",
+  "file": "sections\\02-architecture.md",
+  "section": "Figure 6.7 redundancy and failover",
+  "find": "a shared virtual gateway shape labelled `HSRP group 1 — virtual MAC 0000.0c07.ac01 — VIPs 10.10.30.254 / 10.10.40.254 / 10.70.0.254 / 10.10.80.254`",
+  "replace": "four virtual gateway shapes labelled `HSRP group 1 — 0000.0c07.ac01 — VIP 10.10.30.254 (VLAN 30)`, `HSRP group 2 — 0000.0c07.ac02 — VIP 10.10.40.254 (VLAN 40)`, `HSRP group 3 — 0000.0c07.ac03 — VIP 10.70.0.254 (VLAN 70)` and `HSRP group 4 — 0000.0c07.ac04 — VIP 10.10.80.254 (VLAN 80)`",
+  "reason": "C-14: the figure carried the same one-group-four-VIPs defect as §4.1.",
+  "status": "APPLIED to sections\\02-architecture.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-066",
+  "file": "sections\\02-architecture.md",
+  "section": "§6.9 monitoring target table, Nginx row",
+  "find": "| Nginx (proxy pair and content nodes) | Local status exporter reading `stub_status` | 9113/tcp [ASSUMPTION] |",
+  "replace": "| Nginx (proxy pair and content nodes) | Local status exporter reading `stub_status` | 9113/tcp (baseline value, confirmed by Rev 1.1 ruling C-08) |",
+  "reason": "C-08: the port is confirmed, so the assumption label is removed.",
+  "status": "APPLIED to sections\\02-architecture.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-067",
+  "file": "sections\\02-architecture.md",
+  "section": "§6.10.1 iSCSI target and initiator design",
+  "find": "Three targets are published as `iqn.2026-01.lab.fyp.vertexpeak:storage-lun01`, `-lun02` and `-lun03`, of 20 GB, 40 GB and 60 GB.",
+  "replace": "Three targets are published, of 20 GB, 40 GB and 60 GB. Their target IQNs are **derived by Microsoft's iSCSI Target Server from the server's own IQN plus the target name and cannot be set**, so they read `iqn.1991-05.com.microsoft:vpnz-san01-storage-lun01.target`, `…-lun02.target` and `…-lun03.target`, captured with `Get-IscsiServerTarget`. The canonical project string `iqn.2026-01.lab.fyp.vertexpeak:storage-lun0N` therefore names the **initiator** endpoint — the initiator on `vpnz-dmzweba01` — not the target (Rev 1.1 ruling C-06).",
+  "reason": "C-06: removes the impossible target-IQN claim from the design narrative.",
+  "status": "APPLIED to sections\\02-architecture.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-068",
+  "file": "sections\\03-microsoft.md",
+  "section": "§7.3 DNS record plan, additional-records row",
+  "find": "| Additional records | `portal`, `www`, `blog` → `10.10.90.10`; `vpn` and `wg` → `10.10.50.10`; `keepalived-hq` → both VRRP members | Baseline §5.8 |",
+  "replace": "| Additional records | `portal`, `www`, `blog` → `10.10.90.10` (the nginx VIP, owned by no node); `vpn` and `wg` → `10.10.50.10`; `keepalived-hq` → both VRRP member pairs (10.10.50.11/.12 and 10.10.90.28/.29) | Baseline §5.8 as amended by Rev 1.1 |",
+  "reason": "C-02: the DNS plan must not imply the VIP is a node address.",
+  "status": "APPLIED to sections\\03-microsoft.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-069",
+  "file": "sections\\03-microsoft.md",
+  "section": "§7.6.1 iSCSI definitions table",
+  "find": "| Target IQN | `iqn.2026-01.lab.fyp.vertexpeak:storage-lun01` (and `-lun02`, `-lun03`) | Baseline §16 |",
+  "replace": "| Target IQN | DERIVED and not settable: `iqn.1991-05.com.microsoft:vpnz-san01-storage-lun01.target` (and `…-lun02.target`, `…-lun03.target`), captured with `Get-IscsiServerTarget` | Rev 1.1 ruling C-06 |\n| Initiator IQN | `iqn.2026-01.lab.fyp.vertexpeak:storage-lun01` (and `-lun02`, `-lun03`) — the canonical string names the initiator, not the target | Rev 1.1 ruling C-06 |",
+  "reason": "C-06: the definitions table must show the corrected endpoint ownership.",
+  "status": "APPLIED to sections\\03-microsoft.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-070",
+  "file": "sections\\03-microsoft.md",
+  "section": "§7.6.2 target creation block",
+  "find": "New-IscsiServerTarget -TargetName 'storage-lun01' -Description 'Vertex Peak LUN01 — web-farm data (20 GB)'",
+  "replace": "# The target IQN is DERIVED from the server IQN plus the target name; it cannot be set.\n# Resulting on-the-wire value: iqn.1991-05.com.microsoft:vpnz-san01-storage-lun01.target\nNew-IscsiServerTarget -TargetName 'storage-lun01' -Description 'Vertex Peak LUN01 — web-farm data (20 GB)'",
+  "reason": "C-06: states the derived IQN at the point of creation.",
+  "status": "APPLIED to sections\\03-microsoft.md on 2026-09-16 by integration\\apply-patches.js. Its find string is still grep-able x1 only because this row's own replacement contains it; the document already reads as the substituted result. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-071",
+  "file": "sections\\03-microsoft.md",
+  "section": "§7.6.2 initiator allow-list",
+  "find": "    -InitiatorId @('IPAddress:10.10.90.21','IPAddress:10.10.90.22')",
+  "replace": "    -InitiatorId @('Iqn:iqn.2026-01.lab.fyp.vertexpeak:storage-lun01','IPAddress:10.10.90.21','IPAddress:10.10.90.22')",
+  "reason": "C-06: the canonical IQN must appear where the initiator is authorised.",
+  "status": "APPLIED to sections\\03-microsoft.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-072",
+  "file": "sections\\03-microsoft.md",
+  "section": "§7.6.2 CHAP evidence",
+  "find": "iqn.2026-01.lab.fyp.vertexpeak:dmzweba01                 0",
+  "replace": "iqn.2026-01.lab.fyp.vertexpeak:storage-lun01                 0",
+  "reason": "C-06: one string must mean one endpoint; the per-LUN initiator form supersedes the per-host form.",
+  "status": "APPLIED to sections\\03-microsoft.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-073",
+  "file": "sections\\03-microsoft.md",
+  "section": "§7.6.2 CHAP logon example",
+  "find": "    -ChapUsername 'iqn.2026-01.lab.fyp.vertexpeak:dmzweba01' ",
+  "replace": "    -ChapUsername 'iqn.2026-01.lab.fyp.vertexpeak:storage-lun01' ",
+  "reason": "C-06: the CHAP username must match the authorised initiator IQN.",
+  "status": "APPLIED to sections\\03-microsoft.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-074",
+  "file": "sections\\03-microsoft.md",
+  "section": "§7.6.2 session output",
+  "find": "InitiatorNodeAddress       : iqn.2026-01.lab.fyp.vertexpeak:dmzweba01",
+  "replace": "InitiatorNodeAddress       : iqn.2026-01.lab.fyp.vertexpeak:storage-lun01",
+  "reason": "C-06: the session output must show the canonical initiator IQN.",
+  "status": "APPLIED to sections\\03-microsoft.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-075",
+  "file": "sections\\03-microsoft.md",
+  "section": "§7.6.2 re-verification command",
+  "find": "Set-IscsiServerTarget -TargetName 'storage-lun01' -InitiatorId @('Iqn:iqn.2026-01.lab.fyp.vertexpeak:dmzweba01')",
+  "replace": "Set-IscsiServerTarget -TargetName 'storage-lun01' -InitiatorId @('Iqn:iqn.2026-01.lab.fyp.vertexpeak:storage-lun01','IPAddress:10.10.90.21','IPAddress:10.10.90.22')",
+  "reason": "C-06: the re-verification command must assert the corrected initiator IQN.",
+  "status": "APPLIED to sections\\03-microsoft.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-076",
+  "file": "sections\\03-microsoft.md",
+  "section": "§7.6.2 findings table, target-host row",
+  "find": "| iSCSI target host | `vpnz-san01`, 10.10.80.21, VLAN 80 `STORAGE-HQ` | Baseline §5.7 |",
+  "replace": "| iSCSI target host | `vpnz-san01`, 10.10.80.21, VLAN 80 `STORAGE-HQ` | Rev 1.1 ruling C-06: the target IQN is derived (`iqn.1991-05.com.microsoft:vpnz-san01-storage-lun0N.target`) and the canonical string `iqn.2026-01.lab.fyp.vertexpeak:storage-lun0N` names the INITIATOR on `vpnz-dmzweba01` |",
+  "reason": "C-06: anchors the corrected reading in the section that raised the question.",
+  "status": "APPLIED to sections\\03-microsoft.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-077",
+  "file": "sections\\03-microsoft.md",
+  "section": "Appendix C AD-site subnet list",
+  "find": "                      '10.10.50.0/29','10.10.60.0/24','10.70.0.0/24','10.10.80.0/24','10.10.90.0/24',",
+  "replace": "                      '10.10.50.0/28','10.10.60.0/24','10.70.0.0/24','10.10.80.0/24','10.10.90.0/24',",
+  "reason": "C-01: every subnet must map to exactly one AD site, so the mask must match §5.2.",
+  "status": "APPLIED to sections\\03-microsoft.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-078",
+  "file": "sections\\03-microsoft.md",
+  "section": "§7.5 RRAS static pool paragraph",
+  "find": "Baseline §5.4 fixes the range, and it deliberately does not overlap",
+  "replace": "Baseline §5.4 fixes the range as `10.10.201.0/24` (static, `10.10.201.10 – 10.10.201.200`), the single IKEv2 pool in the design, and there is no DHCP scope for it (Rev 1.1 ruling C-21); it deliberately does not overlap",
+  "reason": "C-21: names the one pool explicitly so the 172.16.0.0/24 reading cannot return.",
+  "status": "APPLIED to sections\\03-microsoft.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-079",
+  "file": "sections\\04-linux.md",
+  "section": "§8.2.4 Example 1 intro",
+  "find": "**Example 1 — `vpnz-nft01`, the dual-homed egress firewall.** Two interfaces: one facing `Z-EGRESS` (`VNET-EGRESS`, 10.10.50.0/29 transit)",
+  "replace": "**Example 1 — `vpnz-nft01`, the dual-homed egress firewall.** Two interfaces: one facing `Z-EGRESS` (`VNET-EGRESS`, 10.10.50.0/28 transit)",
+  "reason": "C-01: the mask in the description must match §5.2.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-080",
+  "file": "sections\\04-linux.md",
+  "section": "§8.2.4 Example 1 netplan comment",
+  "find": "    ens192:                                     # VNET-EGRESS -> Z-EGRESS (10.10.50.0/29 transit)",
+  "replace": "    ens192:                                     # VNET-EGRESS -> Z-EGRESS (10.10.50.0/28 transit)",
+  "reason": "C-01: netplan comment corrected.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-081",
+  "file": "sections\\04-linux.md",
+  "section": "§8.2.4 Example 1 netplan address",
+  "find": "        - 10.10.50.11/29                        # physical address of vpnz-nft01",
+  "replace": "        - 10.10.50.11/28                        # physical address of vpnz-nft01",
+  "reason": "C-01: the /29 prefix put the node's own address outside its subnet.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-082",
+  "file": "sections\\04-linux.md",
+  "section": "§8.2.4 Example 1 netplan, ens224 header",
+  "find": "    ens224:                                     # VNET-WAN -> tunnel / WAN-emulation segment",
+  "replace": "    ens224:                                     # VNET-WAN -> transport segment (10.10.200.0/24)",
+  "reason": "C-07: the interface now carries its own address, so the header must say transport, not tunnel.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-083",
+  "file": "sections\\04-linux.md",
+  "section": "§8.2.4 Example 1 netplan, ens224 note",
+  "find": "      # NOTE: no address is configured on this interface on purpose. 10.10.200.0/24 is the",
+  "replace": "      addresses:\n        - 10.10.200.2/24                        # Rev 1.1 ruling C-07: the node's own transport address\n      # NOTE: this physical address is NOT the tunnel address. 10.10.200.0/24 carries both the",
+  "reason": "C-07: the NIC must be addressed and the distinction from the tunnel address must be stated.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-084",
+  "file": "sections\\04-linux.md",
+  "section": "§8.2.4 Example 1 netplan assumption note",
+  "find": "      # [ASSUMPTION] The baseline fixes the tunnel addressing (10.10.200.1/24 floating with the",
+  "replace": "      # [RESOLVED by Rev 1.1 ruling C-07] The baseline fixes the tunnel addressing (10.10.200.1/24 floating with the",
+  "reason": "C-07: the assumption is closed by the ruling.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-085",
+  "file": "sections\\04-linux.md",
+  "section": "§8.2.4 Example 1 netplan closing note",
+  "find": "      # The build must pick one, record it in the decision log, and correct the baseline if needed.",
+  "replace": "      # The build must not re-open this: 10.10.200.2 is the value, and the tunnel address stays 10.10.200.1 on wg0.",
+  "reason": "C-07: removes the open instruction the ruling has answered.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-086",
+  "file": "sections\\04-linux.md",
+  "section": "§8.2.4 Example 2 netplan address",
+  "find": "        - 10.10.90.10/24                        # host address of vpnz-dmzrev01; 10.10.90.10 is also the",
+  "replace": "        - 10.10.90.28/24                        # host address of vpnz-dmzrev01. 10.10.90.10 is the keepalived",
+  "reason": "C-02: the node address no longer collides with the VIP.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-087",
+  "file": "sections\\04-linux.md",
+  "section": "§8.2.4 Example 2 netplan comment",
+  "find": "                                                # keepalived VIP (see §8.4), so the VIP is deliberately",
+  "replace": "                                                # VIP (see §8.4) and is owned by no node, so the VIP is",
+  "reason": "C-02: the owner-address rationale is withdrawn.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-088",
+  "file": "sections\\04-linux.md",
+  "section": "§8.2.4 Example 2 netplan comment",
+  "find": "                                                # owned by the master's own interface address",
+  "replace": "                                                # reserved and floating, never a node address",
+  "reason": "C-02: completes the replacement of the owner-address comment.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-089",
+  "file": "sections\\04-linux.md",
+  "section": "§8.2.4 Example 2 netplan, ens224 address",
+  "find": "        - 10.10.10.60/24                        # [ASSUMPTION] address inside VLAN 10 LAN-HQ-CORE; the",
+  "replace": "        - 10.10.10.28/24                        # Rev 1.1 ruling C-07: address inside VLAN 10 LAN-HQ-CORE; the",
+  "reason": "C-07: the VNET-CORE NIC address is allocated and the assumption is closed.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-090",
+  "file": "sections\\04-linux.md",
+  "section": "§8.2.4 Example 2 netplan, ens224 comment",
+  "find": "                                                # DMZ. Confirm and record the exact address in the build",
+  "replace": "                                                # DMZ. It is not a policy bypass: TB-04 is still enforced at the ASA and at the nftables pair,",
+  "reason": "C-07: replaces the confirm-the-address instruction with the constraint the report must state.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-091",
+  "file": "sections\\04-linux.md",
+  "section": "§8.2.4 Example 2 netplan, ens224 comment",
+  "find": "                                                # log; it is used only for management-plane reachability and",
+  "replace": "                                                # the default gateway is still 10.10.90.1, and it is used only for management reachability and",
+  "reason": "C-07: keeps the honest framing of the second NIC while removing the open instruction.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-092",
+  "file": "sections\\04-linux.md",
+  "section": "§8.2.4 Example 2 netplan, ens224 comment",
+  "find": "                                                # carries no published traffic.",
+  "replace": "                                                # carries no published traffic. State this sentence in the design narrative.",
+  "reason": "C-07: makes the mandatory disclosure explicit.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. Its find string is still grep-able x1 only because this row's own replacement contains it; the document already reads as the substituted result. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-093",
+  "file": "sections\\04-linux.md",
+  "section": "§8.2.5 /etc/hosts convention block",
+  "find": "10.10.90.10     vpnz-dmzrev01.vertexpeak.fyp.lab vpnz-dmzrev01",
+  "replace": "10.10.90.10     keepalived-hq-web               # the nginx VRRP VIP, owned by no node\n10.10.90.28     vpnz-dmzrev01.vertexpeak.fyp.lab vpnz-dmzrev01",
+  "reason": "C-02: the hosts file must not map the VIP to a node name.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-094",
+  "file": "sections\\04-linux.md",
+  "section": "§8.2.5 /etc/hosts convention block",
+  "find": "10.10.90.11     vpnz-dmzrev02.vertexpeak.fyp.lab vpnz-dmzrev02",
+  "replace": "10.10.90.29     vpnz-dmzrev02.vertexpeak.fyp.lab vpnz-dmzrev02",
+  "reason": "C-02: node address corrected.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-095",
+  "file": "sections\\04-linux.md",
+  "section": "§8.4 keepalived instance table, nftables row",
+  "find": "| the egress segment carrying `10.10.50.0/29`, interface `ens192` |",
+  "replace": "| the egress segment carrying `10.10.50.0/28`, interface `ens192` |",
+  "reason": "C-01: the table must carry the corrected mask.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js — as a SUBSUMED row. Its find string is a substring of P-106's longer find string (the whole nftables table row), and P-106's replacement already carries this row's exact intended result (/28 in that cell). Verified present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-096",
+  "file": "sections\\04-linux.md",
+  "section": "§8.4 keepalived configuration comment",
+  "find": "    interface              ens192                # the 10.10.50.0/29 segment; confirm with ip -br link",
+  "replace": "    interface              ens192                # the 10.10.50.0/28 segment; confirm with ip -br link",
+  "reason": "C-01: comment corrected.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-097",
+  "file": "sections\\04-linux.md",
+  "section": "§8.4 keepalived virtual_ipaddress",
+  "find": "        10.10.50.10/29 dev ens192",
+  "replace": "        10.10.50.10/28 dev ens192",
+  "reason": "C-01: keepalived VIP prefix corrected. THIS LITERAL OCCURS TWICE in the file; apply to BOTH occurrences (rows P-097 and P-098 are the same replacement emitted twice).",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x2. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-098",
+  "file": "sections\\04-linux.md",
+  "section": "§8.4 keepalived virtual_ipaddress (second occurrence)",
+  "find": "        10.10.50.10/29 dev ens192",
+  "replace": "        10.10.50.10/28 dev ens192",
+  "reason": "C-01: second occurrence of the literal in P-097. Apply so that no 10.10.50.10/29 survives.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x2. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-099",
+  "file": "sections\\04-linux.md",
+  "section": "§8.4.5 nginx keepalived paragraph",
+  "find": "use the same structure with `virtual_router_id 61`, `interface ens192` on the `10.10.90.0/24` segment, and `virtual_ipaddress { 10.10.90.10/24 dev ens192; }`.",
+  "replace": "use the same structure with `virtual_router_id 61`, `interface ens192` on the `10.10.90.0/24` segment, and `virtual_ipaddress { 10.10.90.10/24 dev ens192; }` — while the master's own address is `10.10.90.28` and the backup's is `10.10.90.29`, so the pair runs in ordinary non-owner VRRP mode (Rev 1.1 ruling C-02).",
+  "reason": "C-02: states the non-owner mode at the configuration.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-100",
+  "file": "sections\\04-linux.md",
+  "section": "§8.4.5 owner-address assumption note",
+  "find": "`[ASSUMPTION]` worth flagging here: the baseline records `vpnz-dmzrev01 = 10.10.90.10 (VIP 10.10.90.10)`",
+  "replace": "`[RESOLVED by Rev 1.1 ruling C-02]` The collision this note flags is fixed: `vpnz-dmzrev01 = 10.10.90.28`, `vpnz-dmzrev02 = 10.10.90.29`, and `10.10.90.10` is the keepalived VIP **only** and is owned by no node. The pair therefore runs in ordinary, non-owner VRRP mode and the failover evidence is unambiguous: before the test `ip -br a` on the master shows `10.10.90.28/24` plus the VIP `10.10.90.10/24`, the backup shows only `10.10.90.29/24`; after the handover the VIP appears on the former backup and disappears from the former master. The earlier owner-address caveat and the instruction to determine which address sits on which node are withdrawn, but the before-capture must still be taken, because that capture is the evidence the move happened. The original note began: the baseline records `vpnz-dmzrev01 = 10.10.90.10 (VIP 10.10.90.10)`",
+  "reason": "C-02: converts a flagged design defect into a resolved statement with the correct expected evidence.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-101",
+  "file": "sections\\04-linux.md",
+  "section": "§8.4.5 failover verification expected output",
+  "find": "# Expected: ens192 UP 10.10.90.10/24 10.10.90.11/24   <- the VIP has arrived",
+  "replace": "# Expected: ens192 UP 10.10.90.29/24 10.10.90.10/24   <- the backup's own address plus the VIP that has arrived",
+  "reason": "C-02: the expected output named the old node address.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-102",
+  "file": "sections\\04-linux.md",
+  "section": "§8.4.5 master capture before the test",
+  "find": "ens192           UP             10.10.90.10/24 10.10.90.11/24",
+  "replace": "ens192           UP             10.10.90.28/24 10.10.90.10/24",
+  "reason": "C-02: the master shows its own address plus the VIP.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-103",
+  "file": "sections\\04-linux.md",
+  "section": "§8.4.5 backup capture",
+  "find": "ens192           UP             10.10.90.11/24",
+  "replace": "ens192           UP             10.10.90.29/24",
+  "reason": "C-02: the backup holds no VIP before the test. THIS LITERAL OCCURS TWICE; apply to BOTH occurrences (rows P-103 and P-104).",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x2. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-104",
+  "file": "sections\\04-linux.md",
+  "section": "§8.4.5 backup capture (second occurrence)",
+  "find": "ens192           UP             10.10.90.11/24",
+  "replace": "ens192           UP             10.10.90.29/24",
+  "reason": "C-02: second occurrence of the literal in P-103. Apply so that no 10.10.90.11/24 survives.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x2. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-105",
+  "file": "sections\\04-linux.md",
+  "section": "§8.4.5 keepalived journal line",
+  "find": "Received advert from 10.10.90.12 with lower priority 100",
+  "replace": "Received advert from 10.10.90.29 with lower priority 100",
+  "reason": "C-02: the VRRP peering address is corrected.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-106",
+  "file": "sections\\04-linux.md",
+  "section": "§8.4.5 pair table, nftables row",
+  "find": "| nftables pair | `vpnz-nft01` (MASTER), `vpnz-nft02` (BACKUP) | the egress segment carrying `10.10.50.0/29`, interface `ens192` |",
+  "replace": "| nftables pair | `vpnz-nft01` (MASTER), `vpnz-nft02` (BACKUP) | the egress segment carrying `10.10.50.0/28`, interface `ens192` |",
+  "reason": "C-01: the pair table mask corrected.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-107",
+  "file": "sections\\04-linux.md",
+  "section": "§8.6 nftables position paragraph",
+  "find": "on the transit segment `10.10.50.0/29` (VLAN 50 `TRANSIT-EGRESS`, `Z-EGRESS`)",
+  "replace": "on the transit segment `10.10.50.0/28` (VLAN 50 `TRANSIT-EGRESS`, `Z-EGRESS`)",
+  "reason": "C-01: mask corrected in the inline-position justification.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-108",
+  "file": "sections\\04-linux.md",
+  "section": "§8.6 nftables set dmz_egress_ok",
+  "find": "    set dmz_egress_ok { type ipv4_addr; elements = { 10.10.90.10, 10.10.90.11, 10.10.90.21, 10.10.90.22 } }",
+  "replace": "    set dmz_egress_ok { type ipv4_addr; elements = { 10.10.90.28, 10.10.90.29, 10.10.90.21, 10.10.90.22 } }",
+  "reason": "C-02: the allow-list must name the nodes, not the VIP plus a stale node.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-109",
+  "file": "sections\\04-linux.md",
+  "section": "§8.6 OpenVPN reachability row",
+  "find": "| Reachability | published address `198.51.100.5`, DNAT'd by the nftables pair to `10.10.30.42:1194`;",
+  "replace": "| Reachability | published address `198.51.100.5`, translated twice: the ASA performs the first static PAT to the nftables VIP `10.10.50.10`, and the nftables pair DNATs on that VIP to `10.10.30.42:1194` (Rev 1.1 ruling C-20);",
+  "reason": "C-20: the pair owns the second translation only; the old wording implied it owned the public address.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-110",
+  "file": "sections\\04-linux.md",
+  "section": "§8.7.2 WireGuard tunnel table",
+  "find": "| **An open decision** — see below |",
+  "replace": "| **DECIDED by Rev 1.1 / OD-01: Option A — `vpnz-wcwg01` terminates the tunnel; `VP-WC-EDGE-01` terminates only IPsec.** See below |",
+  "reason": "C-11/C-16: the table cell must not read as open.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-111",
+  "file": "sections\\04-linux.md",
+  "section": "§8.7.2 Option B paragraph",
+  "find": "**Option B — WireGuard as the remote-worker tunnel only, with IPsec on the ASA for the branch.**",
+  "replace": "**Option B — WireGuard as the remote-worker tunnel only, with IPsec on the ASA for the branch.** *(Not taken: Rev 1.1 ruling OD-01 selects Option A. Retained so the alternative and its consequences are documented rather than silently dropped.)*",
+  "reason": "C-11: the alternative stays documented but is marked as not taken.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. Its find string is still grep-able x1 only because this row's own replacement contains it; the document already reads as the substituted result. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-112",
+  "file": "sections\\04-linux.md",
+  "section": "§8.7.2 VIP-versus-node note",
+  "find": "Pointing at a node address means the tunnel dies on every failover, which is precisely the coupling between this sub-section and §8.4 that a reader will otherwise miss.",
+  "replace": "Pointing at a node address means the tunnel dies on every failover, which is precisely the coupling between this sub-section and §8.4 that a reader will otherwise miss. The same rule applies to the nginx VIP: `vpnz-dmzrev01` is `10.10.90.28`, not the VIP `10.10.90.10` (Rev 1.1 ruling C-02), so any configuration that treats `10.10.90.10` as a node address is wrong.",
+  "reason": "C-02: cross-links the VIP-ownership rule to the existing tunnel-endpoint lesson.",
+  "status": "APPLIED to sections\\04-linux.md on 2026-09-16 by integration\\apply-patches.js. Its find string is still grep-able x1 only because this row's own replacement contains it; the document already reads as the substituted result. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-113",
+  "file": "sections\\05-cisco.md",
+  "section": "§9.1 device table, VP-HQ-CORE-01 row",
+  "find": "| 1 | `VP-HQ-CORE-01` | Cisco multilayer switch | HQ core L3, OSPF, HSRP active (group 1, priority 150), RSTP root for HQ VLANs, CUCM Express host |",
+  "replace": "| 1 | `VP-HQ-CORE-01` | Cisco multilayer switch | HQ core L3, OSPF area 0 (single area, no ABR), HSRP active in groups 1-4 (priority 150), RSTP root for HQ VLANs, CUCM Express host |",
+  "reason": "C-13 + C-14: matches the Rev 1.1 rulings at the first mention.",
+  "status": "APPLIED to sections\\05-cisco.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-114",
+  "file": "sections\\05-cisco.md",
+  "section": "§9.2 zone table, Z-SERVER row",
+  "find": "| `Z-SERVER` | VLAN 30 and VLAN 80 on `VP-HQ-DSW-A04` | HSRP groups 1 and 4 gateways;",
+  "replace": "| `Z-SERVER` | VLAN 30 and VLAN 80 on `VP-HQ-DSW-A04` | HSRP group 1 (VLAN 30, `0000.0c07.ac01`) and group 4 (VLAN 80, `0000.0c07.ac04`) gateways;",
+  "reason": "C-14: names the virtual MACs the ratified map fixes.",
+  "status": "APPLIED to sections\\05-cisco.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-115",
+  "file": "sections\\05-cisco.md",
+  "section": "§9.4.2 address-provenance note",
+  "find": "Addresses are verbatim from the canonical baseline. The WAN subnet `10.10.100.4/30` (HQ edge ↔ backup provider edge) is allocated in the baseline without an explicit interface address, so it is recorded as \"not addressed in this build\" rather than invented.",
+  "replace": "Addresses are verbatim from the canonical baseline. The WAN subnet `10.10.100.4/30` (HQ edge ↔ backup provider edge) IS addressed: `VP-HQ-EDGE-01` takes 10.10.100.5 and `VP-ISP-EDGE-01 gi0/1` takes 10.10.100.6, per the baseline's §5.2 row and Rev 1.1 ruling C-03. The earlier not-addressed note is withdrawn.",
+  "reason": "C-03: §5.2 already gives .5 / .6; the section's claim that the link is unaddressed is wrong.",
+  "status": "APPLIED to sections\\05-cisco.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-116",
+  "file": "sections\\05-cisco.md",
+  "section": "§9.4.2 WAN and perimeter links note",
+  "find": "backup provider leg (10.10.100.4/30, not addressed) to `VP-ISP-EDGE-01 gi0/1` 10.10.100.6/30",
+  "replace": "backup provider leg `10.10.100.4/30` (`VP-HQ-EDGE-01` 10.10.100.5 ↔ `VP-ISP-EDGE-01 gi0/1` 10.10.100.6)",
+  "reason": "C-03: the link IS addressed.",
+  "status": "APPLIED to sections\\05-cisco.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-117",
+  "file": "sections\\05-cisco.md",
+  "section": "§9.4.2 WAN and perimeter links note",
+  "find": "ASA inside 10.10.50.2/29 to a `VP-HQ-DSW-A04` access port on VLAN 50, next hop 10.10.50.10.",
+  "replace": "ASA inside 10.10.50.2/28 (VLAN 50 `TRANSIT-EGRESS` `10.10.50.0/28`, usable .1-.14) to a `VP-HQ-DSW-A04` access port on VLAN 50, next hop 10.10.50.10.",
+  "reason": "C-01: mask corrected at the cabling note.",
+  "status": "APPLIED to sections\\05-cisco.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-118",
+  "file": "sections\\05-cisco.md",
+  "section": "§9.4.2 connection table, CORE-01 Vlan50 row",
+  "find": "| | `Vlan45` / `Vlan50` / `Vlan60` | 10.10.45.1/24 / 10.10.50.1/29 / 10.10.60.1/24 |",
+  "replace": "| | `Vlan45` / `Vlan50` / `Vlan60` | 10.10.45.1/24 / 10.10.50.1/28 / 10.10.60.1/24 |",
+  "reason": "C-01: SVI mask corrected.",
+  "status": "APPLIED to sections\\05-cisco.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-119",
+  "file": "sections\\05-cisco.md",
+  "section": "§9.6 VLAN/HSRP table, VLAN 50 row",
+  "find": "| 50 `TRANSIT-EGRESS` | 10.10.50.1/29 |",
+  "replace": "| 50 `TRANSIT-EGRESS` | 10.10.50.1/28 |",
+  "reason": "C-01: table mask corrected.",
+  "status": "APPLIED to sections\\05-cisco.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-120",
+  "file": "sections\\05-cisco.md",
+  "section": "§9.7 HSRP contradiction note",
+  "find": "> **Baseline contradiction to resolve in the revision log.** §4.1 gives one HSRP group (group 1, virtual MAC `0000.0c07.ac01`) while the same section's VIP summary lists four separate VIPs; one group cannot serve four SVIs. This chapter implements **four groups (1–4)**",
+  "replace": "> **Baseline contradiction RESOLVED by Rev 1.1 ruling C-14.** §4.1's single group 1 could not serve the four SVIs its own VIP summary listed. The four-group mapping implemented here is **RATIFIED and is now a baseline value**: group 1 to VLAN 30, group 2 to VLAN 40, group 3 to VLAN 70, group 4 to VLAN 80. This chapter implements **four groups (1–4)**",
+  "reason": "C-14: closes the flagged contradiction.",
+  "status": "APPLIED to sections\\05-cisco.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-121",
+  "file": "sections\\05-cisco.md",
+  "section": "§9.7 HSRP settings table, Group numbers row",
+  "find": "| Group numbers | 1→VLAN 30, 2→40, 3→70, 4→80 | One group per VLAN; a single group cannot serve four SVIs. Group 1 retains the baseline's fixed virtual MAC `0000.0c07.ac01` |",
+  "replace": "| Group numbers | 1→VLAN 30, 2→40, 3→70, 4→80 | One group per VLAN; a single group cannot serve four SVIs. Group 1 retains the fixed virtual MAC `0000.0c07.ac01`. **RATIFIED by Rev 1.1 ruling C-14 — a baseline value, not an assumption** |",
+  "reason": "C-14: removes the residual assumption framing.",
+  "status": "APPLIED to sections\\05-cisco.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-122",
+  "file": "sections\\05-cisco.md",
+  "section": "§9.7 settings table, Virtual MAC row",
+  "find": "| Virtual MAC | `0000.0c07.ac01` for group 1 (**[VERIFIED]** from the baseline) |",
+  "replace": "| Virtual MAC | `0000.0c07.ac01` group 1, `.ac02` group 2, `.ac03` group 3, `.ac04` group 4 (**[VERIFIED]** — Rev 1.1 ruling C-14) |",
+  "reason": "C-14: the whole derived set is ratified, not just group 1.",
+  "status": "APPLIED to sections\\05-cisco.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-123",
+  "file": "sections\\05-cisco.md",
+  "section": "§9.10 area design",
+  "find": "One area (area 0). `VP-HQ-EDGE-01`, `VP-HQ-CORE-01` and `VP-HQ-CORE-02` sit in area 0; the Kwun Tong WAN1 link (10.10.100.32/30) is in area 0, making `VP-BR-EDGE-01` a backbone router rather than an area border router.",
+  "replace": "One area (area 0). `VP-HQ-EDGE-01`, `VP-HQ-CORE-01` and `VP-HQ-CORE-02` sit in area 0; the Kwun Tong WAN1 link (10.10.100.32/30) is in area 0, making `VP-BR-EDGE-01` a backbone router rather than an area border router. **No router in this design is an ABR, `area range` appears in no configuration, and the baseline's OSPF area 0 area-range annotation is struck by Rev 1.1 ruling C-13.**",
+  "reason": "C-13: records the ruling where the single-area claim is made.",
+  "status": "APPLIED to sections\\05-cisco.md on 2026-09-16 by integration\\apply-patches.js. Its find string is still grep-able x1 only because this row's own replacement contains it; the document already reads as the substituted result. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-124",
+  "file": "sections\\05-cisco.md",
+  "section": "§9.10 area-0 network list",
+  "find": "`10.10.45.0/24`, `10.10.50.0/29`, `10.10.60.0/24`, `10.10.80.0/24`",
+  "replace": "`10.10.45.0/24`, `10.10.50.0/28`, `10.10.60.0/24`, `10.10.80.0/24`",
+  "reason": "C-01: area-0 network list mask corrected.",
+  "status": "APPLIED to sections\\05-cisco.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-125",
+  "file": "sections\\05-cisco.md",
+  "section": "§9.10 OSPF configuration",
+  "find": " network 10.10.50.0 0.0.0.7",
+  "replace": " network 10.10.50.0 0.0.0.15",
+  "reason": "C-01: the wildcard must match the /28 or the transit subnet is not advertised correctly.",
+  "status": "APPLIED to sections\\05-cisco.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-126",
+  "file": "sections\\05-cisco.md",
+  "section": "§9.10 EIGRP topology output",
+  "find": "P 10.10.50.0/29, 1 successors, FD is 2297856",
+  "replace": "P 10.10.50.0/28, 1 successors, FD is 2297856",
+  "reason": "C-01: the topology output must show the corrected prefix.",
+  "status": "APPLIED to sections\\05-cisco.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-127",
+  "file": "sections\\05-cisco.md",
+  "section": "§9.10 Macau routing table",
+  "find": "D     10.10.50.0/29 [90/2297856] via 10.10.100.37, 00:21:35, GigabitEthernet0/1",
+  "replace": "D     10.10.50.0/28 [90/2297856] via 10.10.100.37, 00:21:35, GigabitEthernet0/1",
+  "reason": "C-01: routing table corrected.",
+  "status": "APPLIED to sections\\05-cisco.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-128",
+  "file": "sections\\05-cisco.md",
+  "section": "§9.11 redistribution prefix list",
+  "find": "ip prefix-list PL-HQ-SUBNETS seq 25 permit 10.10.50.0/29",
+  "replace": "ip prefix-list PL-HQ-SUBNETS seq 25 permit 10.10.50.0/28",
+  "reason": "C-01: an un-updated prefix list would silently drop the transit subnet from redistribution.",
+  "status": "APPLIED to sections\\05-cisco.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-129",
+  "file": "sections\\05-cisco.md",
+  "section": "§9.12.2 ASA base configuration, inside interface",
+  "find": " ip address 10.10.50.2 255.255.255.248",
+  "replace": " ip address 10.10.50.2 255.255.255.240",
+  "reason": "C-01: the ASA inside mask must match the /28.",
+  "status": "APPLIED to sections\\05-cisco.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-130",
+  "file": "sections\\05-cisco.md",
+  "section": "§9.12.2 ASA base configuration, outside route",
+  "find": "route outside 0.0.0.0 0.0.0.0 198.51.100.6 1",
+  "replace": "route outside 0.0.0.0 0.0.0.0 198.51.100.6 1   ! the provider edge on the ASA's own /29; Rev 1.1 ruling C-15",
+  "reason": "C-15: records the ratified next hop at the configuration.",
+  "status": "APPLIED to sections\\05-cisco.md on 2026-09-16 by integration\\apply-patches.js. Its find string is still grep-able x1 only because this row's own replacement contains it; the document already reads as the substituted result. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-131",
+  "file": "sections\\05-cisco.md",
+  "section": "§9.12.3 NAT comment, VPN front door",
+  "find": "!  VPN front door: public 198.51.100.5 -> the nftables VIP 10.10.50.10, port",
+  "replace": "!  VPN front door, hop 1 of 2 (owner: the ASA): public 198.51.100.5 -> the nftables VIP 10.10.50.10, port\n!  Hop 2 (owner: the nftables pair on that VIP) DNATs to vpnz-rras01 (udp 500/4500) and vpnz-lnxra01 (udp 1194);\n!  WireGuard terminates on the pair itself. Rev 1.1 ruling C-20.",
+  "reason": "C-20: states one ownership rule instead of leaving two readings open.",
+  "status": "APPLIED to sections\\05-cisco.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-132",
+  "file": "sections\\05-cisco.md",
+  "section": "§9.16 HSRP duplicate-active failure mode",
+  "find": "| Confirm the VLAN is trunked between both cores and to the access switches; confirm group numbers and authentication strings match;",
+  "replace": "| Confirm the VLAN is trunked between both cores and to the access switches; confirm the four group numbers (1/2/3/4 on VLAN 30/40/70/80) and the authentication strings match;",
+  "reason": "C-14: the diagnostic must name the ratified group map.",
+  "status": "APPLIED to sections\\05-cisco.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-133",
+  "file": "sections\\05-cisco.md",
+  "section": "§9.17 findings table, F-L3-02",
+  "find": "| **F-L3-02** | TC-L3-09 | §9.7.2 | **baseline defect** |",
+  "replace": "| **F-L3-02** | TC-L3-09 | §9.7.2 | **baseline defect — CLOSED by Rev 1.1 ruling C-14** |",
+  "reason": "C-14: a closed finding must not appear as an open defect at submission.",
+  "status": "APPLIED to sections\\05-cisco.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-134",
+  "file": "sections\\06-automation.md",
+  "section": "§6 keepalived role purpose",
+  "find": "**VRID 51** for the nftables pair on 10.10.50.0/29 with VIP **10.10.50.10**, and **VRID 61** for the nginx pair on 10.10.90.0/24 with VIP **10.10.90.10**.",
+  "replace": "**VRID 51** for the nftables pair on 10.10.50.0/28 with VIP **10.10.50.10** (nodes 10.10.50.11 and 10.10.50.12), and **VRID 61** for the nginx pair on 10.10.90.0/24 with VIP **10.10.90.10** (nodes 10.10.90.28 and 10.10.90.29, so the VIP is owned by no node).",
+  "reason": "C-01 mask; C-02 reserved VIP.",
+  "status": "APPLIED to sections\\06-automation.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-135",
+  "file": "sections\\06-automation.md",
+  "section": "§6 inventory group vars",
+  "find": "      vpnz-dmzrev01: 10.10.90.10",
+  "replace": "      vpnz-dmzrev01: 10.10.90.28",
+  "reason": "C-02: the inventory must not point a hostname at the VIP.",
+  "status": "APPLIED to sections\\06-automation.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-136",
+  "file": "sections\\06-automation.md",
+  "section": "§6 inventory group vars",
+  "find": "      vpnz-dmzrev02: 10.10.90.11",
+  "replace": "      vpnz-dmzrev02: 10.10.90.29",
+  "reason": "C-02: node address corrected.",
+  "status": "APPLIED to sections\\06-automation.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-137",
+  "file": "sections\\06-automation.md",
+  "section": "§6 nginx role variables",
+  "find": "keepalived_vrid: 61\nkeepalived_vip: 10.10.90.10",
+  "replace": "keepalived_vrid: 61\nkeepalived_vip: 10.10.90.10   # the VIP only; vpnz-dmzrev01 is 10.10.90.28 and vpnz-dmzrev02 is 10.10.90.29 (Rev 1.1 ruling C-02)",
+  "reason": "C-02: the variable is correct but must not be read as a node address.",
+  "status": "APPLIED to sections\\06-automation.md on 2026-09-16 by integration\\apply-patches.js. Its find string is still grep-able x1 only because this row's own replacement contains it; the document already reads as the substituted result. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-138",
+  "file": "sections\\08-project-management.md",
+  "section": "§13.3.3 TC-L3-09 expected result",
+  "find": "| Core 01 Active with priority 150 and preempt; Core 02 Standby with priority 100; virtual MAC `0000.0c07.ac01`; the VIP is the default gateway for VLAN 30, 40, 70 and 80 as designed |",
+  "replace": "| Core 01 Active with priority 150 and preempt; Core 02 Standby with priority 100; virtual MACs `0000.0c07.ac01` (group 1, VLAN 30), `0000.0c07.ac02` (group 2, VLAN 40), `0000.0c07.ac03` (group 3, VLAN 70) and `0000.0c07.ac04` (group 4, VLAN 80); each VIP is the default gateway of its own VLAN, one group per SVI |",
+  "reason": "C-14: one group cannot serve four SVIs; the test must assert the ratified map.",
+  "status": "APPLIED to sections\\08-project-management.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-139",
+  "file": "sections\\08-project-management.md",
+  "section": "§13.8 RSTP test record, evidence IDs",
+  "find": "evidence IDs EV-0214 and EV-0215;",
+  "replace": "evidence IDs EV-0042 and EV-0043;",
+  "reason": "C-10: EV-0214/EV-0215 are outside the defined range and had no index row; re-cited into the project-wide block.",
+  "status": "APPLIED to sections\\08-project-management.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-140",
+  "file": "sections\\08-project-management.md",
+  "section": "§13.9 traceability matrix, assumption note",
+  "find": "**[ASSUMPTION]** The objective wording in this table is derived from the project's design baseline and its seven success criteria",
+  "replace": "**[RESOLVED by Rev 1.1 ruling C-09]** The canonical objective set is O-1 to O-14 as defined in sections\\01-introduction.md §2.2, and the provisional keys used below have been re-keyed to it. The design-element, test-case and evidence columns are unchanged, which was the condition this note set. Two objectives have no row here because no single design element maps to them: O-1 is the frozen design baseline itself (evidence EV-0001 and EV-0019) and O-12 is the executed test plan as a whole (TC-TS-01 plus every TC-{LINE}-NN). Their traceability is owned by the acceptance criteria of §13.10 and the evidence index of §14.9, and that ownership is stated rather than left as a missing column. The original note read: the objective wording in this table is derived from the project's design baseline and its seven success criteria",
+  "reason": "C-09: closes the assumption and records exactly how the re-key was performed.",
+  "status": "APPLIED to sections\\08-project-management.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-141",
+  "file": "sections\\08-project-management.md",
+  "section": "§13.9 traceability matrix, row O1",
+  "find": "| **O1** | Build a simulated enterprise topology with working Layer 2 and Layer 3, dynamic routing and a defended perimeter |",
+  "replace": "| **O-7** | Build a simulated enterprise topology with working Layer 2 and Layer 3, dynamic routing and a defended perimeter |",
+  "reason": "C-09: re-key to the canonical objective O-7.",
+  "status": "APPLIED to sections\\08-project-management.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-142",
+  "file": "sections\\08-project-management.md",
+  "section": "§13.9 traceability matrix, row O2",
+  "find": "| **O2** | Establish a single identity authority with least privilege and auditable administration |",
+  "replace": "| **O-2** | Establish a single identity authority with least privilege and auditable administration |",
+  "reason": "C-09: re-key to O-2.",
+  "status": "APPLIED to sections\\08-project-management.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-143",
+  "file": "sections\\08-project-management.md",
+  "section": "§13.9 traceability matrix, row O3",
+  "find": "| **O3** | Deliver Windows network services: name resolution, addressing, file services with quota and screening, block storage, certificate-based remote access |",
+  "replace": "| **O-3** | Deliver Windows network services: name resolution, addressing, file services with quota and screening, block storage, certificate-based remote access |",
+  "reason": "C-09: re-key to O-3 (the row also carries O-4's block storage and certificate-based remote access; do not split it).",
+  "status": "APPLIED to sections\\08-project-management.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-144",
+  "file": "sections\\08-project-management.md",
+  "section": "§13.9 traceability matrix, row O4",
+  "find": "| **O4** | Deliver Linux services: reverse proxy with TLS, first-hop redundancy, host and network firewalling, two independent VPN technologies, a content tier |",
+  "replace": "| **O-5** | Deliver Linux services: reverse proxy with TLS, first-hop redundancy, host and network firewalling, two independent VPN technologies, a content tier |",
+  "reason": "C-09: re-key to O-5 (the row also carries O-6's tunneling; do not split it).",
+  "status": "APPLIED to sections\\08-project-management.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-145",
+  "file": "sections\\08-project-management.md",
+  "section": "§13.9 traceability matrix, row O5",
+  "find": "| **O5** | Apply network change through reviewed, repeatable, idempotent configuration rather than by hand |",
+  "replace": "| **O-9** | Apply network change through reviewed, repeatable, idempotent configuration rather than by hand |",
+  "reason": "C-09: re-key to O-9.",
+  "status": "APPLIED to sections\\08-project-management.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-146",
+  "file": "sections\\08-project-management.md",
+  "section": "§13.9 traceability matrix, row O6",
+  "find": "| **O6** | Implement an encrypted, certificate-based remote-access path for staff and a site-to-site tunnel for a small office |",
+  "replace": "| **O-6** | Implement an encrypted, certificate-based remote-access path for staff and a site-to-site tunnel for a small office |",
+  "reason": "C-09: re-key to O-6.",
+  "status": "APPLIED to sections\\08-project-management.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-147",
+  "file": "sections\\08-project-management.md",
+  "section": "§13.9 traceability matrix, row O7",
+  "find": "| **O7** | Segment the enterprise into zones with an enforced, evidenced trust-boundary policy |",
+  "replace": "| **O-1**, **O-7**, **O-12** | Segment the enterprise into zones with an enforced, evidenced trust-boundary policy |",
+  "reason": "C-09: the only row spanning three canonical objectives; list all three in the cell.",
+  "status": "APPLIED to sections\\08-project-management.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-148",
+  "file": "sections\\08-project-management.md",
+  "section": "§13.9 traceability matrix, row O8",
+  "find": "| **O8** | Provide monitoring, logging and traffic-analysis evidence across the estate |",
+  "replace": "| **O-10** | Provide monitoring, logging and traffic-analysis evidence across the estate |",
+  "reason": "C-09: re-key to O-10.",
+  "status": "APPLIED to sections\\08-project-management.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-149",
+  "file": "sections\\08-project-management.md",
+  "section": "§13.9 traceability matrix, row O9",
+  "find": "| **O9** | Demonstrate a read-only agentic AI proof of concept that shortens alert triage without any write path |",
+  "replace": "| **O-11** | Demonstrate a read-only agentic AI proof of concept that shortens alert triage without any write path |",
+  "reason": "C-09: re-key to O-11.",
+  "status": "APPLIED to sections\\08-project-management.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-150",
+  "file": "sections\\08-project-management.md",
+  "section": "§13.9 traceability matrix, row O10",
+  "find": "| **O10** | Apply project management, risk and change control that demonstrably governed the build |",
+  "replace": "| **O-14** | Apply project management, risk and change control that demonstrably governed the build |",
+  "reason": "C-09: re-key to O-14.",
+  "status": "APPLIED to sections\\08-project-management.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-151",
+  "file": "sections\\08-project-management.md",
+  "section": "§13.9 traceability matrix, row O11",
+  "find": "| **O11** | Produce the complete documentation and evidence set the brief requires, with agreement and sign-off recorded |",
+  "replace": "| **O-13** | Produce the complete documentation and evidence set the brief requires, with agreement and sign-off recorded |",
+  "reason": "C-09: re-key to O-13.",
+  "status": "APPLIED to sections\\08-project-management.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-152",
+  "file": "sections\\08-project-management.md",
+  "section": "§14.9 evidence index, EV-0001 row",
+  "find": "| `00-baseline\\v00-baseline-v1.0.pdf` | O10 | Member A |",
+  "replace": "| `00-baseline\\v00-baseline-v1.0.pdf` | O-14 | Member A |",
+  "reason": "C-09: O10 is a legacy key; objectives are O-1..O-14 and open items are O-01..O-10.",
+  "status": "APPLIED to sections\\08-project-management.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-153",
+  "file": "sections\\08-project-management.md",
+  "section": "§14.9 evidence index, EV-0002 row",
+  "find": "| O1 | Member D |",
+  "replace": "| O-2 | Member D |",
+  "reason": "C-09: environment/substrate evidence supports the identity-and-core build objective O-2.",
+  "status": "APPLIED to sections\\08-project-management.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-154",
+  "file": "sections\\08-project-management.md",
+  "section": "§14.9 evidence index, EV-0005 row",
+  "find": "| TC-L1-01, O2 | Member A |",
+  "replace": "| TC-L1-01, O-2 | Member A |",
+  "reason": "C-09: O2 re-keyed to O-2.",
+  "status": "APPLIED to sections\\08-project-management.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-155",
+  "file": "sections\\08-project-management.md",
+  "section": "§14.9 evidence index, EV-0014 row",
+  "find": "| 13.9 (objective O8) |",
+  "replace": "| 13.9 (objective O-10) |",
+  "reason": "C-09: monitoring evidence supports O-10.",
+  "status": "APPLIED to sections\\08-project-management.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-156",
+  "file": "sections\\08-project-management.md",
+  "section": "§16 Appendix A, egress transit row",
+  "find": "| 10.10.50.0/29 | 50 | 10.10.50.1 | 10.10.50.1 | 10.10.50.6 | 10.10.50.7 | No | Egress transit: core, filtering pair, firewall inside |",
+  "replace": "| 10.10.50.0/28 | 50 | 10.10.50.1 | 10.10.50.1 | 10.10.50.14 | 10.10.50.15 | No | Egress transit: core, filtering pair, firewall inside |",
+  "reason": "C-01: mask widened so .10/.11/.12 are inside the subnet.",
+  "status": "APPLIED to sections\\08-project-management.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-157",
+  "file": "sections\\08-project-management.md",
+  "section": "§16 Appendix A, VPN tunnel table",
+  "find": "| Small-office edge, 203.0.113.5 | A = 10.10.200.1/24; B = 10.10.200.5/24 |",
+  "replace": "| The Ubuntu guest `vpnz-wcwg01` at 10.10.200.5, emulating the small-office encrypting gateway; the site's public address 203.0.113.5 remains the IPsec peer | A = 10.10.200.1/24; B = 10.10.200.5/24 |",
+  "reason": "C-16/C-11: removes the implication that the branch router terminates WireGuard.",
+  "status": "APPLIED to sections\\08-project-management.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-158",
+  "file": "sections\\08-project-management.md",
+  "section": "§16 Appendix A, static host table",
+  "find": "| `vpnz-dmzrev01` | 10.10.90.10 (VIP 10.10.90.10) | 90 | Reverse proxy, transport-security termination, redundancy master |",
+  "replace": "| `vpnz-dmzrev01` | 10.10.90.28 (VIP 10.10.90.10) | 90 | Reverse proxy, transport-security termination, redundancy master |",
+  "reason": "C-02: node address corrected; the VIP is owned by no node.",
+  "status": "APPLIED to sections\\08-project-management.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-159",
+  "file": "sections\\08-project-management.md",
+  "section": "§16 Appendix A, static host table",
+  "find": "| `vpnz-dmzrev02` | 10.10.90.11 (VIP 10.10.90.10) | 90 | Reverse proxy, redundancy backup |",
+  "replace": "| `vpnz-dmzrev02` | 10.10.90.29 (VIP 10.10.90.10) | 90 | Reverse proxy, redundancy backup |",
+  "reason": "C-02: node address corrected.",
+  "status": "APPLIED to sections\\08-project-management.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-160",
+  "file": "sections\\08-project-management.md",
+  "section": "§16 Appendix A, DNS record narrative",
+  "find": "`keepalived-hq` → 10.10.50.11 and 10.10.50.12; service-locator records",
+  "replace": "`keepalived-hq` → 10.10.50.11 and 10.10.50.12; `keepalived-hq-web` → 10.10.90.10 (the nginx VIP, owned by no node, with `vpnz-dmzrev01` = 10.10.90.28 and `vpnz-dmzrev02` = 10.10.90.29); service-locator records",
+  "reason": "C-02: the DNS plan must not map the web VIP to a node name.",
+  "status": "APPLIED to sections\\08-project-management.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-161",
+  "file": "sections\\08-project-management.md",
+  "section": "§16 Appendix A, VLAN summary",
+  "find": "50   TRANSIT-EGRESS   10.10.50.0/29   gw 10.10.50.1 (nftables VIP 10.10.50.10)",
+  "replace": "50   TRANSIT-EGRESS   10.10.50.0/28   gw 10.10.50.1 (nftables VIP 10.10.50.10; usable .1-.14)",
+  "reason": "C-01: summary mask corrected.",
+  "status": "APPLIED to sections\\08-project-management.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-162",
+  "file": "sections\\08-project-management.md",
+  "section": "§16 Appendix A, VRRP summary",
+  "find": "                              (vrid 51 = nftables pair 10.10.50.0/29, vrid 61 = nginx pair 10.10.90.0/24)",
+  "replace": "                              (vrid 51 = nftables pair 10.10.50.0/28, vrid 61 = nginx pair 10.10.90.0/24; both VIPs are owned by no node)",
+  "reason": "C-01 mask; C-02 VIP ownership.",
+  "status": "APPLIED to sections\\08-project-management.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-163",
+  "file": "sections\\08-project-management.md",
+  "section": "§16 Appendix A, first-hop redundancy summary",
+  "find": "First-hop redundancy          HSRP (switch SVIs, group 1, active priority 150) | VRRP via Keepalived",
+  "replace": "First-hop redundancy          HSRP (switch SVIs, groups 1-4 one per SVI: VLAN30 .ac01, VLAN40 .ac02, VLAN70 .ac03, VLAN80 .ac04; active priority 150) | VRRP via Keepalived",
+  "reason": "C-14: the summary must carry the ratified four-group map.",
+  "status": "APPLIED to sections\\08-project-management.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-164",
+  "file": "sections\\08-project-management.md",
+  "section": "§16 Appendix A, HSRP row",
+  "find": "| HQ access layer | Vendor-native first-hop redundancy | Group 1 |",
+  "replace": "| HQ access layer | Vendor-native first-hop redundancy | Groups 1-4 (1 to VLAN 30, 2 to VLAN 40, 3 to VLAN 70, 4 to VLAN 80) |",
+  "reason": "C-14: Group 1 with four VIPs is the defect this row carried.",
+  "status": "APPLIED to sections\\08-project-management.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-165",
+  "file": "sections\\08-project-management.md",
+  "section": "§16 Appendix A, VRRP row",
+  "find": "| Egress filtering pair | Standard first-hop redundancy implemented by Keepalived | `virtual_router_id` 51 |",
+  "replace": "| Egress filtering pair | Standard first-hop redundancy implemented by Keepalived | `virtual_router_id` 51 (nodes 10.10.50.11 and 10.10.50.12; the VIP 10.10.50.10 is owned by no node) |",
+  "reason": "C-02: the same VIP-ownership rule applies to both VRRP pairs.",
+  "status": "APPLIED to sections\\08-project-management.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ },
+ {
+  "id": "P-166",
+  "file": "sections\\08-project-management.md",
+  "section": "§19.2 Standards and Frameworks, S1 row",
+  "find": "retrieved and verified by the project's own research pack, which records the page's status, body size, page title, edition label and the page's own \"last updated\" line, and which machine-extracted its 131 requirement lines and re-verified them verbatim against the raw page with zero mismatches.",
+  "replace": "retrieved and verified by the project's own research pack, which records the page's status, body size, page title, edition label and the page's own \"last updated\" line, and whose own censuses — the requirement-line census in its Section 3.7 and the audit row in its Appendix A — give 131 requirement lines with 0 mismatches. That pack also carries a corrections section (its Section 7, items C1-C6) that supersedes the earlier review it examined, notably C1: Domain 5 lost Python, YANG, RESTCONF and NETCONF for the 2026 edition.",
+  "reason": "C-24: attribute the census to the pack's own census rows and carry the pack's corrections, as the entry already named the citation of record requires.",
+  "status": "APPLIED to sections\\08-project-management.md on 2026-09-16 by integration\\apply-patches.js. The find string is gone and the replacement text is present x1. RETAINED as the record of what changed; do NOT re-apply."
+ }
+]

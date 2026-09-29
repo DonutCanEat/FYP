@@ -1,0 +1,32 @@
+{
+  "title": "Stress Corpus (split demo)",
+  "author": "md2docx scale test",
+
+  "inputs": [
+    "stress/stress-01.md",
+    "stress/stress-02.md",
+    "stress/stress-03.md",
+    "stress/stress-04.md",
+    "stress/stress-05.md",
+    "stress/stress-06.md",
+    "stress/stress-07.md",
+    "stress/stress-08.md"
+  ],
+
+  "outputs": [
+    {
+      "path": "stress/out-combined.docx",
+      "title": "Stress Corpus: Complete Single Document"
+    },
+    {
+      "path": "stress/out-volume1.docx",
+      "title": "Volume 1: Front Matter and Overview Chapters",
+      "rules": { "include": ["1-2"], "exclude": [], "frontMatter": true }
+    },
+    {
+      "path": "stress/out-volume2.docx",
+      "title": "Volume 2: Deep Technical Chapters",
+      "rules": { "include": ["3-8"], "exclude": [], "frontMatter": false }
+    }
+  ]
+}

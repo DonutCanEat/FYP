@@ -1,0 +1,197 @@
+```bash
+#!/usr/bin/env bash
+# 04-automation/bash/08-cert-expiry-check.sh
+# Purpose : Check TLS certificate expiry across the estate.
+#           Local material is read from disk; published endpoints are probed with
+#           openssl s_client. Exit non-zero when anything is inside the warning window.
+# Owner   : W2 (Linux & Services). Reviewer: W1 (PKI owner).  Test IDs: TC-PKI-01
+# Runtime : Ubuntu Server 24.04.3 LTS; openssl 3.0.x.
+# Safety  : READ-ONLY. No certificate is issued, renewed or modified.
+# Exit    : 0 = all certificates outside the window, 1 = findings, 2 = usage, 3 = dependency.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/common.sh
+. "${SCRIPT_DIR}/lib/common.sh"
+
+WARN_DAYS=30
+LOCAL_PATHS=("/etc/nginx/ssl" "/etc/openvpn/easy-rsa/pki")
+ENDPOINTS=(
+  "vpnz-dmzrev01:443"
+  "vpnz-dmzrev02:443"
+  "vpnz-dmzweba01:443"
+  "vpnz-dmzweba02:443"
+  "vpnz-dmzwp01:443"
+  "vpnz-dmzwp02:443"
+  "vpnz-lnxra01:1194"
+  "vpnz-rras01:443"
+)
+FORMAT="text"
+OUT_FILE=""
+VERBOSE=0
+
+usage() {
+  cat <<'EOF'
+Usage: 08-cert-expiry-check.sh [OPTIONS]
+
+Checks TLS certificate expiry for local material and published endpoints.
+
+Options:
+  -d DAYS     Warning window in days                    (default 30)
+  -e LIST     Comma-separated host:port endpoints to probe (default: FYP published set)
+  -l LIST     Comma-separated local directories to scan   (default: FYP TLS paths)
+  -f FMT      Output format: text or json               (default text)
+  -o FILE     Also write the report to FILE
+  -v          Verbose
+  -h          Show this help and exit 0
+
+Exit codes:
+  0  all certificates expire outside the warning window
+  1  one or more certificates are inside the window or cannot be checked
+  2  usage error   3  a required dependency is missing
+
+Examples:
+  08-cert-expiry-check.sh
+  08-cert-expiry-check.sh -d 45 -v
+  08-cert-expiry-check.sh -e vpnz-dmzrev01:443 -l /etc/nginx/ssl -f json
+EOF
+}
+
+while getopts ':d:e:l:f:o:vh' opt; do
+  case "${opt}" in
+    d) WARN_DAYS="${OPTARG}" ;;
+    e) IFS=',' read -r -a ENDPOINTS <<<"${OPTARG}" ;;
+    l) IFS=',' read -r -a LOCAL_PATHS <<<"${OPTARG}" ;;
+    f) FORMAT="${OPTARG}" ;;
+    o) OUT_FILE="${OPTARG}" ;;
+    v) VERBOSE=1 ;;
+    h) usage; exit "${FYP_EXIT_OK}" ;;
+    :) usage; die "option -${OPTARG} requires an argument" ;;
+    \?) usage; die "unknown option -${OPTARG}" ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+case "${WARN_DAYS}" in ''|*[!0-9]*) usage; die "-d must be a positive integer";; esac
+[ "${WARN_DAYS}" -ge 1 ] || { usage; die "-d must be at least 1"; }
+case "${FORMAT}" in text|json) ;; *) usage; die "-f must be text or json" ;; esac
+require_cmd openssl date
+
+FINDINGS=0
+ROWS=()
+
+add_row() {  # add_row SOURCE SUBJECT DAYS STATUS DETAIL
+  ROWS+=("$1|$2|$3|$4|$5")
+  [ "$4" = "FAIL" ] && FINDINGS=$((FINDINGS + 1))
+  if [ "${VERBOSE}" -eq 1 ] || [ "$4" != "PASS" ]; then
+    if [ "$4" = "FAIL" ]; then log ERROR "$1 $2: $5"; else log INFO "$1 $2: $5"; fi
+  fi
+}
+
+days_remaining() {  # days_remaining "enddate string"
+  local end="$1" end_epoch now_epoch
+  end_epoch="$(date -d "${end}" +%s 2>/dev/null)" || return 1
+  now_epoch="$(date +%s)"
+  echo $(( (end_epoch - now_epoch) / 86400 ))
+}
+
+# --- 1. Local certificate material -------------------------------------------
+log INFO "scanning local certificate material in: ${LOCAL_PATHS[*]}"
+for dir in "${LOCAL_PATHS[@]}"; do
+  [ -d "${dir}" ] || { [ "${VERBOSE}" -eq 1 ] && log INFO "directory absent, skipped: ${dir}"; continue; }
+  while IFS= read -r crt; do
+    [ -n "${crt}" ] || continue
+    if ! end="$(openssl x509 -enddate -noout -in "${crt}" 2>/dev/null | cut -d= -f2-)"; then
+      add_row "${crt}" "unparsable" "?" "FAIL" "file does not parse as a certificate"
+      continue
+    fi
+    subj="$(openssl x509 -subject -noout -in "${crt}" 2>/dev/null | sed 's/^subject=//' || echo unknown)"
+    days="$(days_remaining "${end}")" || { add_row "${crt}" "${subj}" "?" "FAIL" "unparsable expiry '${end}'"; continue; }
+    if [ "${days}" -le 0 ]; then
+      add_row "${crt}" "${subj}" "${days}" "FAIL" "EXPIRED on ${end}"
+    elif [ "${days}" -le "${WARN_DAYS}" ]; then
+      add_row "${crt}" "${subj}" "${days}" "FAIL" "inside the ${WARN_DAYS}-day window (expires ${end})"
+    else
+      add_row "${crt}" "${subj}" "${days}" "PASS" "expires in ${days} day(s)"
+    fi
+  done < <(find "${dir}" -maxdepth 3 -type f \( -name '*.crt' -o -name '*.pem' \) 2>/dev/null)
+done
+
+# --- 2. Published endpoints ---------------------------------------------------
+log INFO "probing ${#ENDPOINTS[@]} published endpoint(s)"
+for endpoint in "${ENDPOINTS[@]}"; do
+  host="${endpoint%%:*}"
+  port="${endpoint##*:}"
+  case "${port}" in ''|*[!0-9]*) add_row "${endpoint}" "-" "?" "FAIL" "endpoint is not in host:port form"; continue ;; esac
+
+  # A UDP service (for example OpenVPN 1194) has no TLS handshake to a TCP probe;
+  # it is still recorded so that the report shows what was and was not checked.
+  if [ "${port}" = "1194" ]; then
+    add_row "${endpoint}" "-" "?" "INFO" "UDP/TLS endpoint - certificate must be checked on the host, not probed from here"
+    continue
+  fi
+
+  if ! out="$(openssl s_client -connect "${endpoint}" -servername "${host}" </dev/null 2>/dev/null)"; then
+    add_row "${endpoint}" "-" "?" "FAIL" "cannot connect or complete a TLS handshake"
+    continue
+  fi
+
+  cert="$(printf '%s\n' "${out}" | openssl x509 -noout -enddate -subject 2>/dev/null || true)"
+  if [ -z "${cert}" ]; then
+    add_row "${endpoint}" "-" "?" "FAIL" "connected but no certificate could be parsed - check the listener"
+    continue
+  fi
+  end="$(printf '%s\n' "${cert}" | awk -F= '/notAfter/{print $2}')"
+  subj="$(printf '%s\n' "${cert}" | sed -n 's/^subject=//p')"
+  days="$(days_remaining "${end}")" || { add_row "${endpoint}" "${subj}" "?" "FAIL" "unparsable expiry '${end}'"; continue; }
+
+  if [ "${days}" -le 0 ]; then
+    add_row "${endpoint}" "${subj}" "${days}" "FAIL" "EXPIRED on ${end}"
+  elif [ "${days}" -le "${WARN_DAYS}" ]; then
+    add_row "${endpoint}" "${subj}" "${days}" "FAIL" "inside the ${WARN_DAYS}-day window (expires ${end})"
+  else
+    add_row "${endpoint}" "${subj}" "${days}" "PASS" "expires in ${days} day(s) (${end})"
+  fi
+done
+
+# --- Output -------------------------------------------------------------------
+if [ "${FORMAT}" = "json" ]; then
+  {
+    printf '{\n  "host": "%s",\n  "generated": "%s",\n  "warn_days": %d,\n  "findings": %d,\n  "certificates": [\n' \
+      "${FYP_HOST}" "$(date -Is)" "${WARN_DAYS}" "${FINDINGS}"
+    first=1
+    for row in "${ROWS[@]}"; do
+      IFS='|' read -r src subj days status detail <<<"${row}"
+      [ "${first}" -eq 1 ] || printf ',\n'
+      first=0
+      printf '    {"source": "%s", "subject": "%s", "days_remaining": "%s", "status": "%s", "detail": "%s"}' \
+        "${src//\"/\\\"}" "${subj//\"/\\\"}" "${days}" "${status}" "${detail//\"/\\\"}"
+    done
+    printf '\n  ]\n}\n'
+  } > "${OUT_FILE:-/dev/stdout}"
+else
+  {
+    printf 'FYP certificate expiry report\n'
+    printf 'host       : %s\n' "${FYP_HOST}"
+    printf 'generated  : %s\n' "$(date -Is)"
+    printf 'window     : %d day(s)\n' "${WARN_DAYS}"
+    printf 'findings   : %d\n\n' "${FINDINGS}"
+    printf '%-28s %-8s %-6s %s\n' "SOURCE" "DAYS" "STATUS" "SUBJECT / DETAIL"
+    printf '%-28s %-8s %-6s %s\n' "----------------------------" "--------" "------" "------------------------------"
+    for row in "${ROWS[@]}"; do
+      IFS='|' read -r src subj days status detail <<<"${row}"
+      printf '%-28s %-8s %-6s %s | %s\n' "${src}" "${days}" "${status}" "${subj}" "${detail}"
+    done
+  } | if [ -n "${OUT_FILE}" ]; then tee "${OUT_FILE}"; else cat; fi
+fi
+
+[ -n "${OUT_FILE}" ] && log INFO "report written to ${OUT_FILE}"
+
+if [ "${FINDINGS}" -gt 0 ]; then
+  log ERROR "${FINDINGS} certificate finding(s); renewal or investigation required. See ${FYP_LOG_FILE}"
+  exit "${FYP_EXIT_FAIL}"
+fi
+log INFO "all checked certificates are outside the ${WARN_DAYS}-day window"
+exit "${FYP_EXIT_OK}"
+```

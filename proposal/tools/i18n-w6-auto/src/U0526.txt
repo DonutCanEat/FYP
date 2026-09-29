@@ -1,0 +1,1 @@
+`TrustedHosts` is a **client-side** list of hostnames or addresses that a Windows machine will accept as WinRM targets when it cannot authenticate them through a domain. Two facts about it determine this project's decision:

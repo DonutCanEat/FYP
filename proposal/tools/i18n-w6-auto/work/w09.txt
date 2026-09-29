@@ -1,0 +1,60 @@
+%%U0508%%
+**The honest boundary.** PowerShell is *not* the tool for the Linux estate (Bash and Ansible are), and it is *not* the tool for the Cisco estate (`Packet Tracer` exposes no interface any script can reach — see 10.7). It is also not the right tool for a change to `vpnz-dc01`'s DNS or DHCP configuration where the group's decision is that the change belongs in a reviewed playbook or a documented GPO instead.
+%%U0510%%
+**Runtime discipline.** Windows PowerShell **5.1** is what runs on the Windows guests, because it is in-box. PowerShell **7.4 LTS** runs on `vpnz-jump01` for authoring and for cross-platform use. Every script in this section is written to run on **5.1** unless it states otherwise, and each script's help block records the runtime it was tested on. This matters: a script that uses the ternary operator or `??` will fail on 5.1, and claiming 7.4 where only 5.1 was exercised is exactly the kind of version claim the project treats as an integrity failure.
+%%U0512%%
+#### 10.5.2 PowerShell remoting setup
+%%U0514%%
+##### 10.5.2.1 `Enable-PSRemoting` on the target
+%%U0516%%
+`Enable-PSRemoting -Force` on a Windows Server 2025 guest starts the WinRM service, sets it to automatic, creates a listener, and enables the firewall group `Windows Remote Management (HTTP-In)`. That is useful as a starting point and **insufficient as a design**, for three reasons that this project's threat model makes concrete:
+%%U0520%%
+**Why the HTTP listener is removed.** The default listener is unencrypted. Leaving it enabled means the design's claim that WinRM traffic is encrypted is false, and it means a credential sent by a misconfigured client travels in the clear. The design therefore states one listener, on 5986, and the audit playbook of 10.4.6.4 asserts `https_listeners=1 http_listeners=0` on every Windows guest.
+%%U0522%%
+**Firewall scoping.** The default rule enabled by `Enable-PSRemoting` permits WinRM from any remote address. The project replaces that with a rule scoped by `-RemoteAddress 10.10.30.31`, so that WinRM is reachable only from the automation control node, and records the resulting address filter as evidence (10.4.1.3). This is the host-level implementation of the TB-07/TB-08 management-plane discipline.
+%%U0524%%
+##### 10.5.2.2 `TrustedHosts` versus HTTPS
+%%U0526%%
+`TrustedHosts` is a **client-side** list of hostnames or addresses that a Windows machine will accept as WinRM targets when it cannot authenticate them through a domain. Two facts about it determine this project's decision:
+%%U0528%%
+- `TrustedHosts` applies to the machine that **initiates** the connection, not the target.
+- Using it means the initiator does not verify the target's identity; the traffic is authenticated as NTLM or Basic but the *server* is not proved to be the host it claims to be. It also cannot be set by Group Policy, so it is a per-machine manual step that will silently be missing on a rebuilt VM.
+%%U0530%%
+For **Ansible this setting is irrelevant**: the control node is Linux and `pywinrm` performs its own certificate validation. There is no `TrustedHosts` in the Ansible path at all; the equivalent control is `ansible_winrm_server_cert_validation: validate` plus a trusted certificate chain.
+%%U0532%%
+For **administrators working from a Windows machine**, the project uses `TrustedHosts` only in one place and only as a documented, dated experiment: demonstrating that a Windows administrator at `vpnz-jump01` can reach a DMZ web node that is workgroup-isolated. That demonstration is captured with the warning it deserves:
+%%U0536%%
+The report must present this as a **lab simplification for one specific workgroup scenario**, with the security consequence stated: `TrustedHosts` disables target-identity verification and is therefore not the design's supported path. Where the DMZ hosts are domain-joined (open item O-05), this experiment is not needed at all.
+%%U0538%%
+##### 10.5.2.3 How Ansible connects to it
+%%U0540%%
+Ansible's Windows connection is declared in `inventory/group_vars/windows.yml` (10.4.1.3) and uses `winrm` over HTTPS with NTLM. The fact that both the PowerShell scripts and Ansible use the *same* transport is deliberate: one firewall rule per host, one certificate decision, one troubleshooting procedure, and one place to fix a break. Where a break occurs in that transport, both the `Test-WSMan` diagnostic and the `ansible windows -m ansible.windows.win_ping` diagnostic are run and both results are recorded, because a failure that appears in one and not the other is itself information about where the fault lies.
+%%U0542%%
+#### 10.5.3 Production-quality scripts
+%%U0544%%
+Three scripts are specified in full. Each has comment-based help, `[CmdletBinding()]`, typed and validated parameters, structured error handling with `try`/`catch`/`finally`, `Write-Verbose` and `Write-Error` used for their intended purposes, and a clean output object suitable for `Export-Csv`. Each is preceded by a short design note and followed by the invocation evidence required.
+%%U0546%%
+##### 10.5.3.1 `Invoke-NewStarterOnboarding.ps1`
+%%U0548%%
+**Design note.** This is the script that answers due-diligence item 2 (documented least-privilege access and an audit trail of administrative actions) and the in-scenario need for repeatable, reviewed onboarding. It is **CSV-driven on purpose**: the CSV is the reviewed artefact, it can be diffed in Git, and it means the script has no interactive prompts — which is what allows it to be run by a scheduled task or a playbook. The script creates the account in the correct OU from the site code, adds the group memberships for the department, creates the home directory and the FSRM quota, and returns one object per user. It supports `-WhatIf` so that a run can be verified before it changes anything, and it never writes a password to a log.
+%%U0552%%
+##### 10.5.3.2 `Get-ServiceAndFirewallAudit.ps1`
+%%U0554%%
+**Design note.** This is the Windows half of the drift detector. It answers the question the security tests ask — *is the host still configured the way the design says it is?* — without changing anything. It queries services against an expected-state table, enumerates firewall profiles and rules, checks for the specific inbound allowances the port matrix requires, reports the WinRM listener state, and returns one object per finding. It accepts several `-ComputerName` values so that the same script audits the estate from `vpnz-jump01` or from `vpnz-mon01` through remoting, and it degrades honestly when a host is unreachable: the unreachable host becomes a finding, not an exception that aborts the run. It contains **no** state-changing cmdlet anywhere — a property that is checkable with `Get-Command -Verb Set,New,Remove` rather than merely asserted.
+%%U0558%%
+**What this script demonstrates about PowerShell quality.** It uses a `begin`/`process`/`end` structure so that it composes correctly in a pipeline; it separates **expected** from **actual** in every finding so that the CSV is self-explaining to a reader who was not present; it treats a rule scoped wider than the control node as a **failure**, because a rule that permits `Any` where the design permits one address is exactly the drift the audit exists to catch; and unreachability is a finding rather than an abort, so one dead host does not hide the state of the other eight.
+%%U0560%%
+##### 10.5.3.3 `Invoke-ScheduledBackupVerify.ps1`
+%%U0562%%
+**Design note.** This script implements the WSOS Domain 4 line `Install and manage backup systems` with the nested example `Windows Server Backup`, and links it to the nested `Script based backup, e.g. Bash, Batch or PowerShell`. It runs a Windows Server Backup job against the design's target and then **verifies the backup it just made**. The verification half is the point: a backup that has never been read back is a hypothesis, not a backup. The script also cross-checks the off-host restic job on `vpnz-dmzjump01`, which is how the report can claim an off-host copy of configuration and evidence without claiming a full VM backup — a distinction §12.1 requires to be stated.
+%%U0566%%
+**The lock file is part of the design, not a detail.** This is the one script in the repository that is genuinely *not* idempotent, because running it twice makes two backups. Rather than pretending otherwise, the script names the limitation in its own help block and solves it with a once-per-20-hours guard plus a lock file. A backup script that claims idempotence is a script nobody has thought about.
+%%U0568%%
+##### 10.5.3.4 The remaining PowerShell scripts
+%%U0570%%
+| Script | Purpose | Key implementation points |
+|---|---|---|
+| `Get-ADHealthReport.ps1` | The AD health report the L1 verification chapter cites: replication status, FSMO placement, DNS zone state, SYSVOL share state, time skew, and a DC diagnostic summary. Outputs CSV plus a small HTML page for `07-evidence/`. | Runs `dcdiag /v`, `repadmin /replsummary`, `Get-ADDomain`, `Get-DnsServerZone`, `w32tm /query /status`, and **parses them into objects** rather than exporting raw text, so a wording change in the tool cannot silently produce a "healthy" report |
+| `Test-ServiceEndpoints.ps1` | The port matrix of the design as an executable test: one test per `P-nn` row, asserting reachability *or* deliberate unreachability from a named source. | `Test-NetConnection` per host/port with a per-row expected result, plus explicit negative tests that assert a `DENY` row really is denied. Its second run produces identical output, which is why it also appears in the pre-tag consistency sweep of §13.4 R-05 |
+| `Backup-NetworkDeviceConfig.ps1` | The baseline's configuration-collection script. Collects the Git-tracked intended Packet Tracer configurations and the live host configurations into the archive under `/srv/tftp/` through TFTP/SCP. | **Honest scope:** it never logs in to a Packet Tracer device, because none is reachable (§11.4, PT-06). Its manifest states what the archive does and does not contain |
+| `Export-GPOBackup.ps1` | Documented backup of every GPO, with a manifest recording each GPO's name, ID and modification time. | `Backup-Gpo -All -Path` into a dated subdirectory; it never overwrites a previous backup, so it is *not* expected to report "no change" and its `.NOTES` block says so |

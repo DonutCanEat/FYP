@@ -1,0 +1,1 @@
+**`vpnz-dc01` and `vpnz-dc02` are deliberately placed in `windows`, not in a "servers" group, and are further tagged with `fyp_tier: tier0`.** This lets a playbook exclude them by variable rather than by a remembered exclusion, and it lets the audit playbook target tier 0 separately. The tier tags mirror the two-of-four Tier-0 split recorded in §9.3.

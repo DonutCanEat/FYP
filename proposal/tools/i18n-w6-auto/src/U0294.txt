@@ -1,0 +1,1 @@
+**Default variables:** `common_admin_group: gg-infra-admins`, `common_admins: [adm-w1, adm-w2, adm-w3, adm-w4]`, `common_time_servers: [10.10.30.11, 10.10.30.12]`, `common_allow_ip_forward: false`, `common_install_auditd: true`, `common_node_exporter_port: 9100`, `common_unattended_security_only: true`.

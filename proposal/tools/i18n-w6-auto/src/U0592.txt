@@ -1,0 +1,6 @@
+- **`[CmdletBinding()]` on every function that is not a one-liner**, so `-Verbose` and `-ErrorAction` behave as a caller expects.
+- **Typed parameters with `[Validate*]` attributes.** Parameter-boundary validation removes a whole class of defensive code from the body, as the three scripts above demonstrate.
+- **`Write-Verbose` for progress, `Write-Warning`/`Write-Error` for problems, the object stream for data.** `Write-Host` only for a human-facing progress line, never for data.
+- **No `exit` inside a function.** `exit` terminates the host and makes the function unusable in a pipeline or an Ansible run; the scripts above set `$global:LASTEXITCODE` and return instead.
+- **Comment-based help on every script**, including the runtime it was tested on and its known limitations. The help block is also where a non-obvious design decision is explained to the next reader.
+- **No credential in a parameter default, a log line, or an exception message.** Passwords arrive as `SecureString` and are cleared in a `finally` block.

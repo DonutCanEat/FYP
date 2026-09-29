@@ -1,0 +1,13 @@
+| Step | Action | Evidence produced |
+|---|---|---|
+| 1 | Write the change on a `task-*` branch; run `--syntax-check` | Commit |
+| 2 | Run `--check --diff` against the whole target group | Dry-run log in `runs/` |
+| 3 | Review the diff with a second member; record the review in the minutes | Meeting minute |
+| 4 | Snapshot the target VM in the hypervisor (except for tier 0, where the change is made during the change window only) | Snapshot name and timestamp |
+| 5 | Run against **one** host with `--limit`, during the change window | Canary run log |
+| 6 | Verify the service by hand (service answers, VIP correct, logs clean) | Transcript or screenshot |
+| 7 | Run against the remaining hosts of the group | Group run log |
+| 8 | Re-run the whole playbook; capture `changed=0` | Idempotence log in `runs/` |
+| 9 | Run `09-verify-services.yml` and diff the JSON audit report against the previous one | Two audit JSON files |
+| 10 | Merge to `main`, tag if it is a milestone | Annotated tag |
+| 11 | Remove the snapshot once the change is verified and documented | Decision-log entry |

@@ -1,0 +1,308 @@
+```bash
+#!/usr/bin/env bash
+# 04-automation/bash/06-server-health-report.sh
+# Purpose : Read-only health and capacity report for a Linux guest in the Vertex Peak lab.
+#           Threshold breaches are reported as findings and the script exits non-zero.
+# Owner   : W2 (Linux & Services). Reviewer: W4.   Test IDs: TC-L4-03, TC-L4-05
+# Runtime : Ubuntu Server 24.04.3 LTS; bash 5.2.
+# Safety  : no state is modified. systemctl is-active, nft list and ss are read-only.
+# Exit    : 0 = no findings, 1 = findings, 2 = usage error, 3 = missing dependency.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/common.sh
+. "${SCRIPT_DIR}/lib/common.sh"
+
+# --- Defaults -----------------------------------------------------------------
+DISK_WARN_PCT=85
+DISK_CRIT_PCT=95
+MEM_WARN_PCT=90
+LOAD_WARN_PER_CPU=2.0
+CERT_WARN_DAYS=30
+OUTPUT_FORMAT="text"
+OUT_FILE=""
+VERBOSE=0
+
+usage() {
+  cat <<'EOF'
+Usage: 06-server-health-report.sh [OPTIONS]
+
+Read-only health and capacity report for this host.
+
+Options:
+  -d PCT    Disk used-percent warning threshold      (default 85)
+  -D PCT    Disk used-percent critical threshold     (default 95)
+  -m PCT    Memory used-percent warning threshold    (default 90)
+  -l FLOAT  Load-per-CPU warning threshold           (default 2.0)
+  -c DAYS   Certificate expiry warning window, days  (default 30)
+  -f FMT    Output format: text or json              (default text)
+  -o FILE   Also write the report to FILE
+  -v        Verbose: log every check, not only findings
+  -h        Show this help and exit 0
+
+Exit codes:
+  0  every check within threshold
+  1  one or more checks breached a threshold
+  2  usage error
+  3  a required dependency is missing
+
+Examples:
+  06-server-health-report.sh
+  06-server-health-report.sh -f json -o /tmp/health.json -v
+  06-server-health-report.sh -d 80 -c 45 -v
+EOF
+}
+
+while getopts ':d:D:m:l:c:f:o:vh' opt; do
+  case "${opt}" in
+    d) DISK_WARN_PCT="${OPTARG}" ;;
+    D) DISK_CRIT_PCT="${OPTARG}" ;;
+    m) MEM_WARN_PCT="${OPTARG}" ;;
+    l) LOAD_WARN_PER_CPU="${OPTARG}" ;;
+    c) CERT_WARN_DAYS="${OPTARG}" ;;
+    f) OUTPUT_FORMAT="${OPTARG}" ;;
+    o) OUT_FILE="${OPTARG}" ;;
+    v) VERBOSE=1 ;;
+    h) usage; exit "${FYP_EXIT_OK}" ;;
+    :) usage; log ERROR "option -${OPTARG} requires an argument"; exit "${FYP_EXIT_USAGE}" ;;
+    \?) usage; log ERROR "unknown option -${OPTARG}"; exit "${FYP_EXIT_USAGE}" ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+# --- Validate every argument --------------------------------------------------
+is_uint() { case "${1}" in ''|*[!0-9]*) return 1 ;; *) return 0 ;; esac; }
+is_num()  { [[ "${1}" =~ ^[0-9]+([.][0-9]+)?$ ]]; }
+
+if ! is_uint "${DISK_WARN_PCT}"; then usage; die "-d must be an integer 0-100"; fi
+if ! is_uint "${DISK_CRIT_PCT}"; then usage; die "-D must be an integer 0-100"; fi
+if ! is_uint "${MEM_WARN_PCT}";  then usage; die "-m must be an integer 0-100"; fi
+if ! is_num  "${LOAD_WARN_PER_CPU}"; then usage; die "-l must be a number, e.g. 2.0"; fi
+if ! is_uint "${CERT_WARN_DAYS}"; then usage; die "-c must be an integer number of days"; fi
+if [ "${DISK_WARN_PCT}" -gt 100 ] || [ "${DISK_CRIT_PCT}" -gt 100 ]; then
+  usage; die "percentage thresholds must be between 0 and 100"
+fi
+if [ "${DISK_WARN_PCT}" -gt "${DISK_CRIT_PCT}" ]; then
+  usage; die "-d (${DISK_WARN_PCT}) must not exceed -D (${DISK_CRIT_PCT})"
+fi
+case "${OUTPUT_FORMAT}" in text|json) ;; *) usage; die "-f must be text or json" ;; esac
+
+require_cmd hostname date awk df systemctl nproc
+
+[ "${VERBOSE}" -eq 1 ] && log INFO "starting health report (disk ${DISK_WARN_PCT}/${DISK_CRIT_PCT}%, mem ${MEM_WARN_PCT}%, load ${LOAD_WARN_PER_CPU}/CPU, cert window ${CERT_WARN_DAYS}d)"
+
+FINDINGS=0
+ROWS=()
+
+add_row() {  # add_row CHECK STATUS DETAIL
+  local check="$1" status="$2" detail="$3"
+  ROWS+=("${check}|${status}|${detail}")
+  if [ "${status}" = "FAIL" ]; then FINDINGS=$((FINDINGS + 1)); fi
+  if [ "${VERBOSE}" -eq 1 ] || [ "${status}" != "PASS" ]; then
+    if [ "${status}" = "FAIL" ]; then log ERROR "${check} [FAIL] ${detail}"
+    else log INFO "${check} [${status}] ${detail}"; fi
+  fi
+}
+
+# --- 1. Load per CPU ----------------------------------------------------------
+if [ -r /proc/loadavg ]; then
+  # shellcheck disable=SC2034  # l1 and l15 are read for completeness of the record
+  read -r l1 l5 l15 rest < /proc/loadavg
+  cpus="$(nproc)"
+  per_cpu="$(awk -v l="${l5}" -v c="${cpus}" 'BEGIN{ printf "%.2f", l/c }')"
+  if awk -v p="${per_cpu}" -v t="${LOAD_WARN_PER_CPU}" 'BEGIN{ exit !(p>t) }'; then
+    add_row "load5-per-cpu" "FAIL" "5-min load ${l5} over ${cpus} CPU(s) = ${per_cpu}/CPU exceeds ${LOAD_WARN_PER_CPU}"
+  else
+    add_row "load5-per-cpu" "PASS" "5-min load ${l5} over ${cpus} CPU(s) = ${per_cpu}/CPU"
+  fi
+else
+  add_row "load5-per-cpu" "FAIL" "/proc/loadavg is not readable"
+fi
+
+# --- 2. Memory ----------------------------------------------------------------
+if [ -r /proc/meminfo ]; then
+  mem_total="$(awk '/^MemTotal:/{print $2}' /proc/meminfo)"
+  mem_avail="$(awk '/^MemAvailable:/{print $2}' /proc/meminfo)"
+  mem_pct="$(awk -v t="${mem_total}" -v a="${mem_avail}" 'BEGIN{ if (t>0) printf "%.1f", (t-a)*100/t; else print "0" }')"
+  if awk -v p="${mem_pct}" -v m="${MEM_WARN_PCT}" 'BEGIN{ exit !(p>m) }'; then
+    add_row "memory-used-percent" "FAIL" "${mem_pct}% used (${mem_avail} kB available of ${mem_total} kB) exceeds ${MEM_WARN_PCT}%"
+  else
+    add_row "memory-used-percent" "PASS" "${mem_pct}% used (${mem_avail} kB available of ${mem_total} kB)"
+  fi
+
+  swap_total="$(awk '/^SwapTotal:/{print $2}' /proc/meminfo)"
+  swap_free="$(awk '/^SwapFree:/{print $2}' /proc/meminfo)"
+  if [ "${swap_total}" -gt 0 ]; then
+    swap_used_pct="$(awk -v t="${swap_total}" -v f="${swap_free}" 'BEGIN{ printf "%.1f", (t-f)*100/t }')"
+    if awk -v p="${swap_used_pct}" 'BEGIN{ exit !(p>25) }'; then
+      add_row "swap-used-percent" "FAIL" "${swap_used_pct}% of ${swap_total} kB swap in use - a lab VM that swaps is a capacity problem"
+    else
+      add_row "swap-used-percent" "PASS" "${swap_used_pct}% of ${swap_total} kB swap in use"
+    fi
+  else
+    add_row "swap-used-percent" "PASS" "no swap configured"
+  fi
+fi
+
+# --- 3. Filesystems -----------------------------------------------------------
+while read -r fs _size _used avail pct mount; do
+  case "${fs}" in tmpfs|devtmpfs|squashfs|overlay) continue ;; esac
+  pct_num="${pct%\%}"
+  case "${pct_num}" in ''|*[!0-9]*) continue ;; esac
+  if [ "${pct_num}" -ge "${DISK_CRIT_PCT}" ]; then
+    add_row "disk:${mount}" "FAIL" "${pct} used on ${fs} (${avail} kB free) - CRITICAL threshold ${DISK_CRIT_PCT}%"
+  elif [ "${pct_num}" -ge "${DISK_WARN_PCT}" ]; then
+    add_row "disk:${mount}" "FAIL" "${pct} used on ${fs} (${avail} kB free) - warning threshold ${DISK_WARN_PCT}%"
+  else
+    add_row "disk:${mount}" "PASS" "${pct} used on ${fs} (${avail} kB free)"
+  fi
+done < <(df -Pk -x tmpfs -x devtmpfs 2>/dev/null | awk 'NR>1')
+
+# --- 4. Services expected on this host ---------------------------------------
+# The expected set comes from the host's own role marker, not from a per-host list,
+# so this one script serves the whole Linux estate.
+ROLE_FILE="/etc/fyp/role"
+declare -A ROLE_SERVICES=(
+  ["nginx_reverse_proxy"]="nginx keepalived"
+  ["nftables_egress"]="nftables keepalived"
+  ["openvpn"]="openvpn-server@server nftables"
+  ["wordpress"]="nginx php8.3-fpm mariadb"
+  ["agent_runtime"]="ssh"
+  ["ansible_control_node"]="nginx prometheus grafana-server loki ssh"
+  ["dmz_jump"]="ssh"
+)
+if [ -r "${ROLE_FILE}" ]; then
+  role="$(tr -d '[:space:]' < "${ROLE_FILE}")"
+  services="${ROLE_SERVICES[${role}]:-}"
+  if [ -z "${services}" ]; then
+    add_row "role" "FAIL" "unknown role '${role}' in ${ROLE_FILE}"
+  else
+    add_row "role" "PASS" "role=${role}; expected services: ${services}"
+    for svc in ${services}; do
+      if systemctl is-active --quiet "${svc}" 2>/dev/null; then
+        add_row "service:${svc}" "PASS" "active"
+      else
+        add_row "service:${svc}" "FAIL" "not active: $(systemctl is-active "${svc}" 2>&1 || true)"
+      fi
+    done
+  fi
+else
+  add_row "role" "FAIL" "${ROLE_FILE} is missing - the host role cannot be determined, so service state cannot be judged"
+fi
+
+# --- 5. Failed systemd units -------------------------------------------------
+failed_units="$(systemctl --failed --no-legend --plain 2>/dev/null | awk '{print $1}' | paste -sd, - || true)"
+if [ -n "${failed_units}" ]; then
+  add_row "systemd-failed-units" "FAIL" "${failed_units}"
+else
+  add_row "systemd-failed-units" "PASS" "no failed units"
+fi
+
+# --- 6. Time synchronisation (Kerberos depends on it) ------------------------
+if command -v chronyc >/dev/null 2>&1 && chronyc tracking >/dev/null 2>&1; then
+  skew="$(chronyc tracking | awk -F': *' '/System time/{print $2}')"
+  leap="$(chronyc tracking | awk -F': *' '/Leap status/{print $2}')"
+  if [ "${leap}" = "Normal" ]; then
+    add_row "time-sync" "PASS" "chrony tracking normal (system time ${skew})"
+  else
+    add_row "time-sync" "FAIL" "chrony leap status '${leap}', system time ${skew} - time skew above 5 minutes breaks Kerberos"
+  fi
+else
+  add_row "time-sync" "FAIL" "chronyc is not installed or cannot reach a time source"
+fi
+
+# --- 7. Listening TCP sockets outside the design's port matrix ---------------
+allowed=" 22 53 80 443 514 1194 3000 3260 3306 9000 9090 9100 9182 6516 179 500 4500 51820 123 "
+unexpected=""
+while read -r _proto _recvq _sendq local _foreign state _rest; do
+  [ "${state}" = "LISTEN" ] || continue
+  port="${local##*:}"
+  case "${allowed}" in
+    *" ${port} "*) ;;
+    *) unexpected="${unexpected} ${local}" ;;
+  esac
+done < <(ss -H -tln 2>/dev/null || true)
+
+if [ -n "${unexpected}" ]; then
+  add_row "listening-ports-unexpected" "FAIL" "not in the design port matrix:${unexpected}"
+else
+  add_row "listening-ports-unexpected" "PASS" "all TCP listeners are in the design port matrix"
+fi
+
+# --- 8. Certificate expiry ----------------------------------------------------
+if command -v openssl >/dev/null 2>&1; then
+  certs_checked=0
+  for dir in /etc/nginx/ssl /etc/ssl/fyp /etc/openvpn/easy-rsa/pki; do
+    [ -d "${dir}" ] || continue
+    while IFS= read -r crt; do
+      [ -n "${crt}" ] || continue
+      end="$(openssl x509 -enddate -noout -in "${crt}" 2>/dev/null | cut -d= -f2- || true)"
+      [ -n "${end}" ] || continue
+      if ! end_epoch="$(date -d "${end}" +%s 2>/dev/null)"; then continue; fi
+      now_epoch="$(date +%s)"
+      days=$(( (end_epoch - now_epoch) / 86400 ))
+      certs_checked=$((certs_checked + 1))
+      if [ "${days}" -le 0 ]; then
+        add_row "cert:${crt}" "FAIL" "EXPIRED on ${end}"
+      elif [ "${days}" -le "${CERT_WARN_DAYS}" ]; then
+        add_row "cert:${crt}" "FAIL" "expires in ${days} day(s) on ${end}"
+      else
+        add_row "cert:${crt}" "PASS" "expires in ${days} day(s) on ${end}"
+      fi
+    done < <(find "${dir}" -maxdepth 3 -type f \( -name '*.crt' -o -name '*.pem' \) 2>/dev/null)
+  done
+  [ "${certs_checked}" -eq 0 ] && add_row "cert:any" "PASS" "no certificate files found in the searched directories"
+else
+  add_row "cert:openssl" "FAIL" "openssl is not installed, so certificate expiry cannot be checked"
+fi
+
+# --- 9. Reboot required ------------------------------------------------------
+if [ -f /var/run/reboot-required ]; then
+  add_row "reboot-required" "FAIL" "$(head -n 1 /var/run/reboot-required 2>/dev/null || echo 'reboot required')"
+else
+  add_row "reboot-required" "PASS" "no reboot required"
+fi
+
+# --- Output -------------------------------------------------------------------
+if [ "${OUTPUT_FORMAT}" = "json" ]; then
+  {
+    printf '{\n'
+    printf '  "host": "%s",\n' "${FYP_HOST}"
+    printf '  "timestamp": "%s",\n' "$(date -Is)"
+    printf '  "findings": %d,\n' "${FINDINGS}"
+    printf '  "checks": [\n'
+    first=1
+    for row in "${ROWS[@]}"; do
+      IFS='|' read -r check status detail <<<"${row}"
+      [ "${first}" -eq 1 ] || printf ',\n'
+      first=0
+      printf '    {"check": "%s", "status": "%s", "detail": "%s"}' \
+        "${check//\"/\\\"}" "${status}" "${detail//\"/\\\"}"
+    done
+    printf '\n  ]\n}\n'
+  } > "${OUT_FILE:-/dev/stdout}"
+  [ -n "${OUT_FILE}" ] && log INFO "JSON report written to ${OUT_FILE}"
+else
+  {
+    printf 'FYP server health report\n'
+    printf 'host      : %s\n' "${FYP_HOST}"
+    printf 'timestamp : %s\n' "$(date -Is)"
+    printf 'findings  : %d\n\n' "${FINDINGS}"
+    printf '%-36s %-6s %s\n' "CHECK" "STATUS" "DETAIL"
+    printf '%-36s %-6s %s\n' "------------------------------------" "------" "-----------------------------------"
+    for row in "${ROWS[@]}"; do
+      IFS='|' read -r check status detail <<<"${row}"
+      printf '%-36s %-6s %s\n' "${check}" "${status}" "${detail}"
+    done
+  } | if [ -n "${OUT_FILE}" ]; then tee "${OUT_FILE}"; else cat; fi
+  [ -n "${OUT_FILE}" ] && log INFO "text report written to ${OUT_FILE}"
+fi
+
+if [ "${FINDINGS}" -gt 0 ]; then
+  log ERROR "health report completed with ${FINDINGS} finding(s); full log: ${FYP_LOG_FILE}"
+  exit "${FYP_EXIT_FAIL}"
+fi
+log INFO "health report completed with no findings"
+exit "${FYP_EXIT_OK}"
+```

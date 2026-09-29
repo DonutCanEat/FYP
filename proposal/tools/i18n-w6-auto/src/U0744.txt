@@ -1,0 +1,5 @@
+1. After each configuration change in Packet Tracer, the owner runs the device's own capture command: `show running-config` on IOS devices, `show run` on the ASA, and PT's **File → Save As** for the project file.
+2. The output is pasted into the device's `.running-config.txt` file, the change is described in the commit message with the test-case ID, and the file is committed on a `task-l3-*` branch.
+3. A second member reviews the diff — the diff is the review artefact, and it is the reason this process is worth doing even though it is manual.
+4. `design-review` and milestone tags (`v0.4`, `v0.8`) make the configuration history navigable: `git log --oneline -- 03-build/packet-tracer/configs/VP-HQ-CORE-01.running-config.txt` is the complete change history of that device.
+5. Backups are the Git history plus the dated archive produced by `08-collect-network-configs.yml`, which also runs `Backup-NetworkDeviceConfig.ps1`. The manifest of that archive states exactly what it does and does not contain, so the backup claim cannot be inflated later.

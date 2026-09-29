@@ -1,0 +1,118 @@
+```yaml
+---
+# 03-nginx-reverseproxy.yml
+# Purpose : Deploy and converge the Nginx reverse-proxy pair and its VRRP gateways.
+# Owner   : W2 (Linux & Services). Reviewer: W4.
+# Test IDs: TC-L2-01, TC-L2-02, TC-L4-02, TB-05, TB-15.
+# Idempotence: second run must report changed=0 and the VIP must not move.
+# Safety  : serial:1 with the BACKUP node first, so the node holding the VIP is
+#           never the first host changed. Ordering is enforced by the two plays.
+
+- name: Web tier - converge the reverse-proxy pair (secondary node first)
+  hosts: web
+  gather_facts: true
+  serial: 1
+  max_fail_percentage: 0
+  order: sorted               # BACKUP (vpnz-dmzrev02) sorts before MASTER (vpnz-dmzrev01) by name
+  become: true
+
+  pre_tasks:
+    - name: Show which node is being changed and its VRRP role
+      ansible.builtin.debug:
+        msg: >-
+          Changing {{ inventory_hostname }} ({{ keepalived_state }},
+          priority {{ keepalived_priority }}) - VIP {{ keepalived_vip }}
+      tags: [always]
+
+    - name: Record the pre-change VRRP state as evidence
+      ansible.builtin.shell: |
+        set -o pipefail
+        ip -br addr show | grep -F '{{ keepalived_vip }}' || echo "VIP not present on this node"
+      register: vrrp_before
+      changed_when: false
+      tags: [evidence, keepalived]
+
+  roles:
+    - role: common
+      tags: [common]
+    - role: nginx
+      tags: [nginx]
+    - role: keepalived
+      tags: [keepalived]
+
+  post_tasks:
+    - name: Verify the local health endpoint answers 200
+      ansible.builtin.uri:
+        url: "http://127.0.0.1{{ nginx_health_path }}"
+        status_code: 200
+        return_content: true
+      register: healthz
+      changed_when: false
+      tags: [verify]
+
+    - name: Verify the published name resolves and answers through this node
+      ansible.builtin.uri:
+        url: "https://portal.vertexpeak.example/"
+        validate_certs: false        # DECLARED: internal CA + public name mismatch, per 3-8-5
+        status_code: [200, 301, 302]
+      register: portal_check
+      changed_when: false
+      tags: [verify]
+      ignore_errors: true            # DNS for .example is simulated; the local check above is authoritative
+
+    - name: Verify nginx configuration syntax survived the change
+      ansible.builtin.command: nginx -t
+      changed_when: false
+      tags: [verify]
+
+    - name: Confirm the VIP's location has not moved unintentionally
+      ansible.builtin.shell: |
+        set -o pipefail
+        ip -br addr show | grep -F '{{ keepalived_vip }}' || echo "VIP not present on this node"
+      register: vrrp_after
+      changed_when: false
+      tags: [evidence, keepalived]
+
+    - name: Append the VRRP before/after record to the run log
+      ansible.builtin.copy:
+        content: |
+          === {{ inventory_hostname }} ===
+          BEFORE: {{ vrrp_before.stdout }}
+          AFTER : {{ vrrp_after.stdout }}
+          healthz: {{ healthz.status }}
+        dest: "{{ playbook_dir }}/../runs/{{ lookup('pipe', 'date +%Y-%m-%d_%H%M') }}_03-nginx-vrrp.txt"
+        mode: "0644"
+      delegate_to: localhost
+      become: false
+      tags: [evidence]
+
+- name: Web tier - post-deployment failover proof (optional, tagged failover)
+  hosts: vpnz-dmzrev01
+  gather_facts: false
+  become: true
+  tags: [never, failover]
+
+  tasks:
+    - name: Stop keepalived on the MASTER to move the VIP
+      ansible.builtin.systemd_service:
+        name: keepalived
+        state: stopped
+
+    - name: Wait for the VIP to appear on the BACKUP node
+      ansible.builtin.wait_for:
+        host: "{{ keepalived_vip }}"
+        port: 443
+        timeout: 30
+
+    - name: Confirm the service still answers through the VIP
+      ansible.builtin.uri:
+        url: "https://{{ keepalived_vip }}{{ nginx_health_path }}"
+        validate_certs: false
+        status_code: 200
+      delegate_to: vpnz-dmzrev02
+
+    - name: Restart keepalived on the original MASTER
+      ansible.builtin.systemd_service:
+        name: keepalived
+        state: started
+```

@@ -1,0 +1,10 @@
+1. Does the script start with `set -euo pipefail` and source `lib/common.sh`?
+2. Is every variable expansion quoted, and is every intentional word-splitting case commented?
+3. Is every `read` using `IFS= read -r`?
+4. Is every external command's absence handled (`require_cmd`, or an explicit `command -v` test)?
+5. Are temporary files created with `mktemp` and removed through the `trap` registry?
+6. Does every failure path exit non-zero, and is the exit code documented in the usage text?
+7. Are all arguments validated before use, including numeric bounds and mutual constraints?
+8. Does the script write to `/var/log/fyp/` through `log`, and never with an unredirected `echo`?
+9. Is there any unquoted `rm`, any `eval`, any `$( )` inside a double-quoted string used as a command, or any `kill` without a PID check?
+10. Does the script behave correctly when the log directory, the role file, or a target directory is missing?

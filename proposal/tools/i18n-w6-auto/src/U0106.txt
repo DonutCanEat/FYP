@@ -1,0 +1,5 @@
+- **Ansible Vault** for every secret consumed by a playbook (Windows local administrator passwords during bootstrap, the vault-encrypted `svc_ansible` credential, iSCSI CHAP secrets, the Grafana administrator password, and the SMTP-style alert webhook tokens if configured).
+- **`svc_ansible`** is created with a 32-character random password stored in the group's password manager, never in Git; "Password never expires" is disabled and the password is rotated by playbook, per §8.4.
+- **`.gitignore`** covering `*.key`, `wg*.conf`, `*.pem`, `*.pfx`, `pki/`, `vault-pass*`, `*.retry` and `logs/`.
+- **A pre-tag sweep.** Before each tagged release, the repository is searched for secret-shaped strings — `gitleaks` if it is available in the Ubuntu archive, otherwise a `git grep` sweep plus a PowerShell `Select-String` sweep for `password=`, `PRIVATE KEY` and `BEGIN OPENSSH`. The sweep output is evidence.
+- **A deliberate negative test.** A fake key is committed once, on a throwaway branch, to prove the sweep catches it; the branch is deleted and the capture is retained in `06-verification/`.

@@ -1,0 +1,1 @@
+The group patterns above use only the group names and hostnames of the inventory of 10.4.2; the `!` exclusion syntax depends on the inventory containing the groups named. **Rule: a first-ever run of any playbook against a host is always `--limit <one-host>`.** This rule is written into the group's working agreement and appears in every runbook.

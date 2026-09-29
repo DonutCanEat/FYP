@@ -1,0 +1,1 @@
+Every piece of configuration has exactly one authoritative home, and that home is a file in Git:

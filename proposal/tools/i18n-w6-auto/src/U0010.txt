@@ -1,0 +1,10 @@
+| Deliverable | Form | Baseline reference |
+|---|---|---|
+| A single automation control node | `vpnz-mon01` (10.10.30.31), Ubuntu Server 24.04.3 LTS, 4 vCPU / 8 GB / 100 GB | §6 row 23, §12.4 |
+| Configuration management of both Linux and Windows estates from one control node | `ansible-core` 2.18.x with the `ansible` community package 11.x; Linux over SSH, Windows over WinRM | §7, §11.4, §12.4 |
+| An infrastructure-as-code repository | `C:\FYP\04-automation\` — `ansible/`, `powershell/`, `bash/`, `runs/` | §8.6 |
+| At least nine runnable playbooks and six roles | `playbooks/01-baseline-windows.yml` … `09-verify-services.yml`; `roles/common`, `nginx`, `keepalived`, `nftables`, `winrm`, `ad_users` | §8.6 |
+| At least five production-quality PowerShell scripts | `Invoke-NewStarterOnboarding.ps1`, `Get-ADHealthReport.ps1`, `Backup-NetworkDeviceConfig.ps1`, `Test-ServiceEndpoints.ps1`, `Export-GPOBackup.ps1` | §8.6, §11.4 |
+| At least five production-quality Bash scripts plus a shared library | `01-hardening-baseline.sh` … `05-cert-renew.sh`, `lib/common.sh` | §8.6, §11.4 |
+| Version control and peer review of every change | Bare Git repositories or Gitea on `vpnz-mon01`, branch-per-task, tagged releases `v0.1` … `v1.0` | §8.6, §11.4 |
+| Reproducible evidence | Timestamped run logs in `04-automation/runs/`, committed to Git | §12.4 |

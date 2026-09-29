@@ -1,0 +1,9 @@
+| Task | Right tool | Why |
+|---|---|---|
+| Summarise hundreds of thousands of nftables drop-log lines by source prefix | **Bash** (`awk`) | A one-pass text reduction; `awk` is the correct instrument and is present everywhere |
+| Compare certificate `notAfter` values across nine hosts and exit non-zero before expiry | **Bash** (`openssl` + arithmetic) | A thin wrapper over a tool that already produces the fact |
+| Produce a health and capacity report from `/proc`, `df`, `systemctl` | **Bash** | A local read-only report whose output is a file; no state is being converged |
+| Apply a hardened SSH, sysctl and audit baseline to nine hosts, idempotently, with a change count | **Ansible** | State, not procedure. Bash can do it once; Ansible proves it, reports `changed=0`, and is reviewable as a diff |
+| Create and converge AD users and groups | **PowerShell** | The domain-aware cmdlets are the only sane interface, and `-WhatIf` provides the dry run |
+| Revert the estate after a failed change | **Ansible** | It ties back to Git, which is where the previous state lives |
+| Arm a rollback timer around a firewall apply | **Bash** | A time-bounded local action driven by a `systemd` timer — exactly what Bash and `systemd` are for, and the reason `02-nftables-apply.sh` exists as a script *and* is invoked by the Ansible role |

@@ -1,0 +1,41 @@
+```text
+PLAY [Egress firewall - converge the nftables pair] ***************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [vpnz-nft01]
+ok: [vpnz-nft02]
+
+TASK [Assert that the two expected interfaces exist] ***************************
+ok: [vpnz-nft01]
+ok: [vpnz-nft02]
+
+TASK [Arm the automatic rollback timer] ***************************************
+skipping: [vpnz-nft01]
+skipping: [vpnz-nft02]
+
+TASK [nftables : Deploy the ruleset fragments] *********************************
+ok: [vpnz-nft01] => (item=10-sets.nft)
+ok: [vpnz-nft01] => (item=20-filter-input.nft)
+ok: [vpnz-nft01] => (item=30-filter-forward.nft)
+ok: [vpnz-nft01] => (item=40-nat.nft)
+ok: [vpnz-nft01] => (item=90-logging.nft)
+ok: [vpnz-nft02] => (item=10-sets.nft)
+...
+ok: [vpnz-nft02] => (item=90-logging.nft)
+
+TASK [Validate the candidate ruleset without applying it] **********************
+ok: [vpnz-nft01]
+ok: [vpnz-nft02]
+
+TASK [Wait for the ruleset to be loaded and policy to be drop] *****************
+ok: [vpnz-nft01]
+ok: [vpnz-nft02]
+
+TASK [Disarm the rollback timer ONLY because verification passed] **************
+skipping: [vpnz-nft01]
+skipping: [vpnz-nft02]
+
+PLAY RECAP *********************************************************************
+vpnz-nft01                 : ok=26   changed=0    unreachable=0    failed=0    skipped=8    rescued=0    ignored=0
+vpnz-nft02                 : ok=26   changed=0    unreachable=0    failed=0    skipped=8    rescued=0    ignored=0
+```

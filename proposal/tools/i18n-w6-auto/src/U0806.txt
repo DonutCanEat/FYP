@@ -1,0 +1,36 @@
+```text
+Finding ID      : F-L4-nn
+Date recorded   : YYYY-MM-DD
+Recorded by     : adm-{initials}
+Host(s)         : vpnz-nft01  (all hosts affected, verbatim hostnames)
+Task / playbook : 05-nftables-egress.yml  (or the script name, or the manual step)
+Change window   : in-window | out-of-window (state which)
+Test case ID    : TC-L4-nn
+Trust boundary  : TB-nn, or "not applicable"
+
+OBSERVED
+  What actually happened, with the verbatim command that produced it and the
+  relevant output lines. Screenshot reference: 07-evidence/{date}_{host}_{what}.png
+
+EXPECTED
+  What the design says should have happened, with the section or baseline
+  reference that fixes the expectation (for example "design baseline section
+  12.4 requires changed=0 on the second run").
+
+DIFFERENCE
+  The precise delta: which value differed, or which step did not occur.
+
+ROOT CAUSE
+  The underlying reason, once established. If it is not established, write
+  "NOT ESTABLISHED" and state what further test would establish it. Do not guess.
+
+RESOLUTION
+  The change made, who reviewed it, the commit that carries it, and the
+  verification that proves the resolution (with the evidence path).
+
+RESIDUAL RISK
+  What remains uncertain or unaddressed after the fix.
+
+LESSON
+  What the group would do differently, stated in one or two sentences.
+```

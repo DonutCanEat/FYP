@@ -1,0 +1,7 @@
+| Layer | File | Contents |
+|---|---|---|
+| 1 (lowest) | `roles/<role>/defaults/main.yml` | The role's tunable inputs with safe defaults. A default must be a value that is *correct for this project*, not a placeholder |
+| 2 | `inventory/group_vars/all.yml` | Values true everywhere: `fyp_domain`, `fyp_netbios`, NTP and DNS servers, administrator group names, package policy |
+| 3 | `inventory/group_vars/<group>.yml` | Tier values: connection settings, package lists, service enablement |
+| 4 | `inventory/host_vars/<host>.yml` | Genuine per-host facts: VRRP state and priority, the backup destination, the specific upstream the host serves |
+| 5 (highest, excluding runtime) | Vault-encrypted variables in `group_vars/all/vault.yml` | Secrets only. Nothing but secrets |

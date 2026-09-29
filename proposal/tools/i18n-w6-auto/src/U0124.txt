@@ -1,0 +1,92 @@
+```text
+C:\FYP\04-automation\
+├── ansible/
+│   ├── ansible.cfg
+│   ├── inventory/
+│   │   ├── hosts.yml
+│   │   ├── lab.ini
+│   │   ├── group_vars/
+│   │   │   ├── all.yml
+│   │   │   ├── all/
+│   │   │   │   └── vault.yml          (Ansible Vault; committed encrypted)
+│   │   │   ├── windows.yml
+│   │   │   ├── linux.yml
+│   │   │   ├── web.yml
+│   │   │   ├── edge.yml
+│   │   │   ├── monitoring.yml
+│   │   │   └── dmz.yml
+│   │   └── host_vars/
+│   │       ├── vpnz-nft01.yml
+│   │       ├── vpnz-nft02.yml
+│   │       ├── vpnz-dmzrev01.yml
+│   │       ├── vpnz-dmzrev02.yml
+│   │       └── vpnz-mon01.yml
+│   ├── playbooks/
+│   │   ├── 01-baseline-windows.yml
+│   │   ├── 02-baseline-linux.yml
+│   │   ├── 03-nginx-reverseproxy.yml
+│   │   ├── 04-keepalived.yml
+│   │   ├── 05-nftables-egress.yml
+│   │   ├── 06-wireguard.yml
+│   │   ├── 07-ad-users.yml
+│   │   ├── 08-collect-network-configs.yml
+│   │   └── 09-verify-services.yml
+│   ├── roles/
+│   │   ├── common/
+│   │   ├── nginx/
+│   │   ├── keepalived/
+│   │   ├── nftables/
+│   │   ├── wireguard/
+│   │   ├── winrm/
+│   │   ├── windows_baseline/
+│   │   ├── ad_users/
+│   │   └── users/
+│   ├── filter_plugins/
+│   │   ├── fyp_filters.py
+│   │   └── README.md
+│   ├── templates/
+│   │   ├── nftables.conf.j2
+│   │   ├── keepalived.conf.j2
+│   │   ├── wg0.conf.j2
+│   │   ├── nginx-upstreams.conf.j2
+│   │   ├── portal.conf.j2
+│   │   ├── sshd-hardening.conf.j2
+│   │   └── sysctl-hardening.conf.j2
+│   ├── files/
+│   │   ├── dmzrev01/nginx.conf
+│   │   ├── dmzrev02/nginx.conf
+│   │   └── ssh/authorized_keys/
+│   │       ├── adm-w1.pub
+│   │       ├── adm-w2.pub
+│   │       ├── adm-w3.pub
+│   │       └── adm-w4.pub
+│   ├── docs/
+│   │   ├── 01-runbook-baseline-linux.md
+│   │   ├── 02-runbook-nftables-lockout.md
+│   │   ├── 03-runbook-vault.md
+│   │   ├── 04-variable-dictionary.md
+│   │   └── 05-idempotence-log.md
+│   └── logs/
+│       └── ansible.log
+├── powershell/
+│   ├── Invoke-NewStarterOnboarding.ps1
+│   ├── Get-ADHealthReport.ps1
+│   ├── Backup-NetworkDeviceConfig.ps1
+│   ├── Test-ServiceEndpoints.ps1
+│   ├── Export-GPOBackup.ps1
+│   ├── Invoke-ScheduledBackupVerify.ps1
+│   ├── modules/VPCommon/VPCommon.psm1
+│   ├── data/newstarters.csv
+│   └── logs/
+├── bash/
+│   ├── 01-hardening-baseline.sh
+│   ├── 02-nftables-apply.sh
+│   ├── 03-keepalived-check.sh
+│   ├── 04-backup-restic.sh
+│   ├── 05-cert-renew.sh
+│   ├── 06-server-health-report.sh
+│   ├── 07-nftables-log-summary.sh
+│   └── lib/common.sh
+└── runs/
+    └── YYYY-MM-DD_HHMM_playbook.log
+```

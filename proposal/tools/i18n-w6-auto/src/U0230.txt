@@ -1,0 +1,1 @@
+Two baselines in one repository is one baseline too many, so a small consistency playbook asserts that every address in `hosts.yml` also appears in the frozen address table, and that `lab.ini` has not drifted from `hosts.yml`:

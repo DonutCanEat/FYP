@@ -1,0 +1,1 @@
+The second play is tagged `never` on purpose: it is a **demonstration** playbook run only when a failover capture is needed, and never as part of a routine deployment. Tagging it `never` means it cannot be triggered by an accidental full run, which is the same philosophy as the `--limit` discipline in 10.4.7.

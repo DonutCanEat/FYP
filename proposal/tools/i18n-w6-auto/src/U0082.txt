@@ -1,0 +1,1 @@
+The lab has no physically separate staging environment, so staging is implemented as **three graded steps** in the same estate:

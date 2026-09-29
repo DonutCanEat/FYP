@@ -1,0 +1,9 @@
+| Job | Host | Mechanism | Schedule | Output |
+|---|---|---|---|---|
+| Playbook runs against the estate | `vpnz-mon01` | `systemd` timer `fyp-ansible-audit.timer` → `fyp-ansible-audit.service` (a `oneshot` running `09-verify-services.yml`) | Daily 06:00 | JSON audit report in `runs/audit/`; non-zero exit on assertion failure |
+| Linux health report | every Linux guest | `systemd` timer `fyp-health-report.timer` → `fyp-health-report.service` | Daily 06:30 | `/var/log/fyp/` log, optional JSON file, non-zero exit on findings |
+| nftables drop summary | `vpnz-nft01` | `systemd` timer `fyp-nft-summary.timer` | Hourly at :05 | Text summary for the operations log, JSON object for the agent |
+| Certificate expiry check | `vpnz-mon01` | `systemd` timer `fyp-cert-expiry.timer` | Weekly, Sunday 03:00 | Report file, non-zero exit inside the warning window |
+| Backup with verification | Windows guests | Windows Task Scheduler task scheduled by the `windows_baseline` role, named `BKP-{TARGET}-DAILY` | Daily 22:00 | Phase result CSV in `C:\FYP\config\`, exit code 3 on failure |
+| Off-host configuration and evidence copy | `vpnz-lnxra01` / Linux guests | `systemd` timer `fyp-restic-backup.timer` → `04-backup-restic.sh` | Daily 23:00 | Restic snapshot on `vpnz-dmzjump01` |
+| Configuration archive | `vpnz-mon01` | `systemd` timer | After each milestone tag | Dated archive plus manifest under `/srv/tftp/config-archive/` |

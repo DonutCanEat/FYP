@@ -1,0 +1,98 @@
+```powershell
+<#
+.SYNOPSIS
+    Configures a Windows Server 2025 guest as an Ansible-managed node over WinRM/HTTPS.
+.DESCRIPTION
+    Run once on every Windows managed node, elevated. Idempotent: safe to re-run.
+    Scope of this project: Windows Server 2025 Standard (Desktop Experience).
+    Fallback: Windows Server 2022 (build 20348) — identical cmdlets.
+.PARAMETER ControlNodeAddress
+    The automation control node. Only this address is allowed through the firewall.
+.PARAMETER CertificateThumbprint
+    Thumbprint of an existing certificate with a SAN matching the host FQDN.
+    Omit to create a self-signed certificate of last resort (documented deviation).
+#>
+[CmdletBinding()]
+param(
+    [Parameter(Mandatory)][ValidatePattern('^(\d{1,3}\.){3}\d{1,3}$')]
+    [string]$ControlNodeAddress = '10.10.30.31',
+
+    [ValidatePattern('^[0-9A-Fa-f]{40}$')]
+    [string]$CertificateThumbprint,
+
+    [ValidateSet('5985','5986')][string]$ListenerPort = '5986'
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+function Write-Step { param([string]$Message)
+    Write-Host ("[{0}] {1}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $Message) }
+
+try {
+    Write-Step 'Checking WinRM service state'
+    if ((Get-Service WinRM).StartType -ne 'Automatic') {
+        Set-Service WinRM -StartupType Automatic
+    }
+    if ((Get-Service WinRM).Status -ne 'Running') { Start-Service WinRM }
+
+    Write-Step 'Enabling PowerShell remoting (HTTP listener, then removed below)'
+    # -SkipNetworkProfileCheck: needed because lab NICs are often classified as Public.
+    Enable-PSRemoting -Force -SkipNetworkProfileCheck
+
+    if ($ListenerPort -eq '5986') {
+        if (-not $CertificateThumbprint) {
+            Write-Step 'No thumbprint supplied - creating a self-signed certificate (documented deviation)'
+            $fqdn = "$env:COMPUTERNAME.$((Get-CimInstance Win32_ComputerSystem).Domain)"
+            $CertificateThumbprint = (New-SelfSignedCertificate `
+                -DnsName $env:COMPUTERNAME, $fqdn `
+                -CertStoreLocation 'Cert:\LocalMachine\My' `
+                -NotAfter (Get-Date).AddDays(397) `
+                -KeyAlgorithm RSA -KeyLength 2048 `
+                -TextExtension @('2.5.29.37={text}1.3.6.1.5.5.7.3.1')).Thumbprint
+            Write-Warning "Self-signed thumbprint $CertificateThumbprint - must be trusted on vpnz-mon01"
+        }
+
+        Write-Step "Creating HTTPS listener on port 5986 (thumbprint $CertificateThumbprint)"
+        $https = Get-ChildItem WSMan:\Localhost\Listener |
+                 Where-Object { $_.Keys -contains 'Transport=HTTPS' }
+        if (-not $https) {
+            New-Item -Path WSMan:\Localhost\Listener `
+                     -Transport HTTPS -Address * `
+                     -CertificateThumbprint $CertificateThumbprint | Out-Null
+        }
+
+        Write-Step 'Removing the unencrypted HTTP listener on 5985'
+        Get-ChildItem WSMan:\Localhost\Listener |
+            Where-Object { $_.Keys -contains 'Transport=HTTP' } |
+            ForEach-Object { Remove-Item -Path ("WSMan:\Localhost\Listener\" + $_.Name) -Recurse -Force }
+
+        Write-Step 'Restricting WinRM to Negotiate/CredSSP and setting MaxEnvelopeSizekb'
+        Set-Item WSMan:\Localhost\Service\Auth\Basic -Value $false
+        Set-Item WSMan:\Localhost\Service\AllowUnencrypted -Value $false
+        Set-Item WSMan:\localhost\MaxEnvelopeSizekb -Value 500
+        Set-Item WSMan:\localhost\Shell\IdleTimeout -Value 300000   # 5 minutes
+        Set-Item WSMan:\localhost\Service\MaxConcurrentUsers -Value 10
+    }
+
+    Write-Step "Firewall rule: allow TCP $ListenerPort from $ControlNodeAddress only"
+    $ruleName = "FYP-Ansible-WinRM-$ListenerPort"
+    $existing = Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue
+    if ($existing) { Remove-NetFirewallRule -DisplayName $ruleName }
+    New-NetFirewallRule -DisplayName $ruleName -Direction Inbound -Action Allow `
+        -Protocol TCP -LocalPort ([int]$ListenerPort) `
+        -RemoteAddress $ControlNodeAddress -Profile Domain,Private,Public `
+        -Description 'Ansible control node on vpnz-mon01 (10.10.30.31) - TB-07/TB-08' | Out-Null
+
+    Write-Step 'Verifying'
+    Test-WSMan -ComputerName $env:COMPUTERNAME -UseSSL -ErrorAction Continue
+    Get-ChildItem WSMan:\Localhost\Listener | Select-Object Name, Keys
+    Get-NetFirewallRule -DisplayName $ruleName |
+        Get-NetFirewallAddressFilter | Select-Object RemoteAddress
+    Write-Step 'Done'
+}
+catch {
+    Write-Error ("WinRM configuration failed: {0}" -f $_.Exception.Message)
+    throw
+}
+```

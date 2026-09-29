@@ -1,0 +1,1 @@
+All output below is **illustrative**. The shape is what must hold; the values in a real run come from the group's own CSV and estate.

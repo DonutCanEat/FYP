@@ -1,0 +1,4 @@
+- `hosts: linux` with `serial: 2`, because the Linux estate contains no VRRP pair except `edge` and `web`, which are excluded by a `--limit` during a first run and covered by their own playbook (`05-nftables-egress.yml`, `03-nginx-reverseproxy.yml`).
+- The role list is `common` only, plus an `assert` block that verifies no public resolver is configured and that chrony is bound to `10.10.30.11`.
+- An `assert` that `net.ipv4.ip_forward` equals `1` **on the nftables pair only** and `0` elsewhere, which is one of the most easily lost facts in a routed lab.
+- A final task that runs `01-hardening-baseline.sh --check` so that the shell script and the Ansible role are proven to agree. Two implementations of the same baseline that disagree is a defect, and this task is what detects it.

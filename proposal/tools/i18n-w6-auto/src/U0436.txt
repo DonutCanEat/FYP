@@ -1,0 +1,1 @@
+`--check` runs the playbook without making changes, reporting what *would* change. `--diff` shows the file-level change, which is the part that makes a dry run actually useful: a firewall change is reviewed by reading the diff of `/etc/nftables.conf`, not by reading a task name.

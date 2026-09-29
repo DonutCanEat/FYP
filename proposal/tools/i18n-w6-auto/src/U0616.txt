@@ -1,0 +1,12 @@
+```text
+VERBOSE: 2026-11-09 14:02:11 [INFO] Starting onboarding run from C:\FYP\04-automation\powershell\data\newstarters.csv
+What if: Performing the operation "Create AD user" on target "kwong.cy@vertexpeak.fyp.lab".
+VERBOSE: 2026-11-09 14:02:11 [INFO] WhatIf: would create kwong.cy@vertexpeak.fyp.lab in OU=Engineering,OU=HQ-ShaTin,OU=Users,OU=VertexPeak,DC=vertexpeak,DC=fyp,DC=lab
+What if: Performing the operation "Create AD user" on target "tsang.mh@vertexpeak.fyp.lab".
+VERBOSE: 2026-11-09 14:02:12 [INFO] WhatIf: would create tsang.mh@vertexpeak.fyp.lab in OU=Finance,OU=HQ-ShaTin,OU=Users,OU=VertexPeak,DC=vertexpeak,DC=fyp,DC=lab
+
+SamAccountName DistinguishedName Created GroupCount HomeCreated QuotaApplied Status
+-------------- ----------------- ------- ---------- ----------- ------------ ------
+kwong.cy                       False          1       False        False WhatIf
+tsang.mh                       False          1       False        False WhatIf
+```

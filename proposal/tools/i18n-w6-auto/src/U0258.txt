@@ -1,0 +1,11 @@
+```yaml
+# inventory/host_vars/vpnz-dmzrev01.yml
+keepalived_state: MASTER
+keepalived_priority: 150
+keepalived_vrid: 61
+keepalived_vip: 10.10.90.10   # the VIP only; vpnz-dmzrev01 is 10.10.90.28 and vpnz-dmzrev02 is 10.10.90.29 (Rev 1.1 ruling C-02)
+keepalived_interface: "{{ ansible_facts['default_ipv4']['interface'] }}"
+nginx_server_name: portal.vertexpeak.example
+nginx_tls_cert: /etc/nginx/ssl/portal.crt
+nginx_tls_key: /etc/nginx/ssl/portal.key
+```

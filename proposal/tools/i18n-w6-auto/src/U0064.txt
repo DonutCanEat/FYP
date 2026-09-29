@@ -1,0 +1,1 @@
+Idempotence means that applying the same code twice produces the same state and, on the second application, no change. The project treats idempotence as a **hard requirement** rather than a virtue: §12.4 states that each playbook is run twice and `changed=0` on the second run is captured as evidence.

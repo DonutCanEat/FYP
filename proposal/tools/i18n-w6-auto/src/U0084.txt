@@ -1,0 +1,3 @@
+1. **Syntax and lint gate** — `ansible-playbook --syntax-check`, plus ShellCheck for Bash and PSScriptAnalyzer for PowerShell. Nothing runs until it parses and lints.
+2. **Dry-run gate** — `--check --diff` against the whole target group. This reports what *would* change without changing it.
+3. **Canary gate** — the real run against **one host** first (`--limit`), verified by hand, then the remainder of the group, then the site.

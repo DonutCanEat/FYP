@@ -1,0 +1,193 @@
+```yaml
+---
+# 09-verify-services.yml
+# Purpose : A strictly READ-ONLY audit of the estate. Produces a machine-readable
+#           compliance report for the verification chapter. This playbook is the
+#           reference implementation of "check mode by construction": it makes no
+#           change even when run without --check, and every task declares
+#           changed_when: false.
+# Owner   : W4. Reviewer: all four members (this is the one playbook that touches
+#           every host, so it must be safe by construction).
+# Test IDs: TC-L4-05, TC-L2-01..03, TC-L1-01, TB-01..TB-16 (read-only probes).
+# Hosts   : 'all' is permitted HERE AND NOWHERE ELSE, because no mutation is possible.
+
+- name: FYP estate compliance audit (read-only)
+  hosts: all
+  gather_facts: true
+  become: true                  # needed to read /etc/nftables.conf, sshd -T and the shadow-file policy
+  serial: 0                     # audit the whole estate in parallel; nothing is mutated
+
+  vars:
+    audit_report_dir: "{{ playbook_dir }}/../runs/audit"
+    audit_expected_linux_packages: [chrony, rsyslog, auditd, nftables, curl, jq]
+    audit_forbidden_ports_up: [23, 21, 3389]      # telnet, ftp, RDP on a Linux guest
+    audit_result: []
+
+  tasks:
+    - name: Initialise the report directory
+      ansible.builtin.file:
+        path: "{{ audit_report_dir }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+      become: false
+      run_once: true
+      changed_when: false
+
+    # ---------------- Linux audit ----------------
+    - name: Linux - collect package presence
+      ansible.builtin.command: "dpkg-query -W -f='${Status} ${Version}' {{ item }}"
+      register: pkg_results
+      changed_when: false
+      failed_when: false
+      loop: "{{ audit_expected_linux_packages }}"
+      when: "'linux' in group_names"
+
+    - name: Linux - collect listening TCP sockets
+      ansible.builtin.command: ss -H -tlnp
+      register: ss_results
+      changed_when: false
+      when: "'linux' in group_names"
+
+    - name: Linux - effective SSH policy (read-only)
+      ansible.builtin.command: sshd -T
+      register: sshd_effective
+      changed_when: false
+      failed_when: false
+      when: "'linux' in group_names"
+
+    - name: Linux - assert the SSH hardening that the design requires
+      ansible.builtin.assert:
+        that:
+          - sshd_effective.stdout is search('(?m)^permitrootlogin no$')
+          - sshd_effective.stdout is search('(?m)^passwordauthentication no$')
+        fail_msg: "{{ inventory_hostname }} FAILS: SSH hardening missing or reverted (see /etc/ssh/sshd_config.d/10-fyp-hardening.conf)"
+        success_msg: "{{ inventory_hostname }} PASS: SSH hardening present"
+      when: "'linux' in group_names"
+      changed_when: false
+
+    - name: Linux - verify the nftables table exists on the egress pair
+      ansible.builtin.command: nft list table inet fyp_filter
+      register: nft_audit
+      changed_when: false
+      failed_when: false
+      when: "'edge' in group_names"
+
+    - name: Linux - verify Keepalived is active and the VIP is owned where expected
+      ansible.builtin.shell: |
+        set -o pipefail
+        systemctl is-active keepalived
+        ip -br addr show | grep -cF '{{ keepalived_vip | default("0.0.0.0") }}' || true
+      register: ka_audit
+      changed_when: false
+      when: "'edge' in group_names or 'web' in group_names"
+
+    - name: Linux - verify certificate expiry is inside the policy window
+      ansible.builtin.shell: |
+        set -o pipefail
+        for f in /etc/nginx/ssl/*.crt; do
+          [ -e "$f" ] || continue
+          end=$(openssl x509 -enddate -noout -in "$f" | cut -d= -f2)
+          echo "$f|$end"
+        done
+      register: cert_audit
+      changed_when: false
+      failed_when: false
+      when: "'web' in group_names"
+
+    # ---------------- Windows audit ----------------
+    - name: Windows - collect service state for the design's expected services
+      ansible.windows.win_shell: |
+        Get-Service -Name WinRM, W32Time, DNS, Netlogon, W3SVC, DHCP -ErrorAction SilentlyContinue |
+          Select-Object Name, Status, StartType | ConvertTo-Csv -NoTypeInformation
+      register: win_services
+      changed_when: false
+      failed_when: false
+      when: "'windows' in group_names"
+
+    - name: Windows - verify the WinRM HTTPS listener and absence of an HTTP listener
+      ansible.windows.win_shell: |
+        $l = Get-ChildItem WSMan:\Localhost\Listener
+        $https = ($l | Where-Object { $_.Keys -contains 'Transport=HTTPS' }).Count
+        $http  = ($l | Where-Object { $_.Keys -contains 'Transport=HTTP' }).Count
+        "https_listeners=$https http_listeners=$http"
+      register: win_winrm
+      changed_when: false
+      failed_when: false
+      when: "'windows' in group_names"
+
+    - name: Windows - assert that no unencrypted WinRM listener remains
+      ansible.builtin.assert:
+        that:
+          - "'http_listeners=0' in win_winrm.stdout"
+          - "'https_listeners=1' in win_winrm.stdout"
+        fail_msg: "{{ inventory_hostname }} FAILS: WinRM listener state is {{ win_winrm.stdout }} (expected exactly one HTTPS listener and no HTTP listener)"
+      when: "'windows' in group_names"
+      changed_when: false
+
+    - name: Windows - verify the firewall rules scoped to the control node exist
+      ansible.windows.win_shell: |
+        Get-NetFirewallRule -DisplayName 'FYP-Ansible-WinRM-5986' -ErrorAction SilentlyContinue |
+          Get-NetFirewallAddressFilter | Select-Object -ExpandProperty RemoteAddress
+      register: win_fw
+      changed_when: false
+      failed_when: false
+      when: "'windows' in group_names"
+
+    - name: Windows - verify that the AI read-only account holds only one group
+      ansible.windows.win_shell: |
+        (Get-ADUser svc_aiagent -Properties MemberOf).MemberOf
+      register: ai_groups
+      changed_when: false
+      failed_when: false
+      when: "inventory_hostname == 'vpnz-dc01'"
+
+    - name: Assert svc_aiagent is a member of GG-AI-ReadOnly and nothing else
+      ansible.builtin.assert:
+        that:
+          - ai_groups.stdout_lines | length == 1
+          - "'GG-AI-ReadOnly' in ai_groups.stdout"
+        fail_msg: >-
+          svc_aiagent holds {{ ai_groups.stdout_lines | length }} group memberships.
+          Section 11 depends on this account being read-only by identity, not by
+          convention. Investigate before demonstrating the AI layer.
+      when: "inventory_hostname == 'vpnz-dc01'"
+      changed_when: false
+
+    # ---------------- Report assembly ----------------
+    - name: Assemble the per-host audit record
+      ansible.builtin.set_fact:
+        audit_result: >-
+          {{ audit_result + [{
+               'host': inventory_hostname,
+               'groups': group_names,
+               'linux_packages': (pkg_results.results | default([]) | map(attribute='stdout') | list),
+               'listening_tcp': (ss_results.stdout_lines | default([])),
+               'ssh_policy_ok': (sshd_effective.stdout is defined and
+                                 sshd_effective.stdout is search('(?m)^passwordauthentication no$')),
+               'nftables_present': (nft_audit.rc | default(-1) == 0),
+               'keepalived_active': (ka_audit.stdout_lines[0] | default('n/a')),
+               'windows_services': (win_services.stdout_lines | default([])),
+               'winrm': (win_winrm.stdout | default('n/a')),
+               'winrm_fw_scope': (win_fw.stdout_lines | default([]))
+             }] }}
+      changed_when: false
+
+    - name: Write the JSON audit report
+      ansible.builtin.copy:
+        content: "{{ audit_result | to_nice_json }}\n"
+        dest: "{{ audit_report_dir }}/audit-{{ lookup('pipe', 'date +%Y-%m-%d_%H%M') }}.json"
+        mode: "0644"
+      delegate_to: localhost
+      become: false
+      run_once: true
+      changed_when: false
+
+    - name: Print the audit summary
+      ansible.builtin.debug:
+        msg: >-
+          AUDIT COMPLETE - {{ audit_result | length }} hosts recorded.
+          Report: {{ audit_report_dir }}/audit-{{ lookup('pipe', 'date +%Y-%m-%d') }}.json
+      run_once: true
+      changed_when: false
+```

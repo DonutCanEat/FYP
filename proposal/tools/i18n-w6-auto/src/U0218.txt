@@ -1,0 +1,1 @@
+The group-of-groups pattern exists because a *zone* and an *operating system family* are two different facts about a host, and a flat inventory cannot express both without duplication. `vpnz-dmzrev01` is a Linux host **and** a DMZ host **and** a web-tier host. With the hierarchy:

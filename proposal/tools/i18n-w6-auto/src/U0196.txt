@@ -1,0 +1,1 @@
+The proof that the control node can reach the estate is the `win_ping` result required by §12.4, plus the SSH equivalent for Linux:

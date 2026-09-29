@@ -1,0 +1,1 @@
+Expected shape of the result (illustrative):

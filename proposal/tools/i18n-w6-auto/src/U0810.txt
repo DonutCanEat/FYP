@@ -1,0 +1,50 @@
+```text
+Finding ID      : F-L4-01
+Date recorded   : 2026-11-09
+Recorded by     : adm-w2
+Host(s)         : vpnz-nft02
+Task / playbook : 05-nftables-egress.yml, tags: drift
+Change window   : in-window
+Test case ID    : TC-L4-03
+Trust boundary  : TB-03
+
+OBSERVED
+  The drift task reported DRIFT on the canary node. The diff showed one extra rule:
+    + ip saddr 10.10.30.31 tcp dport 9090 accept
+  which does not exist in templates/nftables-30-filter-forward.nft.j2.
+  Evidence: 07-evidence/2026-11-09_vpnz-nft02_nft-drift-diff.png
+
+EXPECTED
+  The running ruleset should be byte-identical to the rendered template, because
+  the design statement is that the template is the single source of truth for the
+  egress policy (design baseline section 12.2 and section 12.4 of this project's
+  automation strategy).
+
+DIFFERENCE
+  One forward-accept rule for TCP 9090 from the monitoring host was present on the
+  live firewall and absent from Git.
+
+ROOT CAUSE
+  During the Prometheus triage experiment on 2026-11-06 an ad-hoc rule was added by
+  hand with `nft add rule` to reach a temporary exporter port. The rule was never
+  removed and never written back into the template.
+
+RESOLUTION
+  The rule was removed from the live node; the port was instead added to the
+  monitoring port row in templates/nftables-30-filter-forward.nft.j2 under
+  group_vars/edge.yml (commit a1b2c3d, reviewed by adm-w4). The playbook was
+  re-run, the drift task reported NO-DRIFT, and the second run reported changed=0
+  on both nodes (runs/2026-11-09_2231_05-nftables.SECOND-RUN.log).
+
+RESIDUAL RISK
+  The ad-hoc change existed for three days before detection. The daily audit
+  would not have caught it, because the audit playbook asserts the presence of the
+  table and the policy, not the absence of extra rules. A future check that hashes
+  the running ruleset and compares it with the rendered template on a schedule
+  would close that gap; it is recorded as future work.
+
+LESSON
+  Every hand-made change on a live firewall must be written back into the template
+  within the same session. The drift task caught it, but only because a playbook
+  happened to be run; relying on that is a process weakness, not a control.
+```

@@ -1,0 +1,115 @@
+```yaml
+---
+# 01-baseline-windows.yml
+# Purpose : Apply the Windows security, time, audit and monitoring baseline to the
+#           Windows estate, and enable WinRM/HTTPS so that later playbooks can run.
+# Owner   : W4 (Automation, Monitoring & AI). Reviewer: W1.
+# Test IDs: TC-L4-01, TC-L4-02, TB-07, TB-08.
+# Idempotence: second run must report changed=0 (see runs/ for the evidence log).
+# Notes   : Ansible's WinRM connection is already active when this runs, so the
+#           listener tasks are verification-and-repair rather than bootstrap.
+#           The original bootstrap of WinRM is done once by hand (10.4.1.3).
+
+- name: Baseline hardening of the Windows estate
+  hosts: windows
+  gather_facts: true
+  serial: 1                     # rolling: one host at a time, never the whole estate at once
+  max_fail_percentage: 0        # stop the rollout on the first failure
+  any_errors_fatal: true
+
+  vars:
+    baseline_audit_subcategories:
+      - "Logon"
+      - "Logoff"
+      - "Account Lockout"
+      - "User Account Management"
+      - "Security Group Management"
+      - "Process Creation"
+      - "Other System Events"
+
+  pre_tasks:
+    - name: Assert the operating system and build number
+      ansible.windows.win_shell: |
+        $os = Get-CimInstance Win32_OperatingSystem
+        "{0}|{1}" -f $os.Caption, $os.BuildNumber
+      register: os_check
+      changed_when: false
+
+    - name: Fail if this is not Windows Server 2025 (or the declared 2022 fallback)
+      ansible.builtin.assert:
+        that:
+          - "'10.0.26100' in os_check.stdout or (windows_baseline_allow_2022 | bool and '20348' in os_check.stdout)"
+        fail_msg: >-
+          {{ inventory_hostname }} reports '{{ os_check.stdout }}'.
+          The design pins Windows Server 2025 build 10.0.26100.
+          A Windows Server 2022 substitution is permitted only with
+          windows_baseline_allow_2022=true AND a recorded version deviation.
+        success_msg: "{{ inventory_hostname }} OS check passed: {{ os_check.stdout }}"
+
+    - name: Record the OS string as evidence
+      ansible.builtin.copy:
+        content: "{{ inventory_hostname }} {{ os_check.stdout }}\n"
+        dest: "{{ playbook_dir }}/../runs/{{ lookup('pipe', 'date +%Y-%m-%d') }}_os-strings.txt"
+        mode: "0644"
+      delegate_to: localhost
+      become: false
+
+  roles:
+    - role: winrm
+      tags: [winrm, connectivity]
+    - role: windows_baseline
+      tags: [baseline, security]
+
+  tasks:
+    - name: Converge the service accounts and administrative group memberships
+      ansible.builtin.include_role:
+        name: users
+      tags: [users, identity]
+
+    - name: Verify that the time source is the domain and skew is inside tolerance
+      ansible.windows.win_shell: |
+        $skew = (w32tm /stripchart /computer:vpnz-dc01.vertexpeak.fyp.lab /samples:1 /dataonly) -split "`n" |
+                Select-Object -Last 1
+        $skew
+      register: time_check
+      changed_when: false
+      tags: [verify, time]
+
+    - name: Assert time skew is below the Kerberos tolerance
+      ansible.builtin.assert:
+        that:
+          - time_check.stdout is search('^[+-]?0?[0-5]?\.\d+')
+        fail_msg: >-
+          Time skew on {{ inventory_hostname }} appears to exceed 5 minutes.
+          Kerberos will fail. Check the DC time source before continuing.
+      tags: [verify, time]
+
+    - name: Confirm the server answers on the published verification port set
+      ansible.windows.win_shell: |
+        foreach ($p in @(5986, {{ windows_baseline_exporter_port }})) {
+          $r = Test-NetConnection -ComputerName $env:COMPUTERNAME -Port $p -WarningAction SilentlyContinue
+          "{0}:{1}" -f $p, $r.TcpTestSucceeded
+        }
+      register: port_check
+      changed_when: false
+      tags: [verify, ports]
+
+    - name: Publish the port check result after the run
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} port check: {{ port_check.stdout_lines }}"
+      tags: [verify, ports]
+
+  post_tasks:
+    - name: Write a per-host summary line into the run log
+      ansible.builtin.lineinfile:
+        path: "{{ playbook_dir }}/../runs/{{ lookup('pipe', 'date +%Y-%m-%d_%H%M') }}_01-baseline-windows.log"
+        line: >-
+          {{ inventory_hostname }} | os={{ os_check.stdout }} |
+          winrm={{ 'ok' if ansible_winrm_scheme is defined else 'unknown' }} |
+          time_skew_check={{ 'pass' if time_check is succeeded else 'fail' }}
+        create: true
+        mode: "0644"
+      delegate_to: localhost
+      become: false
+      tags: [evidence]
+```

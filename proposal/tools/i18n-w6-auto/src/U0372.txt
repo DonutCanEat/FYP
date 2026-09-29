@@ -1,0 +1,1 @@
+**Handlers:** `Restart sssd` (only if the optional SSSD join is used), none on Windows (AD changes take effect immediately).

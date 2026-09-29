@@ -1,0 +1,1 @@
+`Enable-PSRemoting -Force` on a Windows Server 2025 guest starts the WinRM service, sets it to automatic, creates a listener, and enables the firewall group `Windows Remote Management (HTTP-In)`. That is useful as a starting point and **insufficient as a design**, for three reasons that this project's threat model makes concrete:

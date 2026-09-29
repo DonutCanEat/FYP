@@ -1,0 +1,111 @@
+```yaml
+---
+# C:\FYP\04-automation\ansible\inventory\hosts.yml
+# Vertex Peak - Victor2 FYP - authoritative Ansible inventory.
+# Addresses are verbatim from the canonical design baseline (static host table).
+# Packet Tracer devices are tracked here for documentation and config-collection
+# purposes only; Ansible CANNOT reach them (see 10.7).
+
+all:
+  children:
+
+    # ------------------------------------------------------------------
+    # Automation, monitoring and AI tier
+    # ------------------------------------------------------------------
+    monitoring:
+      hosts:
+        vpnz-mon01:
+          ansible_host: 10.10.30.31
+          ansible_user: adm-w4          # automation owner
+          fyp_role: ansible_control_node
+
+    ai:
+      hosts:
+        vpnz-ai01:
+          ansible_host: 10.10.30.51
+          ansible_user: adm-w4
+          fyp_role: agent_runtime
+          fyp_readonly_only: true       # never targeted by a mutating playbook
+
+    # ------------------------------------------------------------------
+    # Microsoft estate (managed over WinRM/HTTPS, 5986)
+    # ------------------------------------------------------------------
+    windows:
+      children:
+        windows_servers:
+          hosts:
+            vpnz-dc01:      { ansible_host: 10.10.30.11, fyp_tier: tier0, fyp_role: dc }
+            vpnz-dc02:      { ansible_host: 10.10.30.12, fyp_tier: tier0, fyp_role: dc }
+            vpnz-fs01:      { ansible_host: 10.10.30.21, fyp_tier: tier1, fyp_role: file_server }
+            vpnz-san01:     { ansible_host: 10.10.80.21, fyp_tier: tier1, fyp_role: iscsi_target }
+            vpnz-rras01:    { ansible_host: 10.10.30.41, fyp_tier: tier1, fyp_role: vpn }
+            vpnz-jump01:    { ansible_host: 10.20.20.31, fyp_tier: tier0, fyp_role: paw }
+            vpnz-brdc01:    { ansible_host: 10.10.113.11, fyp_tier: tier0, fyp_role: rodc }
+        dmz_windows:
+          hosts:
+            vpnz-dmzweba01: { ansible_host: 10.10.90.21, fyp_tier: tier1, fyp_role: iis }
+            vpnz-dmzweba02: { ansible_host: 10.10.90.22, fyp_tier: tier1, fyp_role: iis }
+      vars:
+        ansible_connection: winrm
+        ansible_port: 5986
+        ansible_winrm_transport: ntlm
+        ansible_winrm_scheme: https
+        ansible_winrm_server_cert_validation: validate
+
+    # ------------------------------------------------------------------
+    # Linux estate (managed over SSH)
+    # ------------------------------------------------------------------
+    linux:
+      children:
+        linux_servers:
+          hosts:
+            vpnz-lnxra01:   { ansible_host: 10.10.30.42, fyp_role: openvpn }
+            vpnz-dmzwp01:   { ansible_host: 10.10.90.25, fyp_role: wordpress }
+            vpnz-dmzwp02:   { ansible_host: 10.10.90.26, fyp_role: wordpress }
+            vpnz-dmzjump01: { ansible_host: 10.10.90.27, fyp_role: dmz_jump }
+        web:
+          hosts:
+            vpnz-dmzrev01:
+              ansible_host: 10.10.90.28
+              fyp_role: nginx_reverse_proxy
+              keepalived_state: MASTER
+              keepalived_priority: 150
+            vpnz-dmzrev02:
+              ansible_host: 10.10.90.29
+              fyp_role: nginx_reverse_proxy
+              keepalived_state: BACKUP
+              keepalived_priority: 100
+        edge:
+          hosts:
+            vpnz-nft01:
+              ansible_host: 10.10.50.11
+              fyp_role: nftables_egress
+              keepalived_state: MASTER
+              keepalived_priority: 150
+            vpnz-nft02:
+              ansible_host: 10.10.50.12
+              fyp_role: nftables_egress
+              keepalived_state: BACKUP
+              keepalived_priority: 100
+      vars:
+        ansible_connection: ssh
+        ansible_user: "{{ lookup('env', 'USER') | default('adm-w4', true) }}"
+        ansible_ssh_private_key_file: "~/.ssh/id_ed25519_adm-w4"
+        ansible_python_interpreter: auto_silent
+        ansible_become: true
+        ansible_become_method: sudo
+        ansible_become_user: root
+        ansible_ssh_common_args: >-
+          -o StrictHostKeyChecking=accept-new
+          -o UserKnownHostsFile=~/.ssh/known_hosts
+
+    # ------------------------------------------------------------------
+    # Management / out of band
+    # ------------------------------------------------------------------
+    mgmt:
+      hosts:
+        vpnz-hvhost01:
+          ansible_host: 10.20.20.10
+          fyp_role: hypervisor
+          ansible_connection: local      # never managed remotely; documented only
+```

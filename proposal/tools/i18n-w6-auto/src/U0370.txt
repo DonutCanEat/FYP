@@ -1,0 +1,10 @@
+| # | Task | Module | Hosts | Notes |
+|---|---|---|---|---|
+| 1 | Create the Linux administrator accounts | `ansible.builtin.user` | `linux` | `adm-w1` … `adm-w4`, shell `/bin/bash`, `groups: gg-infra-admins`, no password (`password_lock: true` — key-only login) |
+| 2 | Assert no account has an empty password | `ansible.builtin.command: awk -F: '($2==""){print $1}' /etc/shadow` + `assert` | A fail-closed control |
+| 3 | Lock the template bootstrap account | `ansible.builtin.user` with `password_lock: true` and `shell: /usr/sbin/nologin` | `fypadmin` from `UBU2404-TEMPLATE-01` |
+| 4 | Create or verify the Windows service accounts | `microsoft.ad.user` / `ansible.windows.win_shell` with `Get-ADUser` | `windows` | `svc_ansible`, `svc_backup`, `svc_monitoring`, `svc_aiagent`, `svc_ldapbind`, `svc_git` — placed in `OU=ServiceAccounts,OU=VertexPeak,DC=vertexpeak,DC=fyp,DC=lab`, password from the vault, **"Password never expires" disabled**, "User cannot change password" enabled |
+| 5 | Converge service-account group membership | `microsoft.ad.group` / `win_shell` | `windows` | `svc_ansible` → `GG-WINRM-Admins` only; `svc_monitoring` → `GG-Monitoring-Readers`; `svc_aiagent` → `GG-AI-ReadOnly` only. The role **asserts** that `svc_aiagent` is a member of no other group, which is the identity-layer enforcement of section 11's read-only guarantee |
+| 6 | Converge the personal administrative accounts' group membership | `microsoft.ad.group` | `windows` | Two of four into `GG-Tier0-Admins`; all four into `GG-Server-Admins` |
+| 7 | Report accounts with non-expiring passwords | `win_shell: Search-ADAccount -PasswordNeverExpires` with `changed_when: false` | `windows` | Evidence for the audit playbook; the design's rule is that only the break-glass account may be non-expiring, and any other result is a finding |
+| 8 | Verify the break-glass account is untouched | `win_shell: Get-ADUser da-vertexpeak -Properties LastLogonDate` | `windows` | **Read-only.** A `LastLogonDate` newer than the project start is a finding requiring a written explanation, because §8.4 requires any use to be logged in the report |

@@ -1,0 +1,12 @@
+```bash
+cd /opt/ansible-venv/repo/04-automation/ansible
+
+# Full dry run of the firewall playbook with before/after file diffs
+ansible-playbook playbooks/05-nftables-egress.yml --check --diff
+
+# Dry run constrained to one node
+ansible-playbook playbooks/05-nftables-egress.yml --check --diff --limit vpnz-nft02
+
+# Dry run restricted to the validation and rollback tags only
+ansible-playbook playbooks/05-nftables-egress.yml --check --diff --tags validate,rollback
+```

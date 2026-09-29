@@ -1,0 +1,26 @@
+```bash
+# --- Health report: clean host ------------------------------------------------
+$ sudo ./06-server-health-report.sh
+FYP server health report
+host      : vpnz-dmzrev02
+timestamp : 2026-11-09T14:41:02+08:00
+findings  : 0
+
+CHECK                                STATUS DETAIL
+------------------------------------ ------ -----------------------------------
+load5-per-cpu                        PASS   5-min load 0.14 over 2 CPU(s) = 0.07/CPU
+memory-used-percent                  PASS   31.4% used (2871404 kB available of 4012076 kB)
+swap-used-percent                    PASS   0.0% of 2097148 kB swap in use
+disk:/                                PASS   27% used on /dev/sda2 (21884012 kB free)
+disk:/var/log                        PASS   11% used on /dev/sda3 (4112696 kB free)
+role                                 PASS   role=nginx_reverse_proxy; expected services: nginx keepalived
+service:nginx                        PASS   active
+service:keepalived                   PASS   active
+systemd-failed-units                 PASS   no failed units
+time-sync                            PASS   chrony tracking normal (system time 0.000082 seconds fast)
+listening-ports-unexpected           PASS   all TCP listeners are in the design port matrix
+cert:/etc/nginx/ssl/portal.crt       PASS   expires in 84 day(s) on 2027-02-01 00:00:00 GMT
+reboot-required                      PASS   no reboot required
+$ echo $?
+0
+```

@@ -1,0 +1,11 @@
+```text
+feat(l4-ansible): add nftables role with lockout-safe apply
+
+- renders /etc/nftables.conf from templates/nftables.conf.j2
+- table inet fyp_filter, input+forward policy drop, log prefix NFT-DROP:
+- validate with `nft -c -f` before reload; reload via systemd unit
+- idempotence: second run changed=0 (see runs/2026-11-03_2140_05-nftables-egress.log)
+
+Refs: TC-L4-03, TB-03, TB-04
+Reviewed-by: adm-w3
+```

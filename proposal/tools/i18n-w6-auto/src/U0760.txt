@@ -1,0 +1,14 @@
+```ini
+# /etc/systemd/system/fyp-health-report.timer
+[Unit]
+Description=Daily Vertex Peak FYP health report
+
+[Timer]
+OnCalendar=*-*-* 06:30:00
+Persistent=true            # run once at start-up if a scheduled window was missed
+RandomizedDelaySec=300     # spread load across the 19-VM estate
+Unit=fyp-health-report.service
+
+[Install]
+WantedBy=timers.target
+```

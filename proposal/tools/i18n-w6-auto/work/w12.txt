@@ -1,0 +1,69 @@
+%%U0730%%
+#### 10.7.2 What would be done in a real lab
+%%U0732%%
+The group must state clearly what changes if the same designs are applied to real equipment, because this is the gap analysis that turns a limitation into a learning outcome:
+%%U0734%%
+| Task | Real-equipment method | Tooling that would be needed |
+|---|---|---|
+| Push an intended configuration to a device | SSH to the device with an automation account, enter configuration mode, apply the template, exit, then save | An SSH-based configuration library — `netmiko` or `napalm` in Python, invoked by an Ansible module or a playbook using `connection: network_cli`. **Python, `napalm`, `netmiko`, YANG, RESTCONF and NETCONF are not named in the WSOS 2026 and are therefore presented as future work, not as project requirements** |
+| Retrieve the running configuration | `show running-config` over SSH, saved and committed automatically | The same library, plus a scheduled job |
+| Enforce a configuration | Compare the running configuration against the intended configuration, fail the run on any difference, optionally remediate | An idempotent configuration-management module; Ansible's `ios_config` family in a real collection |
+| Validate the configuration | Parse the running configuration and assert expected values | The same tooling, plus assertions written as code |
+| Roll back a bad change | Keep the previous configuration, and apply it through the same SSH path when a check fails | The same tooling plus a Git-tracked history, which is exactly the pattern the Linux estate already uses |
+| Use model-driven interfaces | Retrieve and set configuration through YANG models over NETCONF/RESTCONF | Model-driven tooling — explicitly out of scope here, and absent from the WSOS 2026 Domain 5 as revised |
+%%U0736%%
+The WSOS 2026 does name **Git** as the modern automation tool for systems deployment and configuration management (Domain 5), and the project uses Git in exactly the way that matters for network devices: the device configurations are version-controlled artefacts with a review history, a diff between milestones, and a tagged release per milestone. That is a genuine — and citable — implementation of configuration-as-code for the Cisco layer, and it is the strongest claim the project can honestly make about automating it.
+%%U0738%%
+#### 10.7.3 How the device configurations are managed
+%%U0742%%
+The working method, which is a manual process documented as a manual process:
+%%U0744%%
+1. After each configuration change in Packet Tracer, the owner runs the device's own capture command: `show running-config` on IOS devices, `show run` on the ASA, and PT's **File → Save As** for the project file.
+2. The output is pasted into the device's `.running-config.txt` file, the change is described in the commit message with the test-case ID, and the file is committed on a `task-l3-*` branch.
+3. A second member reviews the diff — the diff is the review artefact, and it is the reason this process is worth doing even though it is manual.
+4. `design-review` and milestone tags (`v0.4`, `v0.8`) make the configuration history navigable: `git log --oneline -- 03-build/packet-tracer/configs/VP-HQ-CORE-01.running-config.txt` is the complete change history of that device.
+5. Backups are the Git history plus the dated archive produced by `08-collect-network-configs.yml`, which also runs `Backup-NetworkDeviceConfig.ps1`. The manifest of that archive states exactly what it does and does not contain, so the backup claim cannot be inflated later.
+%%U0746%%
+#### 10.7.4 The claim the report may and may not make
+%%U0748%%
+| Claim | Permitted? |
+|---|---|
+| "The intended configuration of all 16 Packet Tracer devices is managed as code in Git, with peer review and tagged milestones" | **Yes** — this is true and it satisfies the `Git` and configuration-as-code requirements |
+| "The configurations were generated from templates with per-device variables" | **Yes, if it was actually done** — and the generated files must be committed so the claim is checkable |
+| "A read-only verification playbook checks the completeness of every device configuration file and archives it with a manifest" | **Yes** — this is what `08-collect-network-configs.yml` does |
+| "Ansible (or any automated tool) logged in to a Packet Tracer device and pushed a configuration" | **No — forbidden.** No evidence could exist, because the capability does not exist |
+| "Network-device configuration is fully automated" | **No.** The delivery step is manual and must be described as manual |
+| "The same design would be automated on real equipment using SSH-based configuration push" | **Yes** — as an explicitly labelled gap analysis and future-work statement |
+%%U0750%%
+### 10.8 Scheduling and Orchestration
+%%U0752%%
+#### 10.8.1 How the routine jobs run
+%%U0754%%
+| Job | Host | Mechanism | Schedule | Output |
+|---|---|---|---|---|
+| Playbook runs against the estate | `vpnz-mon01` | `systemd` timer `fyp-ansible-audit.timer` → `fyp-ansible-audit.service` (a `oneshot` running `09-verify-services.yml`) | Daily 06:00 | JSON audit report in `runs/audit/`; non-zero exit on assertion failure |
+| Linux health report | every Linux guest | `systemd` timer `fyp-health-report.timer` → `fyp-health-report.service` | Daily 06:30 | `/var/log/fyp/` log, optional JSON file, non-zero exit on findings |
+| nftables drop summary | `vpnz-nft01` | `systemd` timer `fyp-nft-summary.timer` | Hourly at :05 | Text summary for the operations log, JSON object for the agent |
+| Certificate expiry check | `vpnz-mon01` | `systemd` timer `fyp-cert-expiry.timer` | Weekly, Sunday 03:00 | Report file, non-zero exit inside the warning window |
+| Backup with verification | Windows guests | Windows Task Scheduler task scheduled by the `windows_baseline` role, named `BKP-{TARGET}-DAILY` | Daily 22:00 | Phase result CSV in `C:\FYP\config\`, exit code 3 on failure |
+| Off-host configuration and evidence copy | `vpnz-lnxra01` / Linux guests | `systemd` timer `fyp-restic-backup.timer` → `04-backup-restic.sh` | Daily 23:00 | Restic snapshot on `vpnz-dmzjump01` |
+| Configuration archive | `vpnz-mon01` | `systemd` timer | After each milestone tag | Dated archive plus manifest under `/srv/tftp/config-archive/` |
+%%U0756%%
+A `systemd` timer is used rather than `cron` for four reasons that matter in this project: it can express `OnCalendar` schedules that survive a missed run with `Persistent=true`; it captures the unit's stdout and stderr in the journal, so a failed run has a transcript without any extra logging code; it exposes `systemctl list-timers` as a one-command inventory of every scheduled job; and a `oneshot` service's **non-zero exit is a first-class signal** that the monitoring layer and the AI layer can both consume without parsing anything.
+%%U0762%%
+`Persistent=true` and `RandomizedDelaySec` are not decoration. Without `Persistent`, a timer missed while the host was suspended (which happens constantly on a hypervisor host that is also a workstation) is simply skipped, and the group would then be unable to explain a gap in the evidence. Without a random delay, nine Linux guests all start a report at 06:30:00 on one physical host with 32–64 GB of RAM and the host briefly becomes the bottleneck.
+%%U0764%%
+**What is deliberately not scheduled.** No job applies a configuration change unattended. Every mutating playbook is run by a human, inside the change window, with the review gate of 10.4.7.4. The scheduled jobs are read-only audits or backups; the only writes they perform are their own reports and the backup repository. This boundary is a design decision and must be stated as one, because "we could have scheduled the deployment too" is the obvious question a reader will ask.
+%%U0766%%
+#### 10.8.2 How the monitoring layer detects drift
+%%U0768%%
+Drift is any difference between the estate and the repository. It is detected at four levels, each with a different latency:
+%%U0770%%
+| Level | Mechanism | Latency | Evidence |
+|---|---|---|---|
+| Configuration drift on the egress pair | The `nftables` role's drift task (10.4.5.4) diffs the running ruleset against the rendered template and writes the diff into `runs/` | On each run | `runs/…_05-nftables-drift-*.txt` |
+| Service and security drift across the estate | `09-verify-services.yml` asserts the properties the design fixes (SSH hardening, exactly one WinRM HTTPS listener, `svc_aiagent` group membership, nftables table presence) | Daily, and on demand | `runs/audit/audit-*.json` |
+| Metrics drift | Prometheus alert rules held in files in Git (Grafana dashboards are provisioned from files for the same reason) fire when a value leaves its expected band | Minutes | Firing alerts and their resolution in Grafana; at least three alerts must be shown firing and resolving |
+| Log-based drift | rsyslog forwards every guest's syslog to `vpnz-mon01`, Loki ingests it, and the nftables drop summary surfaces policy-relevant denials | Hourly | `/var/log/remote/{host}.log`, the drop summary, and the `fyp-security` dashboard |
+%%U0772%%
+A drift finding is a **finding record**, not a silent correction. The group's rule is that drift is written down in the findings records of 10.11 with what changed, when, how it was detected and what was done — because a drift that is corrected silently teaches the team nothing and leaves the report unable to explain its own configuration history.

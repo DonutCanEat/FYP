@@ -1,0 +1,342 @@
+=== 1. RESIDUAL SCAN FOR SUPERSEDED VALUES ===
+
+-- 10.10.90.10 as a HOST address of vpnz-dmzrev01
+   query: /10\.10\.90\.10\s*\(VIP|vpnz-dmzrev01\s*=\s*10\.10\.90\.10|10\.10\.90\.10\s+vpnz-dmzrev01/
+   guidance: must be gone as a host address; a VIP-only mention is legitimate
+   hits: 2
+     04-linux.md:672  # Public name:  portal.vertexpeak.example   ->  DNAT 198.51.100.2 -> 10.10.90.10 (VIP) -> here
+     04-linux.md:1517  `[RESOLVED by Rev 1.1 ruling C-02]` The collision this note flags is fixed: `vpnz-dmzrev01 = 10.10.90.28`, `vpnz-dmzrev02 = 10.10.90.29`, and `10.10.90.10` is the keepalived VIP **only** and is owned 
+
+-- 10.10.90.11 (old vpnz-dmzrev02 node address)
+   query: /10\.10\.90\.11/
+   guidance: must be gone entirely
+   hits: 1
+     04-linux.md:1517  `[RESOLVED by Rev 1.1 ruling C-02]` The collision this note flags is fixed: `vpnz-dmzrev01 = 10.10.90.28`, `vpnz-dmzrev02 = 10.10.90.29`, and `10.10.90.10` is the keepalived VIP **only** and is owned 
+
+-- old iSCSI TARGET IQN iqn.2026-01.lab.fyp.vertexpeak:storage-lun0N
+   query: /iqn\.2026-01\.lab\.fyp\.vertexpeak:storage-lun0[0-9]/
+   guidance: must be gone as a target IQN; the dmzweba01 INITIATOR IQN is a different value
+   hits: 11
+     03-microsoft.md:1945  | Initiator IQN | `iqn.2026-01.lab.fyp.vertexpeak:storage-lun01` (and `-lun02`, `-lun03`) — the canonical string names the initiator, not the target | Rev 1.1 ruling C-06 |
+     03-microsoft.md:2035  **[ASSUMPTION] and the honest gap.** The Microsoft iSCSI Target Server derives the target IQN from the server's own IQN plus the target name; it does **not** offer a parameter that sets the IQN to an 
+     03-microsoft.md:2038  - **Option 2.** Set the target's friendly name to the basename and treat the baseline's `iqn.2026-01.lab.fyp.vertexpeak:storage-lun01` as a documentation label rather than a literal wire value, and co
+     03-microsoft.md:2046  -InitiatorId @('Iqn:iqn.2026-01.lab.fyp.vertexpeak:storage-lun01','IPAddress:10.10.90.21','IPAddress:10.10.90.22')
+     03-microsoft.md:2115  iqn.2026-01.lab.fyp.vertexpeak:storage-lun01                 0
+     03-microsoft.md:2150  -ChapUsername 'iqn.2026-01.lab.fyp.vertexpeak:storage-lun01' `
+     03-microsoft.md:2161  InitiatorNodeAddress       : iqn.2026-01.lab.fyp.vertexpeak:storage-lun01
+     03-microsoft.md:3486  Set-IscsiServerTarget -TargetName 'storage-lun01' -InitiatorId @('Iqn:iqn.2026-01.lab.fyp.vertexpeak:storage-lun01','IPAddress:10.10.90.21','IPAddress:10.10.90.22')
+     03-microsoft.md:3602  | F-L1-05 | §7.6.2, `TC-L1-03` | The target IQN matches the baseline string `iqn.2026-01.lab.fyp.vertexpeak:storage-lun01` | Microsoft's iSCSI Target Server derives its own target IQN; the project str
+     08-project-management.md:1714  | `vpnz-san01` | 10.10.80.21 | 80 | Block-storage target; **target** IQN `iqn.1991-05.com.microsoft:vpnz-san01-storage-lun01.target`, derived by the iSCSI Target Server and not settable — the canonica
+     08-project-management.md:2073  iSCSI initiator IQN           iqn.2026-01.lab.fyp.vertexpeak:storage-lun01 (and -lun02, -lun03)
+
+-- old iSCSI target IQN used as a target (same string)
+   query: /iqn\.2026-01\.lab\.fyp\.vertexpeak:storage-lun/
+   guidance: must be gone
+   hits: 13
+     02-architecture.md:824  The storage tier demonstrates block storage independent of any single host's local disks along with a least-privilege storage access model. The target is `vpnz-san01` on the storage segment — VLAN 80,
+     03-microsoft.md:1943  | iSCSI target host | `vpnz-san01`, 10.10.80.21, VLAN 80 `STORAGE-HQ` | Rev 1.1 ruling C-06: the target IQN is derived (`iqn.1991-05.com.microsoft:vpnz-san01-storage-lun0N.target`) and the canonical s
+     03-microsoft.md:1945  | Initiator IQN | `iqn.2026-01.lab.fyp.vertexpeak:storage-lun01` (and `-lun02`, `-lun03`) — the canonical string names the initiator, not the target | Rev 1.1 ruling C-06 |
+     03-microsoft.md:2035  **[ASSUMPTION] and the honest gap.** The Microsoft iSCSI Target Server derives the target IQN from the server's own IQN plus the target name; it does **not** offer a parameter that sets the IQN to an 
+     03-microsoft.md:2038  - **Option 2.** Set the target's friendly name to the basename and treat the baseline's `iqn.2026-01.lab.fyp.vertexpeak:storage-lun01` as a documentation label rather than a literal wire value, and co
+     03-microsoft.md:2046  -InitiatorId @('Iqn:iqn.2026-01.lab.fyp.vertexpeak:storage-lun01','IPAddress:10.10.90.21','IPAddress:10.10.90.22')
+     03-microsoft.md:2115  iqn.2026-01.lab.fyp.vertexpeak:storage-lun01                 0
+     03-microsoft.md:2150  -ChapUsername 'iqn.2026-01.lab.fyp.vertexpeak:storage-lun01' `
+     03-microsoft.md:2161  InitiatorNodeAddress       : iqn.2026-01.lab.fyp.vertexpeak:storage-lun01
+     03-microsoft.md:3486  Set-IscsiServerTarget -TargetName 'storage-lun01' -InitiatorId @('Iqn:iqn.2026-01.lab.fyp.vertexpeak:storage-lun01','IPAddress:10.10.90.21','IPAddress:10.10.90.22')
+     03-microsoft.md:3602  | F-L1-05 | §7.6.2, `TC-L1-03` | The target IQN matches the baseline string `iqn.2026-01.lab.fyp.vertexpeak:storage-lun01` | Microsoft's iSCSI Target Server derives its own target IQN; the project str
+     08-project-management.md:1714  | `vpnz-san01` | 10.10.80.21 | 80 | Block-storage target; **target** IQN `iqn.1991-05.com.microsoft:vpnz-san01-storage-lun01.target`, derived by the iSCSI Target Server and not settable — the canonica
+     08-project-management.md:2073  iSCSI initiator IQN           iqn.2026-01.lab.fyp.vertexpeak:storage-lun01 (and -lun02, -lun03)
+
+-- objective keys O1..O11
+   query: /\bO(1|2|3|4|5|6|7|8|9|10|11)\b/
+   guidance: must be gone; the O-13/O-14 keys are the new form
+   hits: 0
+
+-- evidence ID EV-0214
+   query: /EV-0214/
+   guidance: must be gone
+   hits: 0
+
+-- evidence ID EV-0215
+   query: /EV-0215/
+   guidance: must be gone
+   hits: 0
+
+-- 10.10.100.4/30 described as "not addressed"
+   query: /10\.10\.100\.4\/30[^\n]*not addressed|not addressed[^\n]*10\.10\.100\.4\/30/
+   guidance: must be gone
+   hits: 0
+
+-- 10.10.10.60 (old LAN-HQ-CORE assumption address)
+   query: /10\.10\.10\.60/
+   guidance: must be gone
+   hits: 0
+
+-- 172.16.0.0/24 (old IKEv2 pool row)
+   query: /172\.16\.0\.0\/24/
+   guidance: must be gone
+   hits: 0
+
+-- 10.10.100.0/29 (old LAN-ISP block)
+   query: /10\.10\.100\.0\/29/
+   guidance: must be gone
+   hits: 2
+     02-architecture.md:654  VLAN 40 is a `/23` because 110 headquarters staff plus growth cannot be addressed cleanly in a `/24` while retaining a tidy DHCP exclusion range; VLAN 45, 70, 80, 90 and the branch voice segments are 
+     08-project-management.md:1999  100  LAN-ISP          10.10.100.0/29  (transit block, + /30s at .4, .32, .36, .40)
+
+-- [ASSUMPTION] on port 9113
+   query: /9113\/tcp[^\n]*\[ASSUMPTION\]|\[ASSUMPTION\][^\n]*9113/
+   guidance: must be gone
+   hits: 0
+
+-- standing [ASSUMPTION] label (any)
+   query: /\[ASSUMPTION\]/
+   guidance: inspect each: a withdrawn label inside a correction note is legitimate
+   hits: 88
+     01-introduction.md:1107  | RFC 4301 and RFC 4303, *Security Architecture for the Internet Protocol* and *IP Encapsulating Security Payload (ESP)* | Background protocol references for the IPsec transport used by the site-to-si
+     01-introduction.md:1108  | IEEE 802.1w, *Rapid Reconfiguration of Spanning Tree* (with IEEE 802.1D-2004 and IEEE 802.1Q) | The standard behind the Rapid Spanning Tree Protocol and VLAN design, including root selection, port r
+     01-introduction.md:1109  | RFC 1123, *Requirements for Internet Hosts — Application and Support* | The hostname syntax rule applied to every Linux host and to the hostname length discipline applied to all hosts. | [ASSUMPTION
+     02-architecture.md:983  `[FIGURE: 6.13 — Monitoring, telemetry and alerting architecture]` A hub-and-spoke diagram with `vpnz-mon01` at the centre. Around it draw the exporters as spokes with their ports labelled: `node_expo
+     03-microsoft.md:24  | `vpnz-pki01` | 10.10.30.15 | 30 `SRV-HQ-1` | **[ASSUMPTION]** Optional issuing CA for a two-tier PKI. Left unallocated unless the group takes the two-tier decision (baseline §19 open item O-06) |
+     03-microsoft.md:400  **[ASSUMPTION]** The `-ForestMode`/`-DomainMode` enumerations accepted by `Install-ADDSForest` on Windows Server 2025 are `Win2025`. If the installed build rejects that value, the alternative forms ar
+     03-microsoft.md:648  - The four `GG-*` groups that are actually Domain Local (`GG-DMZ-LDAP-Readers`, `GG-Monitoring-Readers`, `GG-AI-ReadOnly`) keep the `GG-` prefix because baseline §8.4 fixes those exact names. This is 
+     03-microsoft.md:781  **[ASSUMPTION] and honest limitation.** `New-ADReplicationSubnet` in Windows PowerShell validates the combined `address/prefix` string using an IP-and-mask parser. The WireGuard, OpenVPN and IKEv2 poo
+     03-microsoft.md:1245  | `-CryptoProviderName` | `RSA#Microsoft Software Key Storage Provider` | KSP rather than the legacy CSP, so the key is protected by the modern provider and CNG. **[ASSUMPTION]** the exact provider st
+     03-microsoft.md:1246  | `-KeyLength` | 4096 | Baseline §8.5 rule: issuing CA is 10 years. A 10-year authority key at 2048 bits is weaker than the project's own 60-day password policy justifies. **[ASSUMPTION]** the rationa
+     03-microsoft.md:1581  **[ASSUMPTION] on the cmdlet surface.** `New-FsrmQuotaTemplate` accepts `-Threshold`, and thresholds are created with `New-FsrmQuotaThreshold -Percentage` (or `-Size`). This is the FSRM PowerShell mod
+     03-microsoft.md:1610  **[ASSUMPTION]** on the exact semantics: FSRM auto-quotas apply their template to subfolders created *after* the auto-quota is defined; pre-existing subfolders are typically picked up as well but this
+     03-microsoft.md:1764  **[ASSUMPTION]** on `New-FsrmScheduledTask` parameter names. The FSRM module exposes `New-FsrmScheduledTask` with `-Time` and one of `-Monthly` / `-Weekly` / `-Daily` / `-Hourly`, and the report cmdle
+     03-microsoft.md:2035  **[ASSUMPTION] and the honest gap.** The Microsoft iSCSI Target Server derives the target IQN from the server's own IQN plus the target name; it does **not** offer a parameter that sets the IQN to an 
+     03-microsoft.md:2412  **[ASSUMPTION]** The `netsh routing ip` context is a legacy surface whose availability on Windows Server 2025 is **not** confirmed in this authoring environment. The primary mechanism is the RRAS cons
+     03-microsoft.md:2447  **[ASSUMPTION] on the next hop.** With RRAS itself owning the pool, the more precise configuration in some deployments is a route whose next hop is the loopback/RAS interface rather than the upstream 
+     03-microsoft.md:2518  **[ASSUMPTION] on the NPS cmdlet surface.** The exact parameter names of `New-NpsConnectionRequestPolicy` and `New-NpsCondition` are **not** confirmed for Windows Server 2025 in this authoring environ
+     03-microsoft.md:2683  **Reading `MaximumEncryption`.** In RRAS this value selects the strongest available IKEv2/IPsec proposal set (AES-256, SHA-256/384, DH group 14 or above) and removes DES, 3DES, SHA-1 and DH group 1/2 
+     03-microsoft.md:2710  **[ASSUMPTION]** RRAS on Windows Server selects its IKEv2 server certificate from the machine store by matching the SAN/EKU against the address the client dials, rather than by an explicit binding cmd
+     03-microsoft.md:2806  **[ASSUMPTION] on the `Set-VpnConnectionIPsecConfiguration` parameter values.** The parameter *names* (`-AuthenticationTransformConstants`, `-CipherTransformConstants`, `-EncryptionMethod`, `-Integrit
+     03-microsoft.md:2877  **[ASSUMPTION]** Using `8.8.8.8` as the probe destination is a documentation-range violation in spirit. The lab has no real Internet, so the correct probe for this test is a simulated public address f
+     03-microsoft.md:3495  1. The auto-quota was created **after** the subfolder, and the pre-existing subfolder was not picked up. The behaviour of FSRM auto-quotas with respect to pre-existing subfolders is the specific item 
+     03-microsoft.md:3619  - **Any `[ASSUMPTION]` from this section that proved wrong.** The specific ones most likely to fail are: the `-ForestMode 'Win2025'` value, the `New-FsrmQuotaTemplate -Threshold` parameter form, the `
+     04-linux.md:60  | Filesystem | LVM on EXT4, no encryption | EXT4 is a named WSOS file system; LVM allows the volume growth described in §8.2.3. LUKS is deliberately **not** used because the hypervisor host is the tru
+     04-linux.md:313  - **`AllowGroups gg-infra-admins` not `AllowUsers`.** The baseline's contract lists `AllowGroups gg-infra-admins` as the directive for this path. An `AllowUsers` list naming the four personal accounts
+     04-linux.md:693  http2       on;                          # nginx 1.24.0 syntax; see the [ASSUMPTION] note below
+     04-linux.md:786  `[ASSUMPTION]` on the `http2` directive: in Nginx 1.24.0 (the pinned Ubuntu package) HTTP/2 is enabled in a `listen ... ssl` server with the standalone `http2 on;` directive. The older `listen 443 ssl
+     04-linux.md:842  # [ASSUMPTION] if the packaged nginx.conf includes conf.d in a different order, move these two
+     04-linux.md:865  # [ASSUMPTION] only if an explicit cipher list is required by the marker:
+     04-linux.md:1301  - **`vrrp_strict`** enables strict RFC conformance. In some Keepalived builds it also implicitly adds a `DROP` rule for VRRP protocol packets on the interface, which on this design is harmless because
+     04-linux.md:1476  | `smtp_alert` | enabled, `smtp_server 10.10.30.31` | Keepalived's built-in mail notification on transition. `[ASSUMPTION]` `vpnz-mon01` does not run an SMTP listener in the baseline design, so `smtp_
+     04-linux.md:2009  `[ASSUMPTION]` on the fragment split: the five filenames are fixed by the baseline's configuration-path table, but the baseline does **not** state which rules live in which fragment. The allocation ab
+     04-linux.md:2185  `[ASSUMPTION]`: the `net.netfilter.*` parameters are only writable once the `nf_conntrack` module is loaded, which in practice means after `nftables` or `conntrack` has started. If `sysctl --system` r
+     04-linux.md:2405  `[ASSUMPTION]` worth flagging: the log volume from a naive flood is large, and the kernel's own `printk` ratelimit (`net.core.message_cost`, `kernel.printk_ratelimit`) will silently suppress some line
+     04-linux.md:2547  # [ASSUMPTION] this deliberately leaves ca.key unencrypted on disk. The mitigation is the 0700
+     04-linux.md:2579  `gen-dh` is not run in the delivered design, but the fallback command and the reasoning are recorded above so that a reader who needs classic DH is not left guessing. `[ASSUMPTION]`: if `dh.pem` is us
+     04-linux.md:2593  `[ASSUMPTION]` that must be checked on the built host: some OpenVPN packaging expects the CRL to be readable **by the dropped-privilege user** (because the server reads it after `user nobody` takes ef
+     04-linux.md:2606  # 'openvpn-server@server'. [ASSUMPTION] confirmed against the installed package on the build
+     04-linux.md:2735  # [ASSUMPTION] on the exact syntax: 'connect-freq' requires a count PLUS a seconds argument
+     04-linux.md:3556  | `net.ipv4.tcp_timestamps` | `0` | Removes an uptime-fingerprinting side channel. `[ASSUMPTION]` this can interact with PAWS and very fast link reuse; on a host-only lab segment the effect is nil, bu
+     04-linux.md:3740  `[ASSUMPTION]` worth recording: Nginx and OpenVPN both ship AppArmor profiles on Ubuntu. When the project moves `nginx.conf` to a `conf.d` layout and points TLS material at `/etc/nginx/ssl/`, the ship
+     05-cisco.md:87  | OSPF SHA-256 authentication | **Partial** — MD5 reliable, SHA image-dependent | MD5 key chain is the working configuration; SHA-256 attempted and marked **[ASSUMPTION]** | If SHA fails, the report r
+     05-cisco.md:272  ! 2048 bits is the design minimum; [ASSUMPTION] 4096 is preferred where the
+     05-cisco.md:663  The baseline fixes four VIPs; the group-to-VLAN assignment (1→30, 2→40, 3→70, 4→80) follows the order of the baseline's own VIP summary and is marked **[ASSUMPTION]** because no literal group number i
+     05-cisco.md:665  > **Baseline contradiction RESOLVED by Rev 1.1 ruling C-14.** §4.1's single group 1 could not serve the four SVIs its own VIP summary listed. The four-group mapping implemented here is **RATIFIED and 
+     05-cisco.md:975  | Authentication | `ip ospf authentication message-digest` plus `ip ospf message-digest-key 10 md5` on every OSPF interface that forms an adjacency | Without authentication any device reaching the seg
+     05-cisco.md:1358  **On Wan Chai AS 65021.** The baseline assigns `VP-WC-EDGE-01` AS 65021. This section records the configuration *intent* but classifies the session itself as **[ASSUMPTION]** at proposal time: whether
+     05-cisco.md:1968  !  [ASSUMPTION] The simulated image's `username` command may not support a hash
+     05-cisco.md:2186  `snmp-server user ... v3 auth sha ... priv aes 128` is an **[ASSUMPTION]** about what the Packet Tracer image accepts. If the simulator rejects SNMPv3, the correct action is **not** to fall back to a 
+     05-cisco.md:2448  | **F-L3-02** | TC-L3-09 | §9.7.2 | **baseline defect — CLOSED by Rev 1.1 ruling C-14** | The baseline's §4.1 specifies one HSRP group (group 1, virtual MAC `0000.0c07.ac01`) while its own VIP summary
+     06-automation.md:4145  **An honest statement, as the brief requires.** Whether ShellCheck is available in this lab is **not confirmed at the time of writing**. `shellcheck` is packaged in the Ubuntu 24.04 archive and is the
+     07-ai.md:47  The port matrix records the agent's own control endpoint as **P-34, `18789/tcp`, on `vpnz-ai01`, local bind only, reachable from `Z-MGMT` and never from `Z-USER`.** That port number is an **[ASSUMPTIO
+     07-ai.md:162  - Two values remain provisional until the spike closes and must then be corrected in a revision of the design baseline: the OpenClaw row in the version table (**NOT PINNED**), and the **P-34** port nu
+     07-ai.md:1125  | 7 | **The exact runtime version, distribution and defaults could not be confirmed at authoring time** | Direct HTTPS retrieval was blocked in the authoring environment; only search-result metadata w
+     07-ai.md:1197  | 13 | The runtime's default port is not `18789/tcp` | Nothing can reach the agent's control endpoint from the management zone, or the agent listens on a port the firewall does not admit | The design 
+     08-project-management.md:1277  Each assumption is something the project depends on and does not fully control. The right-hand column states what happens if the assumption is false, so that no assumption is discovered to be load-bea
+     08-project-management.md:1282  | AS-02 | **[ASSUMPTION]** The free-personal-use entitlement of the recommended hypervisor version still applies to the exact build at the time of build | Using the virtual network editor's arbitrary 
+     08-project-management.md:1283  | AS-03 | **[ASSUMPTION]** The group's Cisco NetAcad account provides the current simulator build | All Cisco configuration, routing, switching and firewall work | Use whatever build NetAcad provides,
+     08-project-management.md:1284  | AS-04 | **[ASSUMPTION]** The simulator ships the assumed ASA device model and security-appliance image | The DMZ and edge firewall demonstrations | Read the actual model and image from the device's 
+     08-project-management.md:1285  | AS-05 | **[ASSUMPTION]** Windows Server 2025 evaluation media, or the campus volume media, is available to all four members | The nine Windows Server guests and every identity, file, storage and rem
+     08-project-management.md:1286  | AS-06 | **[ASSUMPTION]** PowerShell 7.4 LTS can be installed on the jump host, while Windows PowerShell 5.1 is present in-box on all guests | Script authoring and cross-platform consistency | Use on
+     08-project-management.md:1287  | AS-07 | **[ASSUMPTION]** The exact minor versions of the Linux components match the distribution's current package versions | The pinned version table | Record the versions the running system actual
+     08-project-management.md:1288  | AS-08 | **[ASSUMPTION]** IPv6 is not touched at all; the design is IPv4-only | Scope control and addressing simplicity | Revise the design baseline, re-issue it as a new revision, and re-plan the af
+     08-project-management.md:1291  | AS-11 | **[ASSUMPTION]** No licence is purchased for the issue tracker; either the repository's own issue facility or a free tier is used | Task, defect, risk and change tracking | Use the repositor
+     08-project-management.md:1292  | AS-12 | **[ASSUMPTION]** Diagramming is done with an offline tool, so that no diagram depends on live Internet access at writing time | All topology and architecture figures | Produce figures from t
+     08-project-management.md:1295  | AS-15 | **[ASSUMPTION]** The security-tooling commands used in the security tests exist in the environments used to run them | Reproducible security test procedures | Substitute an equivalent presen
+     08-project-management.md:1394  The design deliberately uses free, free-for-personal-use or open-source software throughout, and no commercial licence is purchased. The dominant cost is therefore not software at all: it is the compu
+     08-project-management.md:1406  | Electricity — hypervisor host | Host plus display drawing roughly 200 W average, running 8 h/day, 6 days/week for 12 weeks ≈ 576 h ≈ 115 kWh at roughly HK$1.3/kWh | ~115 kWh | **~150** | **[ASSUMPTI
+     08-project-management.md:1425  | Virtual machines | **19 virtual machines** on a single hypervisor host: **9 Windows Server guests** and **10 Linux guests**, plus **2 powered-off templates** from which every guest is cloned. **[ASS
+     08-project-management.md:1731  | `vpnz-pki01` | 10.10.30.15 | 30 | **[ASSUMPTION]** Optional issuing authority for a two-tier certificate hierarchy; if single-tier is used this address stays unallocated |
+     08-project-management.md:1732  | `vpnz-wcwg01` | 10.10.200.5 | — | **[ASSUMPTION]** Optional tunnel peer representing the small-office encrypting gateway, deployed only if that design option is chosen; adds one guest and is not inc
+     08-project-management.md:1899  | P-33 | 5989/tcp | Management instrumentation over the network | Linux guests, only if directory-integrated monitoring is used | control node → targets | **[ASSUMPTION]** Optional; dropped if unused 
+     08-project-management.md:1900  | P-34 | 18789/tcp | Agent runtime control and interface endpoint | `vpnz-ai01` | management → server | **Bound locally only; must not be reachable from the user zone.** The exact default port is an *
+     08-project-management.md:2142  | Hypervisor host OS | Windows 11 Pro, 24H2 or 25H2, build 26100.x | **[ASSUMPTION]** | Hypervisor host | The operating-system version and build reported by the system information tool or the about di
+     08-project-management.md:2144  | Windows client OS (optional, for the remote-access client demonstration) | Windows 11 Pro 24H2 | **[ASSUMPTION]** | A member's laptop used as the client | The about dialog on the client | Any suppor
+     08-project-management.md:2150  | Windows remote management for automation | `pywinrm` 0.5.0 | **[ASSUMPTION]** | `vpnz-mon01` | The package manager's show command for the installed module | Any compatible release; the version actua
+     08-project-management.md:2152  | Packet filtering | 1.0.9 (distribution repository version) | **[ASSUMPTION]** | Filtering pair and the open-source remote-access host | The tool's version flag | Whatever the installed image reports
+     08-project-management.md:2153  | Reverse proxy and content web server | 1.24.0 (distribution package) | **[ASSUMPTION]** | Reverse-proxy pair and content nodes | The server's version flag | A mainline build if a newer feature is re
+     08-project-management.md:2154  | First-hop redundancy for Linux | 2.2.8 (distribution repository version) | **[ASSUMPTION]** | Reverse-proxy pair and filtering pair | The tool's version flag | Whatever the installed image reports |
+     08-project-management.md:2156  | Tunnel implementation | `wireguard-tools` 1.0.20210914 with the in-kernel module | **[ASSUMPTION]** | Filtering pair and the optional peer | The tool's version flag and the loaded module listing | T
+     08-project-management.md:2159  | Content management | 6.4.x or later with MariaDB 10.11 (distribution packaged) | **[ASSUMPTION]** | Content nodes | The application's own version page and the database version flag | Any later relea
+     08-project-management.md:2160  | Metrics, dashboards and log aggregation | Prometheus 2.5x; Grafana 11.x; Loki 3.x | **[ASSUMPTION]** | Monitoring and automation control node | Each product's own version flag or about page | If res
+     08-project-management.md:2161  | Windows host metrics exporter | 0.29.x | **[ASSUMPTION]** | All Windows guests | The exporter's version flag | Remote polling over the management protocol instead of the exporter |
+     08-project-management.md:2162  | Linux host metrics exporter | 1.8.x | **[ASSUMPTION]** | All Linux guests | The exporter's version flag | — |
+     08-project-management.md:2164  | Version control | Git 2.43+, with bare repositories served over the secure shell | **[ASSUMPTION]** | Control node | The version flag on the control node | Bare repositories over the secure shell wi
+     08-project-management.md:2165  | Log receiver | rsyslog 8.2312 (distribution packaged) | **[ASSUMPTION]** | Control node | The receiver's version flag | Plain files with rotation |
+     08-project-management.md:2166  | Off-host backup | Restic | **[ASSUMPTION]** as to version | Backup job to the published-zone jump host | The tool's version flag | A scripted archive copy as an equivalent configuration and evidence
+     08-project-management.md:2167  | Diagramming | An offline desktop diagramming tool, or the office suite's drawing component | **[ASSUMPTION]** | Member laptops | Not version-sensitive | The simulator's own screenshots and terminal 
+
+-- VLAN 50 mask 10.10.50.0/29
+   query: /10\.10\.50\.0\/29/
+   guidance: must be gone
+   hits: 0
+
+-- VNET-EGRESS 10.10.50.0/24
+   query: /10\.10\.50\.0\/24/
+   guidance: must be gone
+   hits: 0
+
+-- 10.10.50.11/29 / 10.10.50.10/29 / 10.10.50.2/29
+   query: /10\.10\.50\.(2|10|11|12)\/29/
+   guidance: must be gone
+   hits: 0
+
+-- host address 10.10.50.11/10.10.50.12 used as an HSRP/VRRP VIP pair
+   query: /VIP[^\n]*10\.10\.50\.1[12]|10\.10\.50\.1[12][^\n]*VIP/
+   guidance: must be gone
+   hits: 12
+     01-introduction.md:289  | VIP | Virtual IP address | The floating address owned by a first-hop redundancy pair and owned by no node: `10.10.50.10` (nftables egress pair, nodes `10.10.50.11`/`.12`) and `10.10.90.10` (nginx re
+     02-architecture.md:111  **Keepalived for virtual-address failover.** `Keepalived` is absent from the standard, but the protocol it implements is not: `Provide network load balancing & fault tolerance at routing and switching
+     02-architecture.md:604  | 50 | `TRANSIT-EGRESS` | HQ | The only path from the internal network to the perimeter: core ↔ nftables pair ↔ ASA inside | 10.10.50.1 (`VP-HQ-CORE-01` gi0/1.50); nftables VIP 10.10.50.10 | `vpnz-nft
+     03-microsoft.md:128  | Additional records | `portal`, `www`, `blog` → `10.10.90.10` (the nginx VIP, owned by no node); `vpn` and `wg` → `10.10.50.10`; `keepalived-hq` → both VRRP member pairs (10.10.50.11/.12 and 10.10.90
+     04-linux.md:3316  Two notes that must not be lost. First, **`Endpoint = 203.0.113.2:443` must point at the VIP, not at `10.10.50.11`.** Pointing at a node address means the tunnel dies on every failover, which is preci
+     04-linux.md:4156  | T-14 | The WireGuard tunnel survives a reboot but dies on every keepalived failover | The peer's `Endpoint` points at the **node** address (`10.10.50.11`) rather than the **VIP** (`10.10.50.10` / `2
+     06-automation.md:1036  **Purpose.** Provide first-hop redundancy for the two Linux service pairs, using two distinct virtual router IDs: **VRID 51** for the nftables pair on 10.10.50.0/28 with VIP **10.10.50.10** (nodes 10.
+     08-project-management.md:1719  | `vpnz-nft01` | 10.10.50.11 (VIP 10.10.50.10) | 50 | Egress filtering, address translation, first redundancy master; `VNET-WAN` NIC 10.10.200.2 |
+     08-project-management.md:1720  | `vpnz-nft02` | 10.10.50.12 (VIP 10.10.50.10) | 50 | Egress filtering pair backup; `VNET-WAN` NIC 10.10.200.3 |
+     08-project-management.md:1738  Forward zone `vertexpeak.fyp.lab`, directory-integrated with secure dynamic updates only and seven-day scavenging. Every static host has an address record equal to its hostname. Additional records: `p
+     08-project-management.md:1798  | Egress filtering pair | Standard first-hop redundancy implemented by Keepalived | `virtual_router_id` 51 (nodes 10.10.50.11 and 10.10.50.12; the VIP 10.10.50.10 is owned by no node) | `vpnz-nft01` m
+     08-project-management.md:1972  nftables HA VIP               10.10.50.10   (vpnz-nft01 = 10.10.50.11, vpnz-nft02 = 10.10.50.12)
+
+-- VLAN 60 SERVER / VLAN 10 HQ-CORE / VLAN 20 MGMT / VLAN 70 STUDENT old names
+   query: /VLAN 60 SERVER|VLAN 10 HQ-CORE|VLAN 20\s+MGMT|VLAN 70\s+STUDENT/
+   guidance: must be gone
+   hits: 1
+     04-linux.md:1712  10.20.20.0/24,      # VLAN 20 MGMT-OOB : hypervisor host, switch management, vpnz-jump01
+
+-- group 1 virtual MAC owner-address HSRP map (old)
+   query: /group 1, virtual MAC/
+   guidance: must be gone
+   hits: 1
+     05-cisco.md:2448  | **F-L3-02** | TC-L3-09 | §9.7.2 | **baseline defect — CLOSED by Rev 1.1 ruling C-14** | The baseline's §4.1 specifies one HSRP group (group 1, virtual MAC `0000.0c07.ac01`) while its own VIP summary
+
+-- OSPF "area range"
+   query: /area range/
+   guidance: may legitimately survive inside a prohibition clause or a struck annotation
+   hits: 4
+     02-architecture.md:178  **OSPF as the interior gateway protocol.** Open Shortest Path First is a link-state protocol: each router floods link-state advertisements, every router builds an identical topology database for its a
+     05-cisco.md:812  **Area design.** One area (area 0). `VP-HQ-EDGE-01`, `VP-HQ-CORE-01` and `VP-HQ-CORE-02` sit in area 0; the Kwun Tong WAN1 link (10.10.100.32/30) is in area 0, making `VP-BR-EDGE-01` a backbone router
+     05-cisco.md:814  > **Note on the baseline's wording.** §3.4 describes the Kwun Tong leg as `OSPF area 0 area-range`, while §11.3 describes the design as `Single area 0 at HQ + Kwun Tong`. `area range` is an ABR comman
+     05-cisco.md:2447  | **F-L3-01** | TC-L3-02 | §9.8.1 | **baseline defect** | The baseline describes the Kwun Tong leg as `OSPF area 0 area-range` while also stating that the OSPF domain is a single area 0. `area range` 
+
+-- AS 65011
+   query: /AS 65011/
+   guidance: must be gone
+   hits: 0
+
+-- "not addressed in this build"
+   query: /not addressed in this build/
+   guidance: must be gone
+   hits: 0
+
+-- VP-HQ-WEB-01 / VP-HQ-DC-01 (old VM names)
+   query: /VP-HQ-WEB-01|VP-HQ-DC-01/
+   guidance: must be gone
+   hits: 0
+
+-- "RRAS IKEv2 pool uses its own range"
+   query: /RRAS IKEv2 pool uses its own range/
+   guidance: must be gone
+   hits: 0
+
+-- Nginx 9113 [ASSUMPTION] label remainder
+   query: /9113/
+   guidance: the port itself is a required new value; only a surviving [ASSUMPTION] would be a miss
+   hits: 1
+     02-architecture.md:953  | Nginx (proxy pair and content nodes) | Local status exporter reading `stub_status` | 9113/tcp (baseline value, confirmed by Rev 1.1 ruling C-08) | Connections, requests, upstream health |
+
+=== 2. VALUES THAT MUST STILL BE PRESENT (new Rev 1.1 values) ===
+
+10.10.90.28                                                      present in 01-introduction.md, 02-architecture.md, 03-microsoft.md, 04-linux.md, 06-automation.md, 08-project-management.md
+10.10.90.29                                                      present in 01-introduction.md, 02-architecture.md, 04-linux.md, 06-automation.md, 08-project-management.md
+10.10.50.0/28                                                    present in 02-architecture.md, 03-microsoft.md, 04-linux.md, 05-cisco.md, 06-automation.md, 08-project-management.md
+10.10.200.2                                                      present in 02-architecture.md, 04-linux.md, 08-project-management.md
+10.10.200.3                                                      present in 02-architecture.md, 04-linux.md, 08-project-management.md
+10.10.10.28                                                      present in 04-linux.md
+0000.0c07.ac02                                                   present in 02-architecture.md, 05-cisco.md, 08-project-management.md
+9113/tcp                                                         present in 02-architecture.md
+1991-05.com.microsoft:vpnz-san01-storage-lun01.target            present in 02-architecture.md, 03-microsoft.md, 08-project-management.md
+O-14                                                             present in 01-introduction.md, 08-project-management.md
+O-13                                                             present in 01-introduction.md, 08-project-management.md
+EV-0042                                                          present in 08-project-management.md
+
+=== 3. STRUCTURAL RE-VERIFICATION ===
+
+H1 headings (must be 0 real ATX H1s):
+  01-introduction.md         H1 = 0
+  02-architecture.md         H1 = 0
+  03-microsoft.md            H1 = 0
+  04-linux.md                H1 = 0
+  05-cisco.md                H1 = 0
+  06-automation.md           H1 = 0
+  07-ai.md                   H1 = 0
+  08-project-management.md   H1 = 0
+
+H2 headings (per-file expected count):
+  01-introduction.md         H2 =  10   expected  10   OK
+  02-architecture.md         H2 =   2   expected   1   <-- MISMATCH
+  03-microsoft.md            H2 =   1   expected   1   OK
+  04-linux.md                H2 =   1   expected   1   OK
+  05-cisco.md                H2 =   1   expected   1   OK
+  06-automation.md           H2 =   1   expected   1   OK
+  07-ai.md                   H2 =   1   expected   1   OK
+  08-project-management.md   H2 =   9   expected   9   OK
+
+Fenced code blocks (must be balanced, even count of fence lines per file):
+  01-introduction.md         fence lines =    4   balanced
+  02-architecture.md         fence lines =    0   balanced
+  03-microsoft.md            fence lines =  298   balanced
+  04-linux.md                fence lines =  354   balanced
+  05-cisco.md                fence lines =   62   balanced
+  06-automation.md           fence lines =  110   balanced
+  07-ai.md                   fence lines =   46   balanced
+  08-project-management.md   fence lines =   24   balanced
+
+Markdown tables (column count must be consistent within each table block):
+  01-introduction.md         all tables consistent
+  02-architecture.md         all tables consistent
+  03-microsoft.md            all tables consistent
+  04-linux.md                all tables consistent
+  05-cisco.md                all tables consistent
+  06-automation.md           5 mismatched row(s)
+      table starting line 11 (3 cols): line 15 has 2 cols :: | An infrastructure-as-code repository | `C:\FYP\04-automation\` — `ansible/`, `powershell/`, `bash/`, `runs/` | §8.6 |
+      table starting line 1096 (4 cols): line 1109 has 2 cols :: | 12 | Assert no plaintext credential file exists under `C:\FYP\config\` | `ansible.windows.win_shell: Get-ChildItem -Re
+      table starting line 1096 (4 cols): line 1110 has 3 cols :: | 13 | Export the effective firewall and service baseline | `ansible.windows.win_shell: netsh advfirewall export` → `C:\
+      table starting line 1126 (5 cols): line 1129 has 4 cols :: | 2 | Assert no account has an empty password | `ansible.builtin.command: awk -F: '($2==""){print $1}' /etc/shadow` + `a
+      table starting line 1126 (5 cols): line 1130 has 4 cols :: | 3 | Lock the template bootstrap account | `ansible.builtin.user` with `password_lock: true` and `shell: /usr/sbin/nolo
+  07-ai.md                   all tables consistent
+  08-project-management.md   31 mismatched row(s)
+      table starting line 43 (10 cols): line 45 has 7 cols :: | **W1** | Mobilise and freeze | Hypervisor host prepared; Windows Server media obtained; `W2K25-TEMPLATE-01` started | 
+      table starting line 379 (4 cols): line 384 has 3 cols :: | **Ansible and PowerShell run logs** | Machine-generated evidence of automation execution | `04-automation\runs\` | Tim
+      table starting line 379 (4 cols): line 385 has 3 cols :: | **Packet Tracer `.pkt` files** | Incremental evidence of network build progress | `03-build\packet-tracer\` | Five fil
+      table starting line 477 (4 cols): line 479 has 3 cols :: | Screenshot (PNG) | Every GUI-based check, every PT topology state | `07-evidence\` | Master evidence index |
+      table starting line 477 (4 cols): line 480 has 3 cols :: | Command transcript | Every CLI-based check, Windows, Linux and Cisco | `06-verification\transcripts\` | Executed test 
+      table starting line 477 (4 cols): line 481 has 3 cols :: | Executed test record | Every test case | `06-verification\` | Traceability matrix |
+      table starting line 477 (4 cols): line 482 has 3 cols :: | Automation run log | Every playbook, script and Bash run | `04-automation\runs\` | Test record and evidence index |
+      table starting line 477 (4 cols): line 483 has 3 cols :: | Configuration export | End of every phase | `03-build\` and the TFTP/SCP archive on `vpnz-mon01` | Backup register |
+      table starting line 477 (4 cols): line 485 has 3 cols :: | Gate record | End of every phase | `06-verification\gates\` | Weekly progress report |
+      table starting line 626 (6 cols): line 628 has 4 cols :: | TC-L4-01 | PowerShell user-onboarding script | `.\Invoke-NewStarterOnboarding.ps1 -FirstName Test -LastName User -Depa
+      table starting line 626 (6 cols): line 633 has 4 cols :: | TC-L4-06 | Idempotence of every playbook (the hard requirement) | Run each of the nine playbooks twice; compare the re
+      table starting line 626 (6 cols): line 635 has 3 cols :: | TC-L4-08 | The port matrix as an executable test | `.\Test-ServiceEndpoints.ps1 -OutputPath C:\FYP\evidence\` executed
+
+=== 4. TOTALS ===
+  residual genuine misses found by the named queries : (see §1; reported per query)
+  H2 structure mismatches                            : 1
+  unbalanced fenced code blocks                      : 0
+  files with column-mismatched tables                : 2

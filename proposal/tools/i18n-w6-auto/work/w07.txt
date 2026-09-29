@@ -1,0 +1,61 @@
+%%U0372%%
+**Handlers:** `Restart sssd` (only if the optional SSSD join is used), none on Windows (AD changes take effect immediately).
+%%U0374%%
+**Templates and files:** `ad-service-accounts.ps1.j2`, `linux-admins.yml` data file under `files/`, `assert-ai-readonly.ps1.j2`.
+%%U0376%%
+**Default variables:** `users_linux_admins: [adm-w1, adm-w2, adm-w3, adm-w4]`, `users_linux_admin_group: gg-infra-admins`, `users_service_accounts:` (a list of sAMAccountName and target group), `users_tier0_admins: [adm-w1, adm-w2]`, `users_disable_template_account: true`, `users_rotate_service_passwords_days: 90`.
+%%U0378%%
+**Idempotence note.** `ansible.builtin.user` and the AD modules are declarative; a second run reports `changed=0`. Two traps are documented. First, **group membership is reconciled, not appended**: a task that adds a member without an `append: false` companion will never remove a wrongly added member, so the role states the desired membership and asserts the full set, which means a second run is truly clean and a drifted group is actually corrected. Second, **password handling must not be destructive**: if the role sets a password on every run, the account's password is reset every run and the service breaks while the playbook reports success. The design therefore sets a password only when the account is created (`when: ad_user_result.changed` or `update_password: on_create`), and says so explicitly, because this is the single most common cause of a "successful" Ansible run that breaks a service.
+%%U0380%%
+##### 10.4.5.7 The remaining three roles
+%%U0382%%
+| Role | Purpose | Key tasks | Critical defaults |
+|---|---|---|---|
+| `wireguard` | Configure the WireGuard interface on the nftables pair and, if open item O-04 is resolved in favour of the emulated peer, on `vpnz-wcwg01` | Install `wireguard-tools` 1.0.20210914; generate keys with `wg genkey`/`wg pubkey` (private key written `0600`, `.gitignore`d, never committed); render `/etc/wireguard/wg0.conf` (`0600`); enable `wg-quick@wg0`; restrict `AllowedIPs` to exactly the prefixes needed | `wireguard_private_key_path`, `wireguard_allowed_ips` (never `0.0.0.0/0` on a site-to-site peer), `wireguard_persistent_keepalive: 25` **client side only** |
+| `winrm` | Make the WinRM/HTTPS listener and firewall rule a repeatable, reviewable artefact rather than a manual build step | Run the block of 10.4.1.3; remove any HTTP listener; verify with `Test-WSMan -UseSSL` and `Get-ChildItem WSMan:\Localhost\Listener` | `winrm_port: 5986`, `winrm_control_node: 10.10.30.31`, `winrm_cert_thumbprint`, `winrm_allow_self_signed: false` |
+| `ad_users` | Thin wrapper that invokes `Invoke-NewStarterOnboarding.ps1` with a vault-supplied credential and a reviewed CSV path, so that user onboarding is reproducible but still passes through the script that the L4 evidence requires | Copy the script and module, copy the CSV, run with `--check`-equivalent (`-WhatIf`) first, then for real; export the resulting report | `ad_users_csv: ../../powershell/data/newstarters.csv`, `ad_users_whatif_first: true`, `ad_users_default_ou: OU=Users,OU=VertexPeak,DC=vertexpeak,DC=fyp,DC=lab` |
+%%U0384%%
+The `ad_users` role is deliberately thin because the interesting logic belongs in the PowerShell script, where it can be reviewed and demonstrated on its own. A role that reimplements user provisioning in Ansible would duplicate a script the brief explicitly requires and would leave the PowerShell deliverable untested.
+%%U0386%%
+All nine roles declare `meta/main.yml` dependencies so that `common` is a dependency of `nginx`, `keepalived` and `nftables`, and `winrm` is a dependency of `windows_baseline`. This guarantees that a service role can never be applied to a host that has not received its baseline — a class of error that is otherwise discovered by a security test rather than by the playbook.
+%%U0388%%
+#### 10.4.6 Playbooks
+%%U0390%%
+Six playbooks are given in full below. Each is runnable exactly as written from `C:\FYP\04-automation\ansible\` on `vpnz-mon01`, against the inventory of 10.4.2. The remaining three baseline playbooks (`06-wireguard.yml`, `07-ad-users.yml` and `08-collect-network-configs.yml`) are specified in outline in 10.4.6.7 because their content is covered in detail elsewhere.
+%%U0392%%
+##### 10.4.6.1 `01-baseline-windows.yml` — site baseline hardening (Windows estate)
+%%U0396%%
+**Why the playbook is shaped this way.** `serial: 1` with `max_fail_percentage: 0` and `any_errors_fatal: true` is the blast-radius control of 10.2.6 applied to a real playbook: the rollout stops at the first host that fails, and the remaining hosts keep their working configuration. The OS assertion is not pedantry — the design pins Windows Server 2025, and silently baselining a 2022 host would produce a report whose version table is wrong. The time-skew assertion exists because time skew above five minutes is a named Kerberos failure scenario in this design, and it is far cheaper to detect it here than to diagnose an authentication fault later. The evidence tasks write into `runs/` through `delegate_to: localhost`, which is the mechanism by which a playbook run leaves a citable artefact.
+%%U0398%%
+##### 10.4.6.2 `03-nginx-reverseproxy.yml` — web-tier deployment
+%%U0402%%
+The second play is tagged `never` on purpose: it is a **demonstration** playbook run only when a failover capture is needed, and never as part of a routine deployment. Tagging it `never` means it cannot be triggered by an accidental full run, which is the same philosophy as the `--limit` discipline in 10.4.7.
+%%U0404%%
+##### 10.4.6.3 `05-nftables-egress.yml` — firewall deployment
+%%U0408%%
+**The three safety mechanisms in this playbook are the point of it.** First, `serial: 1` means the pair is never changed in one step, so at least one half of the inline path is always serving with a known-good ruleset. Second, the rollback timer is armed before the apply and disarmed only after the far-side reachability check succeeds — this is exactly the mitigation §12.2 requires for the lock-out risk, and the `--limit` discipline complements it. Third, drift is *reported*, not failed: a difference between the running ruleset and the rendered template is a genuine security finding (someone changed a live firewall by hand) but it is not a reason to abandon the run, because abandoning the run would leave the change unreported. Recording it as evidence and continuing is the correct behaviour, and the report must present any drift found rather than quietly reconciling it.
+%%U0410%%
+##### 10.4.6.4 `09-verify-services.yml` — read-only compliance audit
+%%U0414%%
+**Why a read-only playbook matters more than it looks.** This playbook is the one artefact that can be run at any time, by anyone, against the whole estate, with no risk. That property makes it the group's default first response to any suspicion of drift, and it is also the playbook that section 11's agent is allowed to trigger (through the same inventory, not by running Ansible itself). Every task declares `changed_when: false`, the report is written once with `run_once: true`, and the only assertions are failures of *observation*, never of *state*. A playbook that "audits" by converging is not an audit, and the report must state that the audit was genuinely non-mutating: the second-run `changed=0` evidence for this playbook is trivially true, and that is the honest answer rather than an impressive-looking number.
+%%U0416%%
+##### 10.4.6.5 `08-collect-network-configs.yml` — configuration collection and archive
+%%U0420%%
+**The manifest task is the most important task in this playbook.** The baseline's honest two-track approach requires that the report state clearly that **no playbook ever logged in to a Packet Tracer device**. A manifest that says so, written into the archive by the automation itself, is far stronger evidence of that discipline than a sentence in the report, because the archive and the prose are then produced by the same run.
+%%U0422%%
+##### 10.4.6.6 `02-baseline-linux.yml` — Linux baseline hardening (outline)
+%%U0424%%
+`02-baseline-linux.yml` is the Linux counterpart of 10.4.6.1. Its full text is not reproduced because it is structurally identical to the playbook above, with four differences that matter:
+%%U0426%%
+- `hosts: linux` with `serial: 2`, because the Linux estate contains no VRRP pair except `edge` and `web`, which are excluded by a `--limit` during a first run and covered by their own playbook (`05-nftables-egress.yml`, `03-nginx-reverseproxy.yml`).
+- The role list is `common` only, plus an `assert` block that verifies no public resolver is configured and that chrony is bound to `10.10.30.11`.
+- An `assert` that `net.ipv4.ip_forward` equals `1` **on the nftables pair only** and `0` elsewhere, which is one of the most easily lost facts in a routed lab.
+- A final task that runs `01-hardening-baseline.sh --check` so that the shell script and the Ansible role are proven to agree. Two implementations of the same baseline that disagree is a defect, and this task is what detects it.
+%%U0428%%
+##### 10.4.6.7 The remaining playbooks
+%%U0430%%
+| Playbook | Hosts | Purpose | Note |
+|---|---|---|---|
+| `04-keepalived.yml` | `web`, `edge` | Converge only the VRRP configuration and run the failover proof | Separated from the service playbooks so that a VRRP-only change never forces an nginx or nftables reload; tagged `keepalived` |
+| `06-wireguard.yml` | `edge` (and `vpnz-wcwg01` if O-04 resolves that way) | Converge `/etc/wireguard/wg0.conf` from the templated configuration and verify the handshake | Uses `wg show` output as the verification, `changed_when: false` |
+| `07-ad-users.yml` | `vpnz-dc01` | Invoke `Invoke-NewStarterOnboarding.ps1` with `-WhatIf` first, then for real, and collect the CSV report | Tier-0 tagged; requires an `adm-{initials}` credential, not `svc_ansible`, by design |

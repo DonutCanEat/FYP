@@ -1,0 +1,9 @@
+| Approved verb | Used for | Project examples |
+|---|---|---|
+| `Get` | Read state, return objects, no side effect | `Get-VPFypHostRecord`, `Get-ADHealthReport.ps1`, `Get-ServiceAndFirewallAudit.ps1` |
+| `Test` | Return a boolean or a pass/fail finding | `Test-ServiceEndpoints.ps1`, `Test-VPNftRulePresent` |
+| `Invoke` | Perform an operation that changes state | `Invoke-NewStarterOnboarding.ps1`, `Invoke-ScheduledBackupVerify.ps1` |
+| `New` | Create an object | `New-VPFypReportRow` |
+| `Export` | Write data out to a file | `Export-GPOBackup.ps1`, `Export-VPFypCsv` |
+| `Backup` | Approved Windows verb, retained because the design names the script | `Backup-NetworkDeviceConfig.ps1` |
+| `Convert` | Change representation without changing substance | `ConvertTo-PlainText` |

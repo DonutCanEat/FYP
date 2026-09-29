@@ -1,0 +1,1 @@
+The output below is **illustrative** and shows the exact shape required. The values in a real run will differ in timing; the property that must hold is the `changed=0` counts on the second run.

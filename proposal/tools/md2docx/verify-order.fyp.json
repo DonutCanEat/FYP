@@ -1,0 +1,74 @@
+{
+  "_comment": "verify-order.js configuration for the six FYP deliverables. One entry per document: `docx` is the generated file and `sources` are the Markdown sources it was built from, in manifest order. mode=complete requires EVERY source paragraph to be present exactly once (used for the two COMPLETE documents and for the volumes' own source subsets); mode=volume allows a paragraph to be absent (a split volume legitimately omits other sections) but still requires every PRESENT paragraph to be contiguous, exact and in order. Paths resolve against this file's directory.",
+
+  "documents": [
+    {
+      "docx": "..\\..\\..\\FYP-Proposal-COMPLETE.docx",
+      "mode": "complete",
+      "sources": [
+        "..\\..\\sections\\01-introduction.md",
+        "..\\..\\sections\\02-architecture.md",
+        "..\\..\\sections\\03-microsoft.md",
+        "..\\..\\sections\\04-linux.md",
+        "..\\..\\sections\\05-cisco.md",
+        "..\\..\\sections\\06-automation.md",
+        "..\\..\\sections\\07-ai.md",
+        "..\\..\\sections\\08-project-management.md"
+      ]
+    },
+    {
+      "docx": "..\\..\\..\\FYP-Proposal-Volume1-Plan.docx",
+      "mode": "complete",
+      "sources": [
+        "..\\..\\sections\\01-introduction.md",
+        "..\\..\\sections\\02-architecture.md",
+        "..\\..\\sections\\08-project-management.md"
+      ]
+    },
+    {
+      "docx": "..\\..\\..\\FYP-Proposal-Volume2-Technical.docx",
+      "mode": "complete",
+      "sources": [
+        "..\\..\\sections\\03-microsoft.md",
+        "..\\..\\sections\\04-linux.md",
+        "..\\..\\sections\\05-cisco.md",
+        "..\\..\\sections\\06-automation.md",
+        "..\\..\\sections\\07-ai.md"
+      ]
+    },
+    {
+      "docx": "..\\..\\..\\FYP-Proposal-COMPLETE-ZH.docx",
+      "mode": "complete",
+      "sources": [
+        "..\\..\\i18n\\zh-HK\\01-introduction.md",
+        "..\\..\\i18n\\zh-HK\\02-architecture.md",
+        "..\\..\\i18n\\zh-HK\\03-microsoft.md",
+        "..\\..\\i18n\\zh-HK\\04-linux.md",
+        "..\\..\\i18n\\zh-HK\\05-cisco.md",
+        "..\\..\\i18n\\zh-HK\\06-automation.md",
+        "..\\..\\i18n\\zh-HK\\07-ai.md",
+        "..\\..\\i18n\\zh-HK\\08-project-management.md"
+      ]
+    },
+    {
+      "docx": "..\\..\\..\\FYP-Proposal-Volume1-Plan-ZH.docx",
+      "mode": "complete",
+      "sources": [
+        "..\\..\\i18n\\zh-HK\\01-introduction.md",
+        "..\\..\\i18n\\zh-HK\\02-architecture.md",
+        "..\\..\\i18n\\zh-HK\\08-project-management.md"
+      ]
+    },
+    {
+      "docx": "..\\..\\..\\FYP-Proposal-Volume2-Technical-ZH.docx",
+      "mode": "complete",
+      "sources": [
+        "..\\..\\i18n\\zh-HK\\03-microsoft.md",
+        "..\\..\\i18n\\zh-HK\\04-linux.md",
+        "..\\..\\i18n\\zh-HK\\05-cisco.md",
+        "..\\..\\i18n\\zh-HK\\06-automation.md",
+        "..\\..\\i18n\\zh-HK\\07-ai.md"
+      ]
+    }
+  ]
+}

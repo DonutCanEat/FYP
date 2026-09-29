@@ -1,0 +1,6 @@
+1. One logical change per commit. A commit that changes the firewall *and* reformats an unrelated playbook is sent back.
+2. **Every commit that changes configuration cites at least one test-case ID (`TC-L4-nn`) and, where relevant, the trust-boundary rule it implements (`TB-nn`).** This is what turns the repository into a traceability artefact rather than a file dump.
+3. Every commit that changes an idempotent artefact states the idempotence evidence in the message body.
+4. `Reviewed-by:` names a second group member. The same person may not be author and reviewer.
+5. Tags are annotated and pushed: `git tag -a v0.3 -m "Week 6 gate: nftables pair live, idempotent"`. Release tags are the points at which the secret sweep runs.
+6. Commit messages are written in English, in the imperative mood, and never contain a real credential, an internal password, or a private key — including in a "temporary" commit, because `git log` is forever.

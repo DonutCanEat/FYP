@@ -1,0 +1,1 @@
+If `PSScriptAnalyzer` cannot be installed, a human reviewer works through a fixed checklist and records the result in the meeting minutes. It is deliberately short enough to be completed honestly:

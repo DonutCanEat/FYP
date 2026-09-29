@@ -1,0 +1,77 @@
+%%U0130%%
+#### 10.3.3 Branch strategy
+%%U0132%%
+A lightly-governed Git-flow variant, sized for four students and twelve weeks:
+%%U0134%%
+| Branch | Lifetime | Rule |
+|---|---|---|
+| `main` | permanent | Always deployable. Only merges from `task/*` arrive here, always with one recorded reviewer. Tagged `v0.1`, `v0.2`, … at each milestone gate |
+| `task/{line}-{short-name}` | per change | One branch per change, named for the line and the change, e.g. `task-l4-nftables-egress-role`, `task-l2-keepalived-track-script` |
+| `fix/{short-name}` | per defect | A defect found during verification |
+| `docs/{short-name}` | per documentation change | Documentation-only changes, so that a documentation commit never mixes with a configuration commit |
+| `spike/{short-name}` | per experiment | Throwaway branches for Packet Tracer experiments and the AI feasibility spike; merged only as notes, never as configuration |
+%%U0136%%
+Naming follows the baseline: `task-l1-…` for MS-SERVER, `task-l2-…` for LINUX-SERVER, `task-l3-…` for CISCO, `task-l4-…` for AUTOMATION, `task-l5-…` for AI-NETOPS.
+%%U0138%%
+#### 10.3.4 Commit and review convention
+%%U0140%%
+Commits are conventional-commit style with a scope that names the artefact, so that `git log` is readable evidence in its own right:
+%%U0144%%
+The rules:
+%%U0146%%
+1. One logical change per commit. A commit that changes the firewall *and* reformats an unrelated playbook is sent back.
+2. **Every commit that changes configuration cites at least one test-case ID (`TC-L4-nn`) and, where relevant, the trust-boundary rule it implements (`TB-nn`).** This is what turns the repository into a traceability artefact rather than a file dump.
+3. Every commit that changes an idempotent artefact states the idempotence evidence in the message body.
+4. `Reviewed-by:` names a second group member. The same person may not be author and reviewer.
+5. Tags are annotated and pushed: `git tag -a v0.3 -m "Week 6 gate: nftables pair live, idempotent"`. Release tags are the points at which the secret sweep runs.
+6. Commit messages are written in English, in the imperative mood, and never contain a real credential, an internal password, or a private key — including in a "temporary" commit, because `git log` is forever.
+%%U0148%%
+---
+%%U0150%%
+### 10.4 Ansible
+%%U0152%%
+#### 10.4.1 Control node setup
+%%U0154%%
+##### 10.4.1.1 Pinned engine and Python environment
+%%U0156%%
+The pinned engine is `ansible-core` **2.18.x** with the **`ansible` community package 11.x**, plus **`pywinrm` 0.5.0** for Windows connectivity. These versions are chosen for a reason that is easy to get wrong: `ansible-core` from the Ubuntu 24.04 archive is older than the pin, and the community package collection `ansible.windows`, which provides `win_ping` and the rest of the Windows module set, must match the core version. The supported installation is therefore a virtual environment under `/opt`, not an `apt` package:
+%%U0160%%
+The version capture is not optional. §7's pinning discipline requires that where the actual version differs from the table, the report contains a *version deviations* subsection listing each difference and its impact. If the community package cannot be installed at 11.x in the lab, the group records the version actually present and states the deviation — silently writing "11.x" against a 10.x installation is a reportable integrity failure for this project.
+%%U0162%%
+##### 10.4.1.2 SSH keys to the managed Linux hosts
+%%U0164%%
+Administrators use Ed25519 keys. The keys are generated **once per administrator on that administrator's own machine**; only the public halves are committed, under `04-automation/ansible/files/ssh/authorized_keys/adm-w{n}.pub`. Private keys are never stored on `vpnz-mon01`, which is the rule that makes the control node a place a student can hand over.
+%%U0168%%
+The `users` role then owns the steady state: it installs the public keys for exactly the four `adm-{initials}` accounts, keeps `PermitRootLogin no` and `PasswordAuthentication no` in `/etc/ssh/sshd_config.d/10-fyp-hardening.conf`, and restricts SSH to `AllowGroups gg-infra-admins`. The bootstrap account `fypadmin` created by the cloud-init template is disabled once the four administrators can log in through Ansible — otherwise the template account becomes a permanent shared credential, which the design forbids.
+%%U0170%%
+##### 10.4.1.3 Windows managed-node prerequisites
+%%U0172%%
+Ansible reaches Windows guests through WinRM, and WinRM is **not** on by default in a way that supports this design. Three things must be true on every Windows managed node: a listener exists and is reachable, the authentication path is trusted, and the firewall permits the traffic from `vpnz-mon01` only.
+%%U0174%%
+**The decision on the listener.** Two options exist — WinRM over HTTP on 5985, or WinRM over HTTPS on 5986. **This project uses HTTPS on 5986**, because §12.4 requires it, because the credential travels inside the session, and because 5985 is unencrypted and unauthenticated at the transport layer. That decision is not free: an HTTPS listener needs a certificate whose subject name matches how Ansible addresses the host, and the certificate must be trusted by the client, or validation must be deliberately relaxed.
+%%U0176%%
+Three sub-options were considered:
+%%U0178%%
+| Option | Verdict | Reason |
+|---|---|---|
+| HTTPS with a certificate issued by the internal PKI (`VP-ISSUING-CA-01`) and the CA chain distributed to `vpnz-mon01` | **Chosen for the domain-joined estate** | Correct, auditable, and demonstrates the PKI work of L1 being used by L4. Requires `vpnz-mon01` to trust the CA chain, which is done by placing `vp-root-ca.crt` in `/usr/local/share/ca-certificates/` and running `update-ca-certificates` |
+| HTTPS with a self-signed certificate created by `New-SelfSignedCertificate` | **Chosen for the two DMZ web nodes only** | The DMZ hosts are domain-joined only if the group accepts the "no cached credential" trade-off (open item O-05); if they are workgroup-isolated, a PKI-issued certificate is not available and a self-signed one is the pragmatic choice. The trust consequence is documented rather than hidden: either the exporting certificate is imported into `vpnz-mon01`'s trust store, or `ansible_winrm_server_cert_validation` is set to `ignore` **for those two hosts only, as a declared lab simplification** |
+| HTTPS with `ansible_winrm_server_cert_validation=ignore` estate-wide, or plain HTTP on 5985 | **Rejected** | Estate-wide validation bypass would be the wrong lesson to document; the report is meant to be evidence of good practice, and a bypass documented as normal practice is not |
+%%U0180%%
+For the non-domain-joined case, `TrustedHosts` on the *client* is not used at all in this design — the client is Linux. `TrustedHosts` is a Windows-client-side list that applies when a Windows machine initiates WinRM to a non-domain target; it is mentioned in section 10.5.2 because the group uses it during the PowerShell remoting demonstration from `vpnz-jump01`, but the Ansible path relies on the listener certificate plus a trusted chain, not on `TrustedHosts`.
+%%U0182%%
+**The exact WinRM configuration PowerShell.** This block is executed once on each Windows managed node, either interactively during the build or, preferably, pushed by the `winrm` role:
+%%U0186%%
+**Why each element is there.** `Enable-PSRemoting -Force -SkipNetworkProfileCheck` is used for the HTTP listener because it creates the service configuration, the `WSMan` provider settings and the required firewall group in one step; the HTTP listener it creates is then *removed*, because leaving it enabled would leave an unencrypted path that the design says does not exist. `-SkipNetworkProfileCheck` is needed in this lab specifically because hypervisor host-only adapters are frequently classified as `Public`, and without the flag the cmdlet refuses. Disabling `Basic` authentication and `AllowUnencrypted` closes the credential path that HTTP would have used. The firewall rule is scoped by `-RemoteAddress` to `10.10.30.31` alone, which implements the spirit of the trust-boundary table's management rows (TB-07, TB-08) at the host level as well as at the network level. `MaxEnvelopeSizekb 500` and a five-minute idle timeout are the standard hardening adjustments needed before Ansible can move a moderately large module payload over WinRM without a `WinRM cannot process the request` fault.
+%%U0188%%
+**Ansible's side of the connection.** The connection variables live in `inventory/group_vars/windows.yml`, not on the command line:
+%%U0192%%
+`ansible_winrm_transport: ntlm` is the pragmatic choice for a small domain. Kerberos is the stronger option and should be used if the group can arrange it, because it avoids sending a reusable credential; NTLM is at least encrypted inside the HTTPS session. The report must state which transport was used and why, because this is exactly the kind of detail that a "we used Ansible on Windows" sentence erases.
+%%U0194%%
+##### 10.4.1.4 Verification of the control-node path
+%%U0196%%
+The proof that the control node can reach the estate is the `win_ping` result required by §12.4, plus the SSH equivalent for Linux:
+%%U0200%%
+Expected shape of the result (illustrative):
+%%U0204%%
+The `whoami` check is included deliberately: it proves *which identity* Ansible is using, which is the fact that most often differs from what the team believes.

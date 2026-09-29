@@ -1,0 +1,1 @@
+**What must not go into the vault.** Non-secret configuration belongs in plain variables, where a reviewer can read it. Vaulting a subnet, a hostname or a package list is a common mistake that makes the repository unreadable and creates a false impression of secrecy.

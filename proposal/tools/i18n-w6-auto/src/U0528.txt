@@ -1,0 +1,2 @@
+- `TrustedHosts` applies to the machine that **initiates** the connection, not the target.
+- Using it means the initiator does not verify the target's identity; the traffic is authenticated as NTLM or Basic but the *server* is not proved to be the host it claims to be. It also cannot be set by Group Policy, so it is a per-machine manual step that will silently be missing on a rebuilt VM.

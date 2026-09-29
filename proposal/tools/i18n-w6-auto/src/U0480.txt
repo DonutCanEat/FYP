@@ -1,0 +1,55 @@
+```text
+PLAY [Egress firewall - converge the nftables pair] ***************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [vpnz-nft02]
+
+TASK [Assert that the two expected interfaces exist] ***************************
+ok: [vpnz-nft02]
+
+TASK [Capture the pre-change ruleset as the rollback reference] ****************
+ok: [vpnz-nft02]
+
+TASK [Arm the automatic rollback timer] ***************************************
+changed: [vpnz-nft02]
+
+TASK [common : Install the baseline package set] *******************************
+ok: [vpnz-nft02]
+
+TASK [nftables : Deploy the ruleset fragments] *********************************
+changed: [vpnz-nft02] => (item=10-sets.nft)
+changed: [vpnz-nft02] => (item=20-filter-input.nft)
+changed: [vpnz-nft02] => (item=30-filter-forward.nft)
+changed: [vpnz-nft02] => (item=40-nat.nft)
+changed: [vpnz-nft02] => (item=90-logging.nft)
+
+TASK [nftables : Deploy the main ruleset] **************************************
+changed: [vpnz-nft02]
+
+TASK [Validate the candidate ruleset without applying it] **********************
+ok: [vpnz-nft02]
+
+TASK [Apply the ruleset] *******************************************************
+changed: [vpnz-nft02]
+
+TASK [Wait for the ruleset to be loaded and policy to be drop] *****************
+ok: [vpnz-nft02]
+
+TASK [Verify connectivity FROM THE FAR SIDE (the path the ruleset could break)]
+ok: [vpnz-nft02 -> localhost]
+
+TASK [Detect configuration drift between the running ruleset and the template]
+ok: [vpnz-nft02]
+
+TASK [Disarm the rollback timer ONLY because verification passed] **************
+changed: [vpnz-nft02]
+
+TASK [Publish the active ruleset as evidence for TC-L2-03] *********************
+ok: [vpnz-nft02]
+
+RUNNING HANDLER [nftables : Reload nftables] ***********************************
+changed: [vpnz-nft02]
+
+PLAY RECAP *********************************************************************
+vpnz-nft02                 : ok=31   changed=11   unreachable=0    failed=0    skipped=3    rescued=0    ignored=0
+```

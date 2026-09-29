@@ -1,0 +1,6 @@
+```text
+ComputerName Check                        Expected                        Actual                   Result Detail
+------------ -----                        --------                        ------                   ------ ------
+vpnz-fs01    FirewallRule:FYP-Exporter-9182 Allow TCP 9182 from 10.10.30.31  absent                   FAIL   Create it with the winrm / ...
+vpnz-fs01    UnexpectedListeningPort      port in the design port matrix  0.0.0.0:3306 (PID 4188)  FAIL   Investigate before the port-matrix ...
+```
