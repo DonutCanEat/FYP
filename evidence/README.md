@@ -109,7 +109,8 @@ The same template is written **two ways** in the two current deliverables:
 ## 6. Provenance
 
 - **Standard**: `FYP-Outline-DRAFT.md` §H.2 (lines 1030–1044), created from the decision at D-09 (line 88) and restated at lines 1302 and 1509.
-- **Task origin**: `FYP-Outline-DRAFT.md` line 887 and line 1509 — *"Stand up the repository and the evidence scaffolding in parallel: the folder tree, the Git repository, the figure-caption template and the filename convention. Freeze the evidence standard now, while there are zero screenshots to re-caption."*
+- **Task origin**: `FYP-Outline-DRAFT.md` line 887 and line 1509 — *"Stand up the repository and the evidence scaffolding in parallel with 1–4: the folder tree, the Git repository, the figure-caption template and the filename convention. Freeze the evidence standard now, while there are zero screenshots to re-caption."*
 - **Cross-reference**: `FYP-Proposal-SHORT.md` line 681 and line 692; `agent.md` §10.2 and §7 (V1–V8).
 - **Created**: 2026-09-29, by the incoming agent, read-only against the two deliverables (no `.docx` was opened by any means; the Markdown sources were read).
+- **Correction, 2026-09-29, found by independent verification and recorded rather than quietly patched**: an earlier version of this file quoted outline line 1509 as *"in parallel: the folder tree…"*, **silently dropping the words "with 1–4" from inside a quotation**. The quote now reads verbatim. The defect was in a quotation, which is the one place in a document of record where a dropped word is not a style choice but a false attribution — so it is logged here, and the general lesson stands: **quote by copying, never by recalling.**
 - **Not yet ratified**: the folder names in §3 are this agent's proposal, since the authority fixes the caption, the filename and the rules but **not the folder layout**. Treat the names as provisional until a human signs off, and record any rename here.
