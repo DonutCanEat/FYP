@@ -8,13 +8,13 @@
 
 | Path | Bytes | SHA-256 | Role |
 |---|---|---|---|
-| `FYP-Initial-Report.md` | 145,776 | `C5013BB9530C2701D280744EAC1F8AD9CAD7AD6561BD18F1856133A184112898` | **The deliverable source** |
-| `FYP-Initial-Report.docx` | 67,924 | `F39D5DF00B53EA526462B162446496782BB867E540FA4ECF0600DFE3D13DC6B2` | Its render: 284 paragraphs, headings `1/12/41/0`, 23 tables, 40 list items, 2 figures, 21,997 converter-counted words |
+| `FYP-Initial-Report.md` | 146,295 | `5F0BCC2F59C1B8A963AFF39C9C74FCE902E072597220D93AEFCB072506DB19AE` | **The deliverable source.** *(The revision the independent agent verified was 145,776 / `C5013BB9…2898`; two wording repairs followed — see §8.)* |
+| `FYP-Initial-Report.docx` | 68,137 | `1CA306A0D5863EA9F3EDBECFA0B9CEA0F1424A554708BBA8D6C8CB9E46616267` | Its render: 284 paragraphs, headings `1/12/41/0`, 23 tables, 40 list items, 2 figures, 22,083 converter-counted words. *(Superseded revision: 67,924 / `F39D5DF0…C6B2`.)* |
 | `proposal\initial-report\00-brief.md` | 10,288 | — | The shared contract every section writer was bound by (no invented facts, forbidden claims, converter rules, vocabulary lock) |
 | `proposal\initial-report\assemble.js` | — | — | The assembler: normalises, concatenates in document order, runs structural self-checks, reports word counts. Node only, no dependencies, `--check` and `--allow-missing` modes |
 | `proposal\initial-report\00-front.md`, `01-introduction.md` … `09-zh-summary.md` | — | — | The ten section fragments, each written by one author to one file |
 
-**The document's shape.** Front matter; executive summary; 1 Introduction and background; 2 Aim and objectives, scope and completion conditions; 3 Literature and technology review; 4 Proposed methodology and design: the network and services layer, built first; 5 Proposed methodology and design: the AI management plane, built second; 6 Implementation plan; 7 Risks and mitigations; 8 References; 中文摘要（Chinese companion summary）. Measured: **22,997 words total, of which 15,846 are prose outside tables and headings**; 741 lines; 235 table rows; 2 figure placeholders; 26 `[TO CONFIRM]` markers.
+**The document's shape.** Front matter; executive summary; 1 Introduction and background; 2 Aim and objectives, scope and completion conditions; 3 Literature and technology review; 4 Proposed methodology and design: the network and services layer, built first; 5 Proposed methodology and design: the AI management plane, built second; 6 Implementation plan; 7 Risks and mitigations; 8 References; 中文摘要（Chinese companion summary）. Measured: **23,083 words total, of which 15,932 are prose outside tables and headings**; 741 lines; 235 table rows; 2 figure placeholders; 26 `[TO CONFIRM]` markers.
 
 ## 2. Where the structure came from — and the one thing it cannot claim
 
@@ -94,10 +94,47 @@ The assembling agent edited section files in four places, in every case to repai
 
 ## 7. Independent verification
 
-**Commissioned, and its result is recorded here when it returns.** The verifying agent is read-only, was instructed to re-derive every load-bearing claim from the artefacts rather than from this log, to check that the render is current rather than stale (V5), to search for forbidden claims by reading, to test whether every `[TO CONFIRM]` is genuinely unresolved, and to compare the caption and filename templates character by character with the outline's rules E1 and E3.
+**Commissioned, and its result is recorded here in full rather than compressed into the word "passed".** An independent read-only verifier re-derived every load-bearing claim from the artefacts, never from this log, and checked that the render was current rather than stale.
+
+| Check | Verdict | The measurement that decided it |
+|---|---|---|
+| Sizes and hashes | **PASS** | the two hashes in §1's verified revision, measured independently |
+| **Render is current, not stale (V5)** | **PASS** | raw-ZIP extraction of `word/document.xml` from an in-memory copy found all three post-draft edits: `Cisco Modelling Labs` (3 hits), `the stage closes at gate G3` (1 hit, inside the Stage B row), `crossed-out arrow` (3 hits). Reading the ZIP left the file's hash unchanged |
+| Structure | **PASS** | exactly one H1, exactly one `[TOC]`, twelve H2s in the order the front matter claims |
+| Invented facts | **PASS — 24 of 24 spot-checks sourced, 0 unsourced** | including the 36-row inventory and its split, the 5-device Cisco target with its conditional maximum, the matrix's 13 rows, 36 tools with 34 read-only and 2 mutating, the 7/10/6/5/8 per-server split, 12 scenarios × 3 runs, ≥5 injected faults, PB-1…PB-9, E1…E9, the six domain weights summing to 100, the nine zero-occurrence technologies, and the standard page's recorded retrieval facts (200 OK, 55,200 bytes, last updated 02.06.2026 13:34 GMT) |
+| **Forbidden claims** | **PASS — 0 violations** | all 21 Packet Tracer lines are denials; all 9 `autonom*` lines are denials or the unrelated "autonomous system AS-65000"; `legacy\` has **0 occurrences**; "weakest line" occurs once and it **is** the withdrawal; "cuttable" occurs once and it is a denial |
+| `[TO CONFIRM]` honesty | **PASS** — 24 occurrences on 17 lines, 21 distinct items | `grep handbook` across the corpus returns only "not checked" wording, so **no marker hides a fact the corpus already states** |
+| The evidence templates | **PASS — byte-identical** | caption template 60 characters with **U+2014 EM DASH** at three positions; filename template 26 characters with **U+005F LOW LINE** at two; the E1–E9 summary compared line by line and found faithful |
+| Internal consistency | **PASS** | gate weeks agree across chapters (G0 1, G1 3, G2 6, G2-H 6, G3 8, G4 10, G5 11, G6 12); no dangling section or chapter reference; tool arithmetic 7+10+6+5+8 = 36, read-only 6+9+6+5+8 = 34, mutating 1+1 = 2 |
+| Chinese companion summary | **PASS** | Traditional script confirmed by a 61-pair simplified/traditional test — the four 准 hits are all inside 批准, and 標準 appears 6 times against 标准 0 times; 1,213 characters; direction, build order, Stage B floor, permission model and standards position all agree with the English chapters, with no claim the English does not make |
+
+**Its five discrepancies, and what was done with each. Nothing in the report was shown FALSE.**
+
+1. **§7.1 claimed singleton provenance while the register carries 22 rows against the authority's 21 — fixed.** See §8 item 1. The register's *contents* were right; its *attribution* was not.
+2. **36 tools and 2 mutating are not reproducible from the outline alone.** The outline's enumerated tool tables do not cover the monitoring and documentation servers; the figure the report uses is the one the project's operating manual records and labels as its own count. **Recorded rather than papered over** — the report's own table is internally consistent and names both mutating tools exactly, but **a reader checking only the decision draft cannot reproduce the total**, and that is now stated here instead of being left for someone to discover.
+3. **§4.2's table was described as a "split by managed family" when it is a split by kind — fixed.** See §8 item 2.
+4. **`vpnz-llm01` still has no row in the normative matrix**, a gap `agent.md` §10.3 item 8 already records: the figure names it as the model server while neither the Ubuntu enumeration nor the matrix lists it. **No report edit was made**, because the report never introduces the hostname and therefore commits no new error — but the report calls the matrix normative, so **the model host's absence from it is a defect to raise with the supervisor, not a wording problem to smooth away.**
+5. **The outline mixes "Modeling" and "Modelling"; the report uses "Modelling" consistently.** No action.
+
+**What the verifier could not check, and this log does not pretend otherwise:** Word rendering quality, styling, pagination and table widths (Word COM is unavailable on this machine and forbidden by H2); **the `.docx` carries no embedded images at all**, so the caption template has never been tested against a real caption in this deliverable; every physical-world fact (the CML licence, the laboratory machines, the GPU, the school's rules, the handbook's band); Chinese translation *quality* as distinct from script and content agreement; the topic sheet itself, which was deliberately not opened; and the contents of `legacy\`, which were deliberately not read.
 
 **Why this section exists rather than a self-certification.** The project's hardest lesson is that a worker's own "all green" report is not evidence: a note once certified "20 bar rows, 0 alignment failures" while **11 of 20 bars were measurably off-grid**, and only an independent re-derivation found it. The same discipline applied to this build already found two defects in the previous piece of work — a non-verbatim quotation and an understated staleness count — that self-review had missed.
 
 ---
 
-*Written 2026-09-29 by the incoming agent from measurements taken in this session. Every size and hash was read with `Get-FileHash`/`Get-Item`; the `.docx` files were hashed and rendered but never opened by path; no existing file under `proposal\` was modified.*
+*Written 2026-09-29 by the incoming agent from measurements taken in this session, and amended once after independent verification (§8). Every size and hash was read with `Get-FileHash`/`Get-Item`; the `.docx` files were hashed and rendered but never opened by path; no existing file under `proposal\` was modified — **except this log and the two section fragments named in §8**, which are this build's own files.*
+
+---
+
+## 8. Post-verification amendment — 2026-09-29
+
+The revision the independent agent verified was `FYP-Initial-Report.md` at `C5013BB9…2898` / 145,776 bytes with its render at `F39D5DF0…C6B2` / 67,924 bytes. **Two wording repairs were then made**, and this section exists so that the amendment is visible rather than absorbed into a fresh hash:
+
+| # | Repair | Why |
+|---|---|---|
+| 1 | **§7.1's provenance sentence.** It read "carried forward with the corpus's own columns and identifiers. No risk has been added, merged or renumbered" — which is true of what the register *contains* but false about *where it came from*, since the outline carries 21 rows and the register carries 22. It now states the provenance precisely: **R1 to R21 are the decision draft's rows, and R22 — the risk that absence from Hong Kong delays the hardware record and therefore the model decision — appears only in the condensed proposal**, with the superset used and the difference recorded rather than silently merged | Renumbering to 21 would have **deleted a live risk** to make a sentence true; the honest repair was to make the sentence describe the two sources. The outline is the designated decision-level authority, so a claim of single provenance from it has to be accurate |
+| 2 | **§4.2's table label.** It was described as a "split by managed family" when the four rows are Windows guests, Ubuntu guests, the hypervisor host and the simulator devices — a split by **kind** (9 + 10 + 1 + 16 = 36) | Wording only, and all four figures were already correct. Left uncorrected it would have invited a reader to look for a Linux/Windows/Cisco family split that the table does not and should not contain |
+
+**After both repairs the document was re-assembled, re-rendered and re-gated:** SDK **0 errors**, package **9/9 PASS**, coverage **PASS**. The current hashes are in §1, and the Markdown hash was again identical before rendering and after all three gates. **The two repairs were confirmed present in the new render mechanically** — by extracting `word/document.xml` text from the raw ZIP and matching both new phrasings — rather than by assuming a fresh render.
+
+**The scope of the verification, stated precisely:** the verifier's verdicts apply to the revision named at the head of this section. For the current revision they apply to everything except these two sentences, which are new text that no independent agent has yet read. That is a real, bounded limitation and it is recorded here rather than presented as full coverage.

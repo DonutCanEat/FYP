@@ -2,7 +2,7 @@
 
 ### 7.1 The register
 
-The register below is carried forward with the corpus's own columns and identifiers. No risk has been added, merged or renumbered: a register that grows between documents stops being a control and becomes a list. It is reviewed at each gate, and its **freeze point** stands - after week 9 no new technology may be introduced, so a later risk is answered by testing, not by building.
+The register below is carried forward with the corpus's own columns and identifiers. No risk has been added, merged or renumbered: a register that grows between documents stops being a control and becomes a list. Its provenance is stated precisely rather than generally, because the two upstream documents do not carry the same register: **R1 to R21 are the decision draft's rows, and R22 — the risk that absence from Hong Kong delays the hardware record and therefore the model decision — appears only in the condensed proposal**, which is the current gate-verified statement of the project. The superset is used here, and the difference is recorded as a discrepancy rather than resolved by a silent merge. It is reviewed at each gate, and its **freeze point** stands - after week 9 no new technology may be introduced, so a later risk is answered by testing, not by building.
 
 | ID | Risk | Likelihood | Impact | Mitigation | Owner |
 |---|---|---|---|---|---|

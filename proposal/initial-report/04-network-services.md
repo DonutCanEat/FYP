@@ -10,7 +10,7 @@ Two consequences of the rule are worth stating at the outset, because they shape
 
 ### 4.2 The three device families and the estate
 
-The estate is deliberately heterogeneous, because the project's objective is an enterprise network across three platform families and the interfaces those families offer are genuinely different. The frozen design's inventory is **36 rows: 16 Packet Tracer logical devices, 19 virtual machines and 1 hypervisor host**. The 19 virtual machines are **9 Windows Server guests** and **10 Ubuntu guests**, and the hypervisor host — `vpnz-hvhost01` — is the physical machine that carries them rather than a guest of its own. The same 36 rows split by managed family as follows, and the Packet Tracer rows are counted here only as design-time objects.
+The estate is deliberately heterogeneous, because the project's objective is an enterprise network across three platform families and the interfaces those families offer are genuinely different. The frozen design's inventory is **36 rows: 16 Packet Tracer logical devices, 19 virtual machines and 1 hypervisor host**. The 19 virtual machines are **9 Windows Server guests** and **10 Ubuntu guests**, and the hypervisor host — `vpnz-hvhost01` — is the physical machine that carries them rather than a guest of its own. The same 36 rows split by kind rather than by managed family as follows, and the Packet Tracer rows are counted here only as design-time objects.
 
 | Estate element | Count (frozen inventory) | Status in this project |
 |---|---|---|

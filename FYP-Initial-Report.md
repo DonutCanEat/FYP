@@ -230,7 +230,7 @@ Two consequences of the rule are worth stating at the outset, because they shape
 
 ### 4.2 The three device families and the estate
 
-The estate is deliberately heterogeneous, because the project's objective is an enterprise network across three platform families and the interfaces those families offer are genuinely different. The frozen design's inventory is **36 rows: 16 Packet Tracer logical devices, 19 virtual machines and 1 hypervisor host**. The 19 virtual machines are **9 Windows Server guests** and **10 Ubuntu guests**, and the hypervisor host — `vpnz-hvhost01` — is the physical machine that carries them rather than a guest of its own. The same 36 rows split by managed family as follows, and the Packet Tracer rows are counted here only as design-time objects.
+The estate is deliberately heterogeneous, because the project's objective is an enterprise network across three platform families and the interfaces those families offer are genuinely different. The frozen design's inventory is **36 rows: 16 Packet Tracer logical devices, 19 virtual machines and 1 hypervisor host**. The 19 virtual machines are **9 Windows Server guests** and **10 Ubuntu guests**, and the hypervisor host — `vpnz-hvhost01` — is the physical machine that carries them rather than a guest of its own. The same 36 rows split by kind rather than by managed family as follows, and the Packet Tracer rows are counted here only as design-time objects.
 
 | Estate element | Count (frozen inventory) | Status in this project |
 |---|---|---|
@@ -635,7 +635,7 @@ The team does not wait for it. The hardware-agnostic work of item 4 proceeds fro
 
 ### 7.1 The register
 
-The register below is carried forward with the corpus's own columns and identifiers. No risk has been added, merged or renumbered: a register that grows between documents stops being a control and becomes a list. It is reviewed at each gate, and its **freeze point** stands - after week 9 no new technology may be introduced, so a later risk is answered by testing, not by building.
+The register below is carried forward with the corpus's own columns and identifiers. No risk has been added, merged or renumbered: a register that grows between documents stops being a control and becomes a list. Its provenance is stated precisely rather than generally, because the two upstream documents do not carry the same register: **R1 to R21 are the decision draft's rows, and R22 — the risk that absence from Hong Kong delays the hardware record and therefore the model decision — appears only in the condensed proposal**, which is the current gate-verified statement of the project. The superset is used here, and the difference is recorded as a discrepancy rather than resolved by a silent merge. It is reviewed at each gate, and its **freeze point** stands - after week 9 no new technology may be introduced, so a later risk is answered by testing, not by building.
 
 | ID | Risk | Likelihood | Impact | Mitigation | Owner |
 |---|---|---|---|---|---|
