@@ -66,8 +66,8 @@ Measured 2026-09-29 with `Get-FileHash`/`Get-Item`. Re-measure before relying on
 
 | File | Bytes | SHA-256 | Purpose |
 |---|---|---|---|
-| `FYP-Proposal-SHORT.md` | 131,405 | `B3A933B27E5F58C7E8104831558933BD89F289FCE9C6B44A543BE93468775BD3` | **The immediate submission** (D5) |
-| `FYP-Proposal-SHORT.docx` | 65,799 | `869882D5140F67081D2AC0B3682F9DCF505127EA351C4C29E9B8282BA1493EA3` | Submitted render: **9,996 prose words** (ceiling 10,000; stricter Markdown method 9,984); coverage 1,318/1,318 = 100.000% |
+| `FYP-Proposal-SHORT.md` | 109,055 | `290548EDD2264B3401D4F25FB25A35F519DB0E1FD2CCE1636BB8315D23E14A7C` | **The immediate submission** (D5), **shortened in place on 2026-09-29** by owner instruction. The previous revision was 131,405 / `B3A933B27E5F58C7E8104831558933BD89F289FCE9C6B44A543BE93468775BD3`, archived at `proposal\integration\backup-short-halving\` — **do not delete that folder.** 16,640 words by the total-word method; table rows cut from 288 to 88 |
+| `FYP-Proposal-SHORT.docx` | 53,659 | `46AF15E88E9563DEAD91A0740A8C603F3D80A6CCEC33111126E14C478AA70346` | Render of the shortened revision (previous: 65,799 / `869882D5…`). Converter: 310 paragraphs, headings `0/15/40/6`, 7 tables, 71 list items, 1 figure; SDK **0 errors**, package **9/9 PASS**, coverage **PASS**. **Its prose-word count rose to about 13,400 while the total fell to 16,640**, because the owner also required tables to be expressed as prose — read `proposal\integration\short-halving-log.md` §1 before quoting any size for this deliverable |
 | `FYP-Outline-DRAFT.md` | 265,139 | `2A422BF0E6A29FF693AB9D6C37A36C8C274642A7BC60D87525307CD3C6321760` | **Decision-level authority** |
 | `FYP-Outline-DRAFT.docx` | 139,867 | `2FB88823E6726C3E9137817135B544E4F6BE2D5020B0503A275DF02811AE4E05` | Its render: coverage 2,524/2,524 = 100.000%; 73 tables / 583 rows; headings `1/15/73/12` |
 | `AY2627_FYP topics_v2_Victor Li.docx` | **30,949** | `1B847CF41700BD1DB3C0E3D5E540BC349674A8177B057AD9AC09F897B4AAFB4E` | **User's own topic sheet. Immutable** — once corrupted to 30,882 and restored (H1) |
